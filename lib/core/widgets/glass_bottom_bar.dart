@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
 /// Bottom bar dengan efek kaca (glassmorphism) berbentuk bar penuh (bukan melayang)
@@ -163,7 +164,7 @@ class GlassBottomBar extends StatelessWidget {
               const SizedBox(height: 2),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? AppColors.sageTua : AppColors.sage,

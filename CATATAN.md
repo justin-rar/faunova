@@ -10,11 +10,12 @@ Dokumen ini diperbarui di setiap akhir sesi pengerjaan Faunova untuk mencatat ap
 - **Inisialisasi Repositori & Kerangka Flutter**:
   - Repositori Git diinisialisasi (`git init`).
   - Struktur folder rapi berbasis fitur (`core/config`, `core/theme`, `core/widgets`, `features/feed`, `features/search`, `features/camera`, `features/game`, `features/profile`, `features/navigation`).
-- **Palet Warna & Tema (AGENTS.md)**:
+- **Palet Warna & Tipografi (AGENTS.md & Poppins)**:
   - Diterapkan di `lib/core/theme/app_colors.dart` dan `lib/core/theme/app_theme.dart`.
   - Sage tua `#5C7457`, Sage `#8FA28A`, Sage muda `#C7D3C0`, Gading `#F7F4ED`, Emas `#C8A96B`, Emas tua `#7F6326`, Teks gelap `#1F2A1E`, Merah status `#B3261E`.
   - Kontras ditaati: Teks putih hanya di atas sage tua; teks di atas sage, sage muda, gading, dan emas menggunakan teks gelap.
   - Header dan kartu memakai warna solid (tidak blur).
+  - Tipografi seluruh aplikasi menggunakan font **Poppins** via `google_fonts` untuk tampilan modern dan estetik.
 - **Bottom Bar Kaca (Glassmorphism & Animasi Meluncur)**:
   - Diterapkan di `lib/core/widgets/glass_bottom_bar.dart` dan `lib/features/navigation/main_navigation_scaffold.dart`.
   - Menggunakan arsitektur `Stack` sehingga konten halaman scroll langsung meluncur di belakang bar tanpa terpotong layout.

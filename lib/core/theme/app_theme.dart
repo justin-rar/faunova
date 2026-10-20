@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
@@ -20,19 +21,19 @@ class AppTheme {
         error: AppColors.merahStatus,
         onError: AppColors.teksPutih,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.sageTua,
         foregroundColor: AppColors.teksPutih,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.poppins(
           color: AppColors.teksPutih,
           fontSize: 18,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
         ),
-        iconTheme: IconThemeData(color: AppColors.teksPutih),
-        systemOverlayStyle: SystemUiOverlayStyle(
+        iconTheme: const IconThemeData(color: AppColors.teksPutih),
+        systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
           statusBarBrightness: Brightness.dark,
@@ -55,7 +56,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: AppColors.teksGelap,
@@ -70,12 +71,13 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
       ),
+      fontFamily: GoogleFonts.poppins().fontFamily,
       textTheme: const TextTheme(
         displayLarge: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.bold),
         displayMedium: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.bold),

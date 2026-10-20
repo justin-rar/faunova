@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:faunova/core/theme/app_colors.dart';
 import 'package:faunova/core/theme/app_theme.dart';
 import 'package:faunova/core/widgets/glass_bottom_bar.dart';
@@ -7,6 +8,10 @@ import 'package:faunova/core/widgets/app_state_view.dart';
 import 'package:faunova/features/navigation/main_navigation_scaffold.dart';
 
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
   group('S1 - Kerangka Palet Warna & Desain Visual AGENTS.md', () {
     test('Palet warna sesuai dengan nilai heksadesimal spesifikasi', () {
       expect(AppColors.sageTua, const Color(0xFF5C7457));
