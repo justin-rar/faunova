@@ -24,12 +24,12 @@ Dokumen ini diperbarui di setiap akhir sesi pengerjaan Faunova untuk mencatat ap
 - **Scroll Physics & UI Beranda**:
   - Mengganti overscroll stretch bawaan Android 12+ yang melar berlebih dengan `ClampingScrollPhysics` yang solid dan halus di `FaunovaScrollBehavior` (`main.dart`).
   - Menghapus judul teks "Faunova" dari AppBar Beranda, langsung menampilkan tab "Untuk Kamu" dan "Mengikuti" secara rapi dan ringkas.
-- **5 Tab Navigasi Berpindah (IndexedStack)**:
-  - Beranda (`FeedPage`): Tab Untuk Kamu & Mengikuti, kartu postingan mockup dengan verifikasi rantai.
-  - Cari (`SearchPage`): Tab Akun (prioritas Centang Biru) & Spesies Hewan.
-  - Kamera (`CameraPage`): Pratinjau kamera langsung layar penuh (tanpa galeri).
-  - Game (`GamePage`): Check-in streak harian, Tantangan Hari Ini, banner Shake-to-Quiz.
-  - Profil (`ProfilePage`): Header profil + Centang Biru, stat, sub-tab Postingan / Koleksi Privat + tombol Verifikasi Rantai, menu popup pojok atas (Saran & Kesan, Setting, Logout).
+- **5 Tab Navigasi Berpindah (IndexedStack & Anti-Slop Overhaul)**:
+  - Beranda (`FeedPage`): Gaya jurnal observasi lapangan; kartu satwa (*Jalak Bali, Kucing Kuwuk, Cenderawasih, Rusa Bawean*) dengan nama latin ilmiah, status konservasi IUCN (*Kritis / CR, LC*), grid snapping location, catatan lapangan, dan nomor blok hash-chain kanonis `#14`.
+  - Cari (`SearchPage`): Filter kategori taksonomi horizontal (*Mamalia, Aves, Reptilia, Amfibi*), kartu akun terverifikasi Centang Biru dengan gelar spesifik konservasi dan jumlah observasi.
+  - Kamera (`CameraPage`): Viewfinder optik taktis dengan crosshair center reticle, pita kompas arah heading `148° SE`, status GPS locked, tombol bidik emas, dan kartu spesifikasi alur verifikasi server (tanpa galeri).
+  - Game (`GamePage`): Tiket observasi streak dengan pelacak hari Senin-Minggu, Tantangan Hari Ini dengan soal biologi nyata (+50 Poin), Arena Kuis 10 Soal (timer, nyawa, skor server), dan banner Shake-to-Quiz dengan kuota harian.
+  - Profil (`ProfilePage`): Portofolio kolektor satwa; metrik observasi, langganan Centang Biru aktif (Midtrans Sandbox), rak 4 lencana MVP, sub-tab koleksi, serta panel verifikasi integritas rantai SHA-256 (`verify_chain`).
 - **Penanganan 4 State (AGENTS.md)**:
   - Widget terstandarisasi `AppStateView` di `lib/core/widgets/app_state_view.dart` menangani state: Memuat (Loading), Kosong (Empty), Galat (Error), dan Luring (Offline).
   - Dilengkapi chip pemilih simulasi state di setiap halaman tab untuk pengujian langsung.
