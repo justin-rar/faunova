@@ -3,14 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 /// Bottom bar dengan efek kaca (glassmorphism) berbentuk bar penuh (bukan melayang)
-/// sesuai dengan aturan AGENTS.md dan referensi visual frosted glass iOS/macOS.
-/// 
-/// - Bar penuh menempel ke dasar dan tepi layar (full width)
-/// - Efek blur BackdropFilter ImageFilter.blur (sigma 24)
-/// - Latar transparan frosted gading/putih sehingga konten yang lewat di bawahnya terlihat blur
-/// - Tab aktif berbalut kapsul glossy (pill container) seperti referensi visual
-/// - Ikon aktif memakai sage tua #5C7457
-/// - Ikon tidak aktif memakai sage / teks gelap teredam
+/// dan animasi kapsul indikator meluncur (sliding pill indicator) yang mulus saat berpindah tab.
 class GlassBottomBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
@@ -24,6 +17,9 @@ class GlassBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    const horizontalMargin = 8.0;
+    const topPadding = 8.0;
+    final bottomInset = bottomPadding > 0 ? bottomPadding : 10.0;
 
     return ClipRect(
       child: BackdropFilter(
@@ -31,7 +27,6 @@ class GlassBottomBar extends StatelessWidget {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            // Transparansi frosted glass yang tembus pandang
             color: const Color(0xFFF7F4ED).withValues(alpha: 0.60),
             border: Border(
               top: BorderSide(
@@ -48,53 +43,94 @@ class GlassBottomBar extends StatelessWidget {
             ],
           ),
           padding: EdgeInsets.only(
-            top: 8.0,
-            bottom: bottomPadding > 0 ? bottomPadding : 10.0,
-            left: 8.0,
-            right: 8.0,
+            top: topPadding,
+            bottom: bottomInset,
+            left: horizontalMargin,
+            right: horizontalMargin,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildGlassTab(
-                index: 0,
-                label: 'Beranda',
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-              ),
-              _buildGlassTab(
-                index: 1,
-                label: 'Cari',
-                icon: Icons.search_outlined,
-                activeIcon: Icons.search_rounded,
-              ),
-              _buildGlassTab(
-                index: 2,
-                label: 'Kamera',
-                icon: Icons.camera_alt_outlined,
-                activeIcon: Icons.camera_alt_rounded,
-                isCameraTab: true,
-              ),
-              _buildGlassTab(
-                index: 3,
-                label: 'Game',
-                icon: Icons.sports_esports_outlined,
-                activeIcon: Icons.sports_esports_rounded,
-              ),
-              _buildGlassTab(
-                index: 4,
-                label: 'Profil',
-                icon: Icons.person_outline_rounded,
-                activeIcon: Icons.person_rounded,
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final tabWidth = constraints.maxWidth / 5;
+              const pillInset = 3.0;
+
+              return SizedBox(
+                height: 52,
+                child: Stack(
+                  children: [
+                    // 1. Kapsul Kaca Meluncur (Sliding Pill Animation)
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.fastOutSlowIn,
+                      left: (currentIndex * tabWidth) + pillInset,
+                      top: 1,
+                      bottom: 1,
+                      width: tabWidth - (pillInset * 2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.07),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // 2. Ikon & Teks 5 Tab di Atas Kapsul Meluncur
+                    Row(
+                      children: [
+                        _buildTabItem(
+                          index: 0,
+                          label: 'Beranda',
+                          icon: Icons.home_outlined,
+                          activeIcon: Icons.home_rounded,
+                        ),
+                        _buildTabItem(
+                          index: 1,
+                          label: 'Cari',
+                          icon: Icons.search_outlined,
+                          activeIcon: Icons.search_rounded,
+                        ),
+                        _buildTabItem(
+                          index: 2,
+                          label: 'Kamera',
+                          icon: Icons.camera_alt_outlined,
+                          activeIcon: Icons.camera_alt_rounded,
+                          isCameraTab: true,
+                        ),
+                        _buildTabItem(
+                          index: 3,
+                          label: 'Game',
+                          icon: Icons.sports_esports_outlined,
+                          activeIcon: Icons.sports_esports_rounded,
+                        ),
+                        _buildTabItem(
+                          index: 4,
+                          label: 'Profil',
+                          icon: Icons.person_outline_rounded,
+                          activeIcon: Icons.person_rounded,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGlassTab({
+  Widget _buildTabItem({
     required int index,
     required String label,
     required IconData icon,
@@ -107,56 +143,39 @@ class GlassBottomBar extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => onTabSelected(index),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 2.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              // Pill kapsul kaca aktif sesuai referensi gambar
-              color: isSelected
-                  ? Colors.white.withValues(alpha: 0.75)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(22),
-              border: isSelected
-                  ? Border.all(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      width: 1.0,
-                    )
-                  : null,
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
+        child: AnimatedScale(
+          scale: isSelected ? 1.04 : 1.0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutBack,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                child: Icon(
                   isSelected ? activeIcon : icon,
+                  key: ValueKey<bool>(isSelected),
                   color: isSelected ? AppColors.sageTua : AppColors.sage,
                   size: isCameraTab ? 24 : 22,
                 ),
-                const SizedBox(height: 2),
-                Text(
+              ),
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.sageTua : AppColors.sage,
+                  letterSpacing: 0.1,
+                ),
+                child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? AppColors.sageTua : AppColors.sage,
-                    letterSpacing: 0.1,
-                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
