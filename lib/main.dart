@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
-import 'features/navigation/main_navigation_scaffold.dart';
+import 'features/auth/presentation/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +22,7 @@ class FaunovaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       scrollBehavior: const FaunovaScrollBehavior(),
-      home: const MainNavigationScaffold(),
+      home: const AuthGate(),
     );
   }
 }

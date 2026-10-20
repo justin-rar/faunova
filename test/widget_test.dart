@@ -6,6 +6,12 @@ import 'package:faunova/core/theme/app_theme.dart';
 import 'package:faunova/core/widgets/glass_bottom_bar.dart';
 import 'package:faunova/core/widgets/app_state_view.dart';
 import 'package:faunova/features/navigation/main_navigation_scaffold.dart';
+import 'package:faunova/core/services/auth_service.dart';
+import 'package:faunova/features/auth/presentation/auth_gate.dart';
+import 'package:faunova/features/auth/presentation/login_page.dart';
+import 'package:faunova/features/auth/presentation/register_page.dart';
+import 'package:faunova/features/auth/presentation/forgot_password_page.dart';
+import 'package:faunova/features/auth/presentation/verify_email_page.dart';
 
 void main() {
   setUpAll(() {
@@ -153,6 +159,169 @@ void main() {
       );
       expect(find.text('Mode Luring (Offline)'), findsOneWidget);
       expect(find.text('Mode luring aktif.'), findsOneWidget);
+    });
+  });
+
+  group('S2 - Autentikasi Supabase & Alur Masuk/Daftar/Lupa Password', () {
+    setUp(() async {
+      await AuthService.instance.signOut();
+    });
+
+    tearDown(() async {
+      await AuthService.instance.signOut();
+    });
+
+    testWidgets('AuthGate menampilkan LoginPage ketika belum terautentikasi', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const AuthGate(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginPage), findsOneWidget);
+      expect(find.text('Masuk ke Akun'), findsOneWidget);
+      expect(find.text('Belum memiliki akun? '), findsOneWidget);
+    });
+
+    testWidgets('LoginPage memvalidasi input kosong dan format email yang salah', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const LoginPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Klik Masuk tanpa mengisi input apa pun
+      await tester.tap(find.text('Masuk ke Akun'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Alamat email wajib diisi'), findsOneWidget);
+      expect(find.text('Kata sandi wajib diisi'), findsOneWidget);
+
+      // Isi email format salah
+      await tester.enterText(find.byType(TextFormField).first, 'emailsalah');
+      await tester.tap(find.text('Masuk ke Akun'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Format alamat email tidak valid'), findsOneWidget);
+
+      // Isi password kurang dari 6 karakter
+      await tester.enterText(find.byType(TextFormField).last, '123');
+      await tester.tap(find.text('Masuk ke Akun'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kata sandi minimal 6 karakter'), findsOneWidget);
+    });
+
+    testWidgets('Navigasi dari LoginPage ke RegisterPage dan validasi formulir pendaftaran', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const LoginPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Klik Daftar Baru
+      await tester.tap(find.text('Daftar Baru'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RegisterPage), findsOneWidget);
+      expect(find.text('Bergabung dengan Faunova'), findsOneWidget);
+      expect(find.text('Daftarkan Akun'), findsOneWidget);
+
+      // Submit formulir kosong
+      await tester.ensureVisible(find.text('Daftarkan Akun'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Daftarkan Akun'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nama lengkap wajib diisi'), findsOneWidget);
+      expect(find.text('Nama pengguna wajib diisi'), findsOneWidget);
+      expect(find.text('Alamat email wajib diisi'), findsOneWidget);
+      expect(find.text('Kata sandi wajib diisi'), findsOneWidget);
+    });
+
+    testWidgets('Navigasi dari LoginPage ke ForgotPasswordPage dan validasi reset password', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const LoginPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Klik Lupa kata sandi?
+      await tester.tap(find.text('Lupa kata sandi?'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ForgotPasswordPage), findsOneWidget);
+      expect(find.text('Lupa Kata Sandi?'), findsOneWidget);
+      expect(find.text('Kirim Tautan Pemulihan'), findsOneWidget);
+
+      // Submit formulir kosong
+      await tester.tap(find.text('Kirim Tautan Pemulihan'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Alamat email wajib diisi'), findsOneWidget);
+    });
+
+    testWidgets('VerifyEmailPage menampilkan instruksi verifikasi Brevo SMTP', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const VerifyEmailPage(email: 'peneliti@faunova.id'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cek Kotak Masuk Anda'), findsOneWidget);
+      expect(find.text('peneliti@faunova.id'), findsOneWidget);
+      expect(find.text('Kembali ke Halaman Masuk'), findsOneWidget);
+    });
+
+    testWidgets('Mode Demo mengaktifkan navigasi dan dialog keluar berfungsi dengan baik', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const AuthGate(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verifikasi awal berada di LoginPage
+      expect(find.byType(LoginPage), findsOneWidget);
+
+      // Aktifkan mode demo via tombol demo di banner
+      await tester.tap(find.text('Mode Demo'));
+      await tester.pumpAndSettle();
+
+      // Masuk ke MainNavigationScaffold
+      expect(find.byType(MainNavigationScaffold), findsOneWidget);
+
+      // Pindah ke Profil
+      await tester.tap(find.text('Profil'));
+      await tester.pumpAndSettle();
+
+      // Buka popup menu di appbar
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+
+      // Pilih Keluar Akun
+      await tester.tap(find.text('Keluar Akun'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Keluar dari Akun?'), findsOneWidget);
+
+      // Konfirmasi keluar
+      await tester.tap(find.text('Keluar'));
+      await tester.pumpAndSettle();
+
+      // Kembali ke LoginPage
+      expect(find.byType(LoginPage), findsOneWidget);
     });
   });
 }

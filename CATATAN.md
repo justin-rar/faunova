@@ -48,10 +48,60 @@ Dokumen ini diperbarui di setiap akhir sesi pengerjaan Faunova untuk mencatat ap
 - **Sensor Perangkat Fisik**: Kamera fisik, sensor GPS (lokasi & mock location detection), magnetometer kompas (arah kamera), accelerometer (shake gesture), dan biometrik fingerprint belum diuji pada HP fisik (dijadwalkan pada sesi masing-masing: S4, S5, S15, S17).
 - **Proyek Supabase**: Menunggu pengisian URL dan Anon Key pada file `.env` oleh pengguna saat proyek Supabase dibuat.
 
-### 3. Langkah Berikutnya (Sesi S2)
-- **Autentikasi Supabase Auth**:
-  - Form & halaman Register.
-  - Verifikasi email via Brevo SMTP kustom.
-  - Halaman Login (email + password).
-  - Alur Lupa Password / Reset Password.
-  - Integrasi Logout dari menu pojok kanan atas Profil.
+### 3. Langkah Berikutnya
+- Melanjutkan ke Sesi S2 (Autentikasi Supabase & SMTP Brevo).
+
+---
+
+## Sesi S2 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Gerbang Autentikasi (`AuthGate`)**:
+  - Diterapkan di `lib/features/auth/presentation/auth_gate.dart`.
+  - Berbasis stream `AuthService.instance.authStateChanges` dan initial state `AuthService.instance.isAuthenticated`.
+  - Mengarahkan ke `MainNavigationScaffold` jika pengguna sudah login, atau ke `LoginPage` jika belum memiliki sesi aktif.
+- **Halaman Masuk (`LoginPage`)**:
+  - Diterapkan di `lib/features/auth/presentation/login_page.dart`.
+  - Desain elegan sesuai palet Faunova (latar gading, emblem sage tua, tombol utama emas `#C8A96B` dengan teks gelap).
+  - Validasi formulir lengkap (email kosong, format email tidak valid, kata sandi minimal 6 karakter).
+  - Tombol pengalih visibilitas kata sandi (obscure text toggle).
+  - Integrasi pesan kesalahan terjemahan bahasa Indonesia untuk kredensial salah dan email belum dikonfirmasi.
+  - Banner peringatan mode demo yang aman dan interaktif jika kredensial `.env` belum diisi pengguna.
+- **Halaman Pendaftaran (`RegisterPage`)**:
+  - Diterapkan di `lib/features/auth/presentation/register_page.dart`.
+  - Formulir pendaftaran akun kolektor: Nama Lengkap, Nama Pengguna (username huruf kecil/angka), Alamat Email, Kata Sandi, dan Konfirmasi Kata Sandi.
+  - Validasi field real-time: Nama pengguna tanpa spasi, minimal 3 karakter, kesesuaian konfirmasi kata sandi.
+  - Setelah berhasil, pengguna diarahkan ke layar instruksi verifikasi email (`VerifyEmailPage`).
+- **Halaman Verifikasi Email Brevo (`VerifyEmailPage`)**:
+  - Diterapkan di `lib/features/auth/presentation/verify_email_page.dart`.
+  - Menampilkan instruksi verifikasi email sesuai Plan 5.1 (panduan kotak masuk Gmail/Outlook dan pengecekan folder Spam).
+  - Tautan kembali ke layar login setelah verifikasi dilakukan.
+- **Halaman Lupa Kata Sandi (`ForgotPasswordPage`)**:
+  - Diterapkan di `lib/features/auth/presentation/forgot_password_page.dart`.
+  - Validasi alamat email dan pengiriman instruksi reset kata sandi melalui Supabase Auth / SMTP Brevo.
+  - Layar konfirmasi keberhasilan pengiriman tautan pemulihan.
+- **Layanan Autentikasi (`AuthService`)**:
+  - Diterapkan di `lib/core/services/auth_service.dart`.
+  - Metode `signUp`, `signIn`, `resetPassword`, `signOut`, dan `enterDemoMode`.
+  - Integrasi logging aman tanpa kebocoran data rahasia.
+  - Penanganan mode demo untuk pengujian UI tanpa server backend.
+- **Integrasi Keluar Akun (`ProfilePage`)**:
+  - Popup menu pojok kanan atas Profil (`Icons.more_vert_rounded`) terhubung dengan dialog konfirmasi keluar.
+  - Memanggil `AuthService.instance.signOut()` yang membersihkan sesi dan seketika merespons AuthGate kembali ke `LoginPage`.
+  - Penyesuaian layout PopupMenuItem dengan `Expanded` untuk mencegah overflow RenderFlex.
+- **Panduan Pengaturan SMTP Brevo**:
+  - Dibuat di `docs/brevo_smtp_setup.md` dengan instruksi langkah-demi-langkah integrasi Brevo SMTP ke Dashboard Supabase Auth (Host `smtp-relay.brevo.com`, Port `587`, Sender `noreply@faunova.id`, Rate limit, Template email pendaftaran & reset password).
+- **Verifikasi & Tes**:
+  - `flutter analyze`: 0 issues / bersih tanpa error lint.
+  - `flutter test`: 10 tes unit & widget test lulus (100% pass) mencakup S1 palet/navigasi/state dan S2 alur AuthGate, validasi form login, register, forgot password, verify email, serta alur keluar akun.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Nyata
+- **Pengiriman Email Nyata ke Inbox**: Memerlukan pengisian kredensial SMTP Brevo di dashboard Supabase milik pengguna serta kredensial `SUPABASE_URL` dan `SUPABASE_ANON_KEY` di file `.env`. (Panduan lengkap tersedia di `docs/brevo_smtp_setup.md`).
+- **Verifikasi Tautan Email Eksternal**: Membutuhkan pembukaan tautan verifikasi pada browser perangkat fisik atau aplikasi Gmail/Outlook.
+
+### 3. Langkah Berikutnya (Sesi S3)
+- **Skema Database & Migrasi Supabase (Postgres & RLS)**:
+  - Membuat tabel `profiles` (kolektor, lencana, status langganan centang biru, streak, kuota).
+  - Menyiapkan RLS (Row Level Security) ketat sesuai aturan `AGENTS.md`.
+  - Trigger otomatis pendaftaran user baru: menyalin `auth.users` ke tabel publik `profiles` dengan profil dasar dan kuota awal.
+  - View publik & RPC grid snapping untuk koordinat aman.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 
@@ -25,6 +26,41 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     super.dispose();
   }
 
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.gading,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          'Keluar dari Akun?',
+          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.teksGelap, fontSize: 17),
+        ),
+        content: const Text(
+          'Sesi Anda akan dihapus dari perangkat ini. Anda perlu memasukkan email dan kata sandi kembali untuk masuk.',
+          style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal', style: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await AuthService.instance.signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.merahStatus,
+              foregroundColor: AppColors.teksPutih,
+            ),
+            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,12 +73,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             onSelected: (value) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Menu dipilih: $value'),
-                  backgroundColor: AppColors.sageTua,
-                ),
-              );
+              if (value == 'logout') {
+                _showLogoutDialog(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Menu dipilih: $value'),
+                    backgroundColor: AppColors.sageTua,
+                  ),
+                );
+              }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
@@ -51,7 +91,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   children: [
                     Icon(Icons.rate_review_outlined, size: 18, color: AppColors.teksGelap),
                     SizedBox(width: 10),
-                    Text('Saran & Kesan Kuliah PAM', style: TextStyle(color: AppColors.teksGelap, fontSize: 13)),
+                    Expanded(
+                      child: Text(
+                        'Saran & Kesan Kuliah PAM',
+                        style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -61,7 +106,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   children: [
                     Icon(Icons.fingerprint_rounded, size: 18, color: AppColors.teksGelap),
                     SizedBox(width: 10),
-                    Text('Pengaturan & Sidik Jari', style: TextStyle(color: AppColors.teksGelap, fontSize: 13)),
+                    Expanded(
+                      child: Text(
+                        'Pengaturan & Sidik Jari',
+                        style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -72,7 +122,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   children: [
                     Icon(Icons.logout_rounded, size: 18, color: AppColors.merahStatus),
                     SizedBox(width: 10),
-                    Text('Keluar Akun', style: TextStyle(color: AppColors.merahStatus, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Expanded(
+                      child: Text(
+                        'Keluar Akun',
+                        style: TextStyle(color: AppColors.merahStatus, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ],
                 ),
               ),
