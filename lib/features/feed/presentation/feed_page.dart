@@ -29,24 +29,18 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Faunova'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            color: AppColors.sageTua,
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: AppColors.emas,
-              indicatorWeight: 3,
-              labelColor: AppColors.teksPutih,
-              unselectedLabelColor: AppColors.sageMuda,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              tabs: const [
-                Tab(text: 'Untuk Kamu'),
-                Tab(text: 'Mengikuti'),
-              ],
-            ),
-          ),
+        title: TabBar(
+          controller: _tabController,
+          indicatorColor: AppColors.emas,
+          indicatorWeight: 3,
+          indicatorSize: TabBarIndicatorSize.label,
+          labelColor: AppColors.teksPutih,
+          unselectedLabelColor: AppColors.sageMuda,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          tabs: const [
+            Tab(text: 'Untuk Kamu'),
+            Tab(text: 'Mengikuti'),
+          ],
         ),
       ),
       body: AppStateView(
@@ -62,7 +56,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
           });
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -83,6 +77,24 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
                 location: 'Kuningan, Jawa Barat',
                 timeAgo: '2 jam lalu',
                 likes: 89,
+                hasVerifiedChain: true,
+              ),
+              const SizedBox(height: 16),
+              _buildPlaceholderFeedItem(
+                user: 'alam_lestari',
+                species: 'Rusa Bawean (Axis kuhlian)',
+                location: 'Gresik, Jawa Timur',
+                timeAgo: '4 jam lalu',
+                likes: 56,
+                hasVerifiedChain: true,
+              ),
+              const SizedBox(height: 16),
+              _buildPlaceholderFeedItem(
+                user: 'indra_satwa',
+                species: 'Cendrawasih Kuning Kecil (Paradisaea minor)',
+                location: 'Jayapura, Papua',
+                timeAgo: '1 hari lalu',
+                likes: 142,
                 hasVerifiedChain: true,
               ),
             ],

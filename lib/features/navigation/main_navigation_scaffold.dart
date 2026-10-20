@@ -36,13 +36,26 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: GlassBottomBar(
-        currentIndex: _currentIndex,
-        onTabSelected: _onTabSelected,
+      body: Stack(
+        children: [
+          // Konten halaman yang membentang penuh ke dasar layar
+          Positioned.fill(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: _pages,
+            ),
+          ),
+          // Bottom bar kaca menempel di paling bawah dan mem-blur konten di baliknya
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: GlassBottomBar(
+              currentIndex: _currentIndex,
+              onTabSelected: _onTabSelected,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 /// Bottom bar dengan efek kaca (glassmorphism) berbentuk bar penuh (bukan melayang)
-/// sesuai dengan aturan AGENTS.md dan plan_faunova_revisi_5_final.md.
+/// sesuai dengan aturan AGENTS.md dan referensi visual frosted glass iOS/macOS.
 /// 
-/// - Bar penuh menempel ke bawah dan tepi layar
-/// - Efek blur BackdropFilter ImageFilter.blur
+/// - Bar penuh menempel ke dasar dan tepi layar (full width)
+/// - Efek blur BackdropFilter ImageFilter.blur (sigma 24)
+/// - Latar transparan frosted gading/putih sehingga konten yang lewat di bawahnya terlihat blur
+/// - Tab aktif berbalut kapsul glossy (pill container) seperti referensi visual
 /// - Ikon aktif memakai sage tua #5C7457
-/// - Ikon tidak aktif memakai sage #8FA28A
+/// - Ikon tidak aktif memakai sage / teks gelap teredam
 class GlassBottomBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
@@ -25,49 +27,61 @@ class GlassBottomBar extends StatelessWidget {
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18.0, sigmaY: 18.0),
+        filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
         child: Container(
-          // Bar penuh dari sisi ke sisi
           width: double.infinity,
           decoration: BoxDecoration(
-            color: AppColors.gading.withValues(alpha: 0.85),
+            // Transparansi frosted glass yang tembus pandang
+            color: const Color(0xFFF7F4ED).withValues(alpha: 0.60),
             border: Border(
               top: BorderSide(
-                color: AppColors.sage.withValues(alpha: 0.28),
+                color: Colors.white.withValues(alpha: 0.75),
                 width: 1.0,
               ),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.teksGelap.withValues(alpha: 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
           padding: EdgeInsets.only(
             top: 8.0,
             bottom: bottomPadding > 0 ? bottomPadding : 10.0,
+            left: 8.0,
+            right: 8.0,
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(
+              _buildGlassTab(
                 index: 0,
                 label: 'Beranda',
                 icon: Icons.home_outlined,
                 activeIcon: Icons.home_rounded,
               ),
-              _buildNavItem(
+              _buildGlassTab(
                 index: 1,
                 label: 'Cari',
                 icon: Icons.search_outlined,
                 activeIcon: Icons.search_rounded,
               ),
-              _buildCameraNavItem(
+              _buildGlassTab(
                 index: 2,
                 label: 'Kamera',
+                icon: Icons.camera_alt_outlined,
+                activeIcon: Icons.camera_alt_rounded,
+                isCameraTab: true,
               ),
-              _buildNavItem(
+              _buildGlassTab(
                 index: 3,
                 label: 'Game',
                 icon: Icons.sports_esports_outlined,
                 activeIcon: Icons.sports_esports_rounded,
               ),
-              _buildNavItem(
+              _buildGlassTab(
                 index: 4,
                 label: 'Profil',
                 icon: Icons.person_outline_rounded,
@@ -80,104 +94,69 @@ class GlassBottomBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem({
+  Widget _buildGlassTab({
     required int index,
     required String label,
     required IconData icon,
     required IconData activeIcon,
+    bool isCameraTab = false,
   }) {
     final isSelected = currentIndex == index;
 
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => onTabSelected(index),
-        splashColor: AppColors.sageMuda.withValues(alpha: 0.3),
-        highlightColor: Colors.transparent,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.sageMuda.withValues(alpha: 0.45)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
+          padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 2.0),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              // Pill kapsul kaca aktif sesuai referensi gambar
+              color: isSelected
+                  ? Colors.white.withValues(alpha: 0.75)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(22),
+              border: isSelected
+                  ? Border.all(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      width: 1.0,
+                    )
+                  : null,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
                   isSelected ? activeIcon : icon,
                   color: isSelected ? AppColors.sageTua : AppColors.sage,
-                  size: 24,
+                  size: isCameraTab ? 24 : 22,
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.sageTua : AppColors.sage,
-                  letterSpacing: 0.1,
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? AppColors.sageTua : AppColors.sage,
+                    letterSpacing: 0.1,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCameraNavItem({
-    required int index,
-    required String label,
-  }) {
-    final isSelected = currentIndex == index;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () => onTabSelected(index),
-        splashColor: AppColors.sageMuda.withValues(alpha: 0.3),
-        highlightColor: Colors.transparent,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.sageTua : AppColors.sage,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isSelected ? AppColors.sageTua : AppColors.sage)
-                          .withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.camera_alt_rounded,
-                  color: AppColors.teksPutih, // Teks/ikon putih di atas sage tua
-                  size: 22,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.sageTua : AppColors.sage,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

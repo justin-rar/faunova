@@ -21,7 +21,29 @@ class FaunovaApp extends StatelessWidget {
       title: 'Faunova',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      scrollBehavior: const FaunovaScrollBehavior(),
       home: const MainNavigationScaffold(),
     );
   }
 }
+
+/// Menghilangkan efek overscroll stretch (karet melar berlebih) bawaan Android 12+
+/// dan menggantinya dengan ClampingScrollPhysics yang solid dan halus.
+class FaunovaScrollBehavior extends MaterialScrollBehavior {
+  const FaunovaScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const ClampingScrollPhysics();
+  }
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+

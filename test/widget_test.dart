@@ -51,7 +51,6 @@ void main() {
       expect(find.text('Profil'), findsOneWidget);
 
       // Tab 0 default aktif (Beranda)
-      expect(find.text('Faunova'), findsOneWidget);
       expect(find.text('Untuk Kamu'), findsOneWidget);
       expect(find.text('Mengikuti'), findsOneWidget);
 
