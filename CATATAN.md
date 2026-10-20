@@ -15,10 +15,11 @@ Dokumen ini diperbarui di setiap akhir sesi pengerjaan Faunova untuk mencatat ap
   - Sage tua `#5C7457`, Sage `#8FA28A`, Sage muda `#C7D3C0`, Gading `#F7F4ED`, Emas `#C8A96B`, Emas tua `#7F6326`, Teks gelap `#1F2A1E`, Merah status `#B3261E`.
   - Kontras ditaati: Teks putih hanya di atas sage tua; teks di atas sage, sage muda, gading, dan emas menggunakan teks gelap.
   - Header dan kartu memakai warna solid (tidak blur).
-- **Bottom Bar Kaca (Glassmorphism Sesuai Referensi)**:
+- **Bottom Bar Kaca (Glassmorphism & Animasi Meluncur)**:
   - Diterapkan di `lib/core/widgets/glass_bottom_bar.dart` dan `lib/features/navigation/main_navigation_scaffold.dart`.
   - Menggunakan arsitektur `Stack` sehingga konten halaman scroll langsung meluncur di belakang bar tanpa terpotong layout.
-  - Efek blur ditingkatkan (`ImageFilter.blur(sigmaX: 25, sigmaY: 25)`) dengan transparansi tembus pandang frosted glass `0.60`, specular highlight putih di garis atas, dan kapsul pill glossy pada tab aktif menyerupai referensi desain visionOS/iOS.
+  - Efek blur `ImageFilter.blur(sigmaX: 25, sigmaY: 25)` dengan transparansi tembus pandang frosted glass `0.60` dan highlight garis putih di tepi atas.
+  - **Animasi Kapsul Meluncur (Sliding Pill Indicator)**: Menggunakan `AnimatedPositioned` dengan kurva `Curves.fastOutSlowIn` (300ms) sehingga saat berpindah tab (misal dari Beranda ke Profil), kapsul putih glossy meluncur secara fisik dan dinamis melintasi tab-tab di homebar. Tab yang aktif juga memiliki animasi scale dan fade pada ikon & teks.
 - **Scroll Physics & UI Beranda**:
   - Mengganti overscroll stretch bawaan Android 12+ yang melar berlebih dengan `ClampingScrollPhysics` yang solid dan halus di `FaunovaScrollBehavior` (`main.dart`).
   - Menghapus judul teks "Faunova" dari AppBar Beranda, langsung menampilkan tab "Untuk Kamu" dan "Mengikuti" secara rapi dan ringkas.
