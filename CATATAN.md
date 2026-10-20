@@ -15,11 +15,13 @@ Dokumen ini diperbarui di setiap akhir sesi pengerjaan Faunova untuk mencatat ap
   - Sage tua `#5C7457`, Sage `#8FA28A`, Sage muda `#C7D3C0`, Gading `#F7F4ED`, Emas `#C8A96B`, Emas tua `#7F6326`, Teks gelap `#1F2A1E`, Merah status `#B3261E`.
   - Kontras ditaati: Teks putih hanya di atas sage tua; teks di atas sage, sage muda, gading, dan emas menggunakan teks gelap.
   - Header dan kartu memakai warna solid (tidak blur).
-- **Bottom Bar Kaca (Glassmorphism)**:
-  - Diterapkan di `lib/core/widgets/glass_bottom_bar.dart`.
-  - Bar penuh menempel ke bawah dan tepi layar (non-floating), efek `BackdropFilter` blur 18px, latar transparan bertinta gading/sage.
-  - Ikon aktif berwarna sage tua `#5C7457`, ikon non-aktif berwarna sage `#8FA28A`.
-  - Tombol kamera tengah beraksen solid sage tua dengan ikon putih kontras tinggi.
+- **Bottom Bar Kaca (Glassmorphism Sesuai Referensi)**:
+  - Diterapkan di `lib/core/widgets/glass_bottom_bar.dart` dan `lib/features/navigation/main_navigation_scaffold.dart`.
+  - Menggunakan arsitektur `Stack` sehingga konten halaman scroll langsung meluncur di belakang bar tanpa terpotong layout.
+  - Efek blur ditingkatkan (`ImageFilter.blur(sigmaX: 25, sigmaY: 25)`) dengan transparansi tembus pandang frosted glass `0.60`, specular highlight putih di garis atas, dan kapsul pill glossy pada tab aktif menyerupai referensi desain visionOS/iOS.
+- **Scroll Physics & UI Beranda**:
+  - Mengganti overscroll stretch bawaan Android 12+ yang melar berlebih dengan `ClampingScrollPhysics` yang solid dan halus di `FaunovaScrollBehavior` (`main.dart`).
+  - Menghapus judul teks "Faunova" dari AppBar Beranda, langsung menampilkan tab "Untuk Kamu" dan "Mengikuti" secara rapi dan ringkas.
 - **5 Tab Navigasi Berpindah (IndexedStack)**:
   - Beranda (`FeedPage`): Tab Untuk Kamu & Mengikuti, kartu postingan mockup dengan verifikasi rantai.
   - Cari (`SearchPage`): Tab Akun (prioritas Centang Biru) & Spesies Hewan.
