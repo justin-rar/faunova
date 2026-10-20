@@ -29,10 +29,13 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil Saya'),
+        title: const Text('Profil Kolektor'),
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: AppColors.teksPutih),
+            icon: const Icon(Icons.more_vert_rounded, color: AppColors.teksPutih),
+            color: AppColors.gading,
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             onSelected: (value) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -46,19 +49,19 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 value: 'saran_kesan',
                 child: Row(
                   children: [
-                    Icon(Icons.feedback_outlined, size: 20, color: AppColors.teksGelap),
+                    Icon(Icons.rate_review_outlined, size: 18, color: AppColors.teksGelap),
                     SizedBox(width: 10),
-                    Text('Saran & Kesan Kuliah PAM', style: TextStyle(color: AppColors.teksGelap)),
+                    Text('Saran & Kesan Kuliah PAM', style: TextStyle(color: AppColors.teksGelap, fontSize: 13)),
                   ],
                 ),
               ),
               const PopupMenuItem(
-                value: 'setting',
+                value: 'setting_biometrik',
                 child: Row(
                   children: [
-                    Icon(Icons.settings_outlined, size: 20, color: AppColors.teksGelap),
+                    Icon(Icons.fingerprint_rounded, size: 18, color: AppColors.teksGelap),
                     SizedBox(width: 10),
-                    Text('Pengaturan & Biometrik', style: TextStyle(color: AppColors.teksGelap)),
+                    Text('Pengaturan & Sidik Jari', style: TextStyle(color: AppColors.teksGelap, fontSize: 13)),
                   ],
                 ),
               ),
@@ -67,9 +70,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout_rounded, size: 20, color: AppColors.merahStatus),
+                    Icon(Icons.logout_rounded, size: 18, color: AppColors.merahStatus),
                     SizedBox(width: 10),
-                    Text('Keluar Akun', style: TextStyle(color: AppColors.merahStatus)),
+                    Text('Keluar Akun', style: TextStyle(color: AppColors.merahStatus, fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -79,30 +82,37 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       ),
       body: AppStateView(
         status: _currentStatus,
-        loadingMessage: 'Memuat profil pengguna...',
-        emptyTitle: 'Profil Belum Lengkap',
-        emptyMessage: 'Silakan lengkapi data profil Anda untuk memulai.',
-        errorMessage: 'Gagal memuat informasi profil pengguna.',
-        offlineMessage: 'Mode luring. Menampilkan profil tersimpan dari memori lokal.',
+        loadingMessage: 'Memuat data portofolio koleksi...',
+        emptyTitle: 'Profil Belum Terdaftar',
+        emptyMessage: 'Silakan masuk atau buat akun baru untuk melihat portofolio Anda.',
+        errorMessage: 'Gagal memuat profil pengguna dari server.',
+        offlineMessage: 'Mode luring. Memuat data profil dari cache lokal terenkripsi.',
         onRetry: () {
           setState(() {
             _currentStatus = AppViewStatus.content;
           });
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStateSwitcherCard(),
-              const SizedBox(height: 16),
-              _buildProfileHeaderCard(),
-              const SizedBox(height: 14),
-              _buildVerifiedBadgeSubscriptionCard(),
-              const SizedBox(height: 14),
-              _buildSubTabs(),
-            ],
-          ),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          children: [
+            _buildStateSwitcherCard(),
+            const SizedBox(height: 14),
+
+            // 1. Profile Header Card
+            _buildProfileHeroCard(),
+            const SizedBox(height: 14),
+
+            // 2. Centang Biru Subscription Card (Plan 5.4)
+            _buildVerifiedSubscriptionCard(),
+            const SizedBox(height: 14),
+
+            // 3. Badge Shelf (Grid Pencapaian)
+            _buildBadgeShelfCard(),
+            const SizedBox(height: 14),
+
+            // 4. Sub-tab: Postingan Publik vs Koleksi Privat + Verifikasi Rantai
+            _buildSubTabsSection(),
+          ],
         ),
       ),
     );
@@ -110,23 +120,24 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   Widget _buildStateSwitcherCard() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.tune_rounded, size: 18, color: AppColors.teksGelap),
+              Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
               SizedBox(width: 8),
               Text(
                 'Simulasi State (AGENTS.md)',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
                   color: AppColors.teksGelap,
                 ),
               ),
@@ -134,7 +145,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
+            spacing: 6,
             runSpacing: 6,
             children: [
               _buildStateChip('Normal', AppViewStatus.content),
@@ -162,18 +173,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       selectedColor: AppColors.sageTua,
       backgroundColor: AppColors.gading,
       labelStyle: TextStyle(
-        fontSize: 12,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 11,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         color: isSelected ? AppColors.teksPutih : AppColors.teksGelap,
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      visualDensity: VisualDensity.compact,
     );
   }
 
-  Widget _buildProfileHeaderCard() {
+  Widget _buildProfileHeroCard() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -182,46 +196,61 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           Row(
             children: [
               const CircleAvatar(
-                radius: 32,
+                radius: 34,
                 backgroundColor: AppColors.sageTua,
-                child: Icon(Icons.person, color: AppColors.teksPutih, size: 36),
+                child: Text(
+                  'A',
+                  style: TextStyle(
+                    color: AppColors.teksPutih,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 26,
+                  ),
+                ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
+              const SizedBox(width: 14),
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Text(
-                          'Kolektor Satwa',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.teksGelap,
+                        Flexible(
+                          child: Text(
+                            'Arya Wicaksana',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.teksGelap,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.verified_rounded,
-                          color: Colors.blueAccent,
-                          size: 18,
-                        ),
+                        SizedBox(width: 5),
+                        Icon(Icons.verified_rounded, color: Color(0xFF1E88E5), size: 18),
                       ],
                     ),
-                    const Text(
-                      '@satwa_nusantara',
-                      style: TextStyle(fontSize: 13, color: AppColors.teksGelap),
+                    Text(
+                      '@arya_wallacea',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.teksGelap, fontWeight: FontWeight.w500),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Pecinta satwa endemik Indonesia & pelestari alam.',
-                      style: TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                    SizedBox(height: 3),
+                    Text(
+                      'Kolektor Satwa Wallacea',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.emasTua, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Penjelajah biodiversitas Indonesia Timur. Mengarsipkan reptilia dan aves endemik ke dalam buku besar terenkripsi.',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: AppColors.teksGelap.withValues(alpha: 0.9),
+            ),
           ),
           const SizedBox(height: 16),
           const Divider(height: 1, color: AppColors.sage),
@@ -229,10 +258,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _StatItem(label: 'Postingan', value: '12'),
-              _StatItem(label: 'Pengikut', value: '148'),
-              _StatItem(label: 'Mengikuti', value: '62'),
-              _StatItem(label: 'Badge', value: '4/8'),
+              _MetricItem(label: 'Postingan', value: '14'),
+              _MetricItem(label: 'Pengikut', value: '218'),
+              _MetricItem(label: 'Mengikuti', value: '64'),
+              _MetricItem(label: 'Badge Sah', value: '4/8'),
             ],
           ),
         ],
@@ -240,52 +269,146 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildVerifiedBadgeSubscriptionCard() {
+  Widget _buildVerifiedSubscriptionCard() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const Icon(Icons.verified_rounded, color: Colors.blueAccent, size: 28),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E88E5).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.verified_rounded, color: Color(0xFF1E88E5), size: 26),
+          ),
           const SizedBox(width: 12),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Langganan Centang Biru',
+                  'Centang Biru Aktif',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
                     color: AppColors.teksGelap,
                   ),
                 ),
                 Text(
-                  'Rp 15.000 / bulan via Midtrans Sandbox',
-                  style: TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                  'Aktif s/d 30 Nov 2026 • Midtrans Sandbox',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
                 ),
               ],
             ),
           ),
           ElevatedButton(
             onPressed: () {},
-            child: const Text('Perpanjang'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: const Size(80, 36),
+            ),
+            child: const Text('Perpanjang', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSubTabs() {
+  Widget _buildBadgeShelfCard() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Lencana Gelar Pencapaian (MVP)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: AppColors.teksGelap,
+                ),
+              ),
+              Text(
+                '4 Terbuka',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.emasTua,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildBadgeItem(Icons.forest_rounded, 'Penjelajah', true),
+              _buildBadgeItem(Icons.visibility_rounded, 'Mata Elang', true),
+              _buildBadgeItem(Icons.auto_stories_rounded, 'Taksonomis', true),
+              _buildBadgeItem(Icons.link_rounded, 'Penjaga Rantai', true),
+              _buildBadgeItem(Icons.lock_outline_rounded, 'Terkunci', false),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadgeItem(IconData icon, String label, bool isUnlocked) {
+    return Column(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: isUnlocked ? AppColors.sageTua : AppColors.gading,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isUnlocked ? AppColors.emas : AppColors.sage.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 22,
+            color: isUnlocked ? AppColors.teksPutih : AppColors.sage,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: isUnlocked ? FontWeight.w700 : FontWeight.w500,
+            color: isUnlocked ? AppColors.teksGelap : AppColors.sage,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubTabsSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.sageMuda,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+      ),
+      padding: const EdgeInsets.all(14),
       child: Column(
         children: [
           TabBar(
@@ -294,18 +417,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             indicatorWeight: 3,
             labelColor: AppColors.teksGelap,
             unselectedLabelColor: AppColors.sage,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             tabs: const [
               Tab(text: 'Postingan Publik'),
-              Tab(text: 'Koleksi Privat & Rantai'),
+              Tab(text: 'Koleksi & Peta'),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
+          // Blockchain Hash-Chain Verifier Banner (Plan 5.2)
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.gading,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.sage.withValues(alpha: 0.4), width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -315,10 +441,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     Icon(Icons.shield_outlined, color: AppColors.sageTua, size: 20),
                     SizedBox(width: 8),
                     Text(
-                      'Integritas Rantai Hash (Simple Blockchain)',
+                      'Integritas Buku Besar (Simple Blockchain)',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
                         color: AppColors.teksGelap,
                       ),
                     ),
@@ -326,21 +452,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Rantai SHA-256 tersambung antar tangkapan dan divalidasi oleh database server.',
-                  style: TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                  'Setiap tangkapan dienkripsi dengan SHA-256 kanonis menyambung ke tangkapan sebelumnya.',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap, height: 1.35),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Verifikasi Rantai: Seluruh blok valid (seq 1..12)'),
+                        content: Text('Verifikasi Rantai: Seluruh blok valid (seq 1..14). Tidak ada manipulasi data.'),
                         backgroundColor: AppColors.sageTua,
                       ),
                     );
                   },
                   icon: const Icon(Icons.verified_user_rounded, size: 18),
-                  label: const Text('Verifikasi Rantai'),
+                  label: const Text('Verifikasi Rantai (verify_chain)'),
                 ),
               ],
             ),
@@ -351,11 +477,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 }
 
-class _StatItem extends StatelessWidget {
+class _MetricItem extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatItem({required this.label, required this.value});
+  const _MetricItem({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -364,16 +490,17 @@ class _StatItem extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             fontSize: 16,
             color: AppColors.teksGelap,
           ),
         ),
+        const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: AppColors.teksGelap,
+            color: AppColors.teksGelap.withValues(alpha: 0.75),
           ),
         ),
       ],

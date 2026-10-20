@@ -62,29 +62,26 @@ void main() {
       // Pindah ke Tab 1 (Cari)
       await tester.tap(find.text('Cari'));
       await tester.pumpAndSettle();
-      expect(find.text('Eksplorasi & Pencarian'), findsOneWidget);
       expect(find.text('Akun Pengguna'), findsOneWidget);
-      expect(find.text('Spesies Hewan'), findsOneWidget);
+      expect(find.text('Katalog Spesies'), findsOneWidget);
 
       // Pindah ke Tab 2 (Kamera)
       await tester.tap(find.text('Kamera'));
       await tester.pumpAndSettle();
       expect(find.text('Kamera Identifikasi AI'), findsOneWidget);
-      expect(find.text('Kamera Layar Penuh (Sesi S5)'), findsOneWidget);
+      expect(find.text('HEADING 148° SE'), findsOneWidget);
 
       // Pindah ke Tab 3 (Game)
       await tester.tap(find.text('Game'));
       await tester.pumpAndSettle();
-      expect(find.text('Kuis & Game Fauna'), findsOneWidget);
-      expect(find.text('Streak Check-in Harian'), findsOneWidget);
-      expect(find.text('Tantangan Hari Ini'), findsOneWidget);
+      expect(find.text('Ekspedisi & Kuis Fauna'), findsOneWidget);
+      expect(find.text('Streak Observasi Harian'), findsOneWidget);
 
       // Pindah ke Tab 4 (Profil)
       await tester.tap(find.text('Profil'));
       await tester.pumpAndSettle();
-      expect(find.text('Profil Saya'), findsOneWidget);
-      expect(find.text('Langganan Centang Biru'), findsOneWidget);
-      expect(find.text('Verifikasi Rantai'), findsOneWidget);
+      expect(find.text('Profil Kolektor'), findsOneWidget);
+      expect(find.text('Centang Biru Aktif'), findsOneWidget);
     });
 
     testWidgets('AppStateView menangani 4 state: loading, error, empty, offline', (tester) async {
