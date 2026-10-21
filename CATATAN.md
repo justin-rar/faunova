@@ -623,10 +623,59 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Tidak ada konfigurasi database manual untuk Sesi S12** ✅ (Seluruh fitur berjalan di sisi klien menggunakan Hive AES-256 lokal dan API publik gratis).
 
 ### 3. Langkah Berikutnya (Sesi S13)
-- **Sesi S13 (Fitur Kuis Biologi Satwa & Skor Server)**:
-  - Implementasi RPC `start_quiz_session` dan `finish_quiz_session` (kunci jawaban tidak pernah dikirim ke klien per AGENTS.md aturan keras).
-  - UI Arena Kuis: Timer hitung mundur, sistem nyawa (3 nyawa), combo streak, dan skor akhir dihitung di server.
-  - Bank soal biologi satwa Indonesia.
+- Sesi S13 (Fitur Kuis Biologi Satwa & Skor Server) — Telah dikerjakan di bawah.
+
+---
+
+## Sesi S13 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Skema & Database Migrasi 007 (`supabase/migrations/007_quiz_system.sql`) (Plan 46, 180-186, 389, AGENTS.md)**:
+  - Diterapkan di `supabase/migrations/007_quiz_system.sql`.
+  - Tabel `quiz_questions`: `id`, `question_text`, `option_a`, `option_b`, `option_c`, `option_d`, `correct_option` (CHAR(1) A-D), `explanation`, `difficulty`, `is_active`.
+  - Keamanan RLS Aktif: Aturan Keras 5 ditaati secara ketat. Publik dan klien tidak memiliki izin membaca kolom `correct_option` secara langsung.
+  - Tabel `quiz_sessions`: `id`, `user_id`, `question_ids` (UUID[]), `started_at`, `finished_at`, `score`, `lives_remaining`, `combo_max`, `status` ('in_progress', 'completed', 'abandoned').
+  - Tabel `quiz_answers`: Menyimpan catatan audit jawaban per sesi (`session_id`, `question_id`, `selected_option`, `is_correct`, `elapsed_ms`).
+  - **RPC `start_quiz_session()` (`SECURITY DEFINER`)**: Mengambil secara acak 10 soal aktif, membuat sesi kuis baru, dan mengembalikan daftar soal dalam format JSON **tanpa** field `correct_option` (kunci jawaban tidak pernah dikirim ke klien).
+  - **RPC `finish_quiz_session(p_session_id, p_answers)` (`SECURITY DEFINER`)**:
+    - Mengunci baris sesi dengan `FOR UPDATE` untuk mencegah race condition atau manipulasi jawaban berulang.
+    - Validasi identitas pengguna (`user_id = auth.uid()`) dan validasi durasi waktu.
+    - Menghitung skor secara deterministik di server (Aturan Keras 2): Base 100 poin per jawaban benar + Combo multiplier streak bertingkat + Bonus kecepatan waktu menjawab (`elapsed_ms`).
+    - Mengurangi nyawa pengguna (3 nyawa awal; berkurang jika jawaban salah atau waktu habis).
+    - Memperbarui rekor `profiles.best_quiz_score` jika skor sesi baru melampaui skor tertinggi sebelumnya.
+    - Mengembalikan ulasan lengkap per soal (jawaban pengguna, status benar/salah, kunci jawaban resmi, dan penjelasan ilmiah).
+  - **Bank Soal Fauna Nusantara**: Disediakan 12 soal biologi satwa autentik Indonesia (Komodo, Jalak Bali, Orangutan Sumatera, Harimau Sumatera, Anoa, Burung Maleo, dsb.) lengkap dengan opsi dan pembahasan ilmiah.
+- **Model Data Kuis (`lib/features/game/models/`)**:
+  - `QuizQuestionModel`: Model soal klien (`id`, `questionText`, `optionA`, `optionB`, `optionC`, `optionD`, `difficulty`). Bebas dari field kunci jawaban.
+  - `QuizSessionModel` & `QuizAnswerInput`: DTO pengiriman jawaban kuis ke server.
+  - `QuizResultModel` & `QuizAnswerSummaryItem`: Model respons hasil evaluasi kuis dari server beserta rekor skor baru.
+- **Layanan Kuis (`QuizService`) (`lib/core/services/quiz_service.dart`)**:
+  - Terintegrasi dengan RPC Supabase `start_quiz_session` dan `finish_quiz_session`.
+  - Dilengkapi engine evaluasi fallback offline/mode demo deterministik dengan aturan penilaian yang identik dengan server.
+  - Sinkronisasi skor kuis tertinggi ke Hive terenkripsi (`EncryptedStorageService.instance.saveBestQuizScore`).
+- **Layar Arena Kuis Interaktif (`QuizArenaPage`) (`lib/features/game/presentation/quiz_arena_page.dart`)**:
+  - Timer hitung mundur 15 detik per soal dengan animasi bilah progress halus (beralih ke merah status saat <4 detik).
+  - Indikator 3 Nyawa (`❤️ ❤️ ❤️`) yang berkurang saat jawaban salah atau waktu habis.
+  - Indikator Combo Streak dinamis (`🔥 Combo x2`, `x3`).
+  - 4 kartu opsi jawaban (A, B, C, D) interaktif berpalet Faunova.
+  - Layar Ringkasan Hasil: Skor akhir terverifikasi server, lencana rekor baru, detail statistik (jawaban benar, combo tertinggi, sisa nyawa), dan ulasan jawaban lengkap dengan pembahasan biologi.
+- **Pembaruan Halaman Game (`GamePage`)**:
+  - Tombol "Mulai Sesi Kuis (10 Soal)" terhubung langsung dengan `QuizService.instance.startQuizSession()` dan navigasi ke `QuizArenaPage`.
+  - Tampilan skor tertinggi akun (`best_quiz_score`) diperbarui secara dinamis.
+  - Memperbaiki RenderFlex overflow pada judul kartu dengan `Expanded(child: Text(..., overflow: TextOverflow.ellipsis))`.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint.
+  - `flutter test`: **63 dari 63 tes unit & widget lulus 100%**, mencakup verifikasi Aturan Keras 5 (model tidak memiliki kunci jawaban), kalkulasi skor server, timer 15 detik, sistem 3 nyawa, dan navigasi `QuizArenaPage`.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 007 di Supabase Dashboard**: Berkas `supabase/migrations/007_quiz_system.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat tabel kuis, RPC `start_quiz_session` & `finish_quiz_session`, dan bank soal.
+
+### 3. Langkah Berikutnya (Sesi S14)
+- **Sesi S14 (Daily Streak Check-in & Tantangan Hari Ini)**:
+  - Logika streak harian berbasis kalender resmi WIB (Aturan 2: kuota & streak hanya di server).
+  - RPC pencegahan klaim ganda per hari WIB.
+  - Fitur Tantangan Biologi Harian (+50 Poin) dengan verifikasi server.
+
 
 
 

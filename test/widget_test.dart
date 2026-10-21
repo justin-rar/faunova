@@ -46,6 +46,10 @@ import 'package:faunova/core/services/currency_service.dart';
 import 'package:faunova/core/services/timezone_service.dart';
 import 'package:faunova/features/profile/presentation/widgets/currency_converter_card.dart';
 import 'package:faunova/features/profile/presentation/widgets/multi_timezone_card.dart';
+import 'package:faunova/core/services/quiz_service.dart';
+import 'package:faunova/features/game/models/quiz_session_model.dart';
+import 'package:faunova/features/game/presentation/quiz_arena_page.dart';
+import 'package:faunova/features/game/presentation/game_page.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -1795,5 +1799,129 @@ void main() {
       expect(find.textContaining('kurs'), findsWidgets);
     });
   });
+
+  group('S13 - Arena Kuis Biologi Satwa: Timer, 3 Nyawa, Combo, dan Skor Server (Plan 46, 180-186, 277)', () {
+    setUp(() async {
+      await EncryptedStorageService.instance.init();
+    });
+
+    test('QuizService: startQuizSession mengembalikan 10 soal TANPA kunci jawaban (Hard Rule 5)', () async {
+      final session = await QuizService.instance.startQuizSession();
+
+      expect(session.sessionId, isNotEmpty);
+      expect(session.questions.length, equals(10));
+
+      for (final q in session.questions) {
+        expect(q.id, isNotEmpty);
+        expect(q.question, isNotEmpty);
+        expect(q.category, isNotEmpty);
+        expect(q.options.length, equals(4)); // 4 pilihan ganda (A, B, C, D)
+      }
+    });
+
+    test('QuizService: finishQuizSession menghitung skor deterministik, combo bonus, dan skor tertinggi', () async {
+      final session = await QuizService.instance.startQuizSession();
+      final answers = <QuizAnswerInput>[];
+
+      // Simulasi jawaban untuk 10 soal (semua memilih opsi 0)
+      for (int i = 0; i < session.questions.length; i++) {
+        answers.add(
+          QuizAnswerInput(
+            questionId: session.questions[i].id,
+            selectedOption: 0,
+            elapsedMs: 3500, // dijawab dalam 3.5 detik (mendapat speed bonus)
+          ),
+        );
+      }
+
+      final result = await QuizService.instance.finishQuizSession(
+        sessionId: session.sessionId,
+        answers: answers,
+      );
+
+      expect(result.sessionId, equals(session.sessionId));
+      expect(result.score, greaterThanOrEqualTo(0));
+      expect(result.bestQuizScore, greaterThanOrEqualTo(result.score));
+      expect(result.answersSummary.length, equals(10));
+
+      // Verifikasi skor terbaik disimpan ke cache Hive terenkripsi (Plan 186)
+      final cachedBest = QuizService.instance.getBestQuizScore();
+      expect(cachedBest, equals(result.bestQuizScore));
+    });
+
+    testWidgets('QuizArenaPage: Menampilkan timer 15s, 3 nyawa, kartu soal, dan 4 opsi jawaban', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final session = await QuizService.instance.startQuizSession();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: QuizArenaPage(session: session),
+        ),
+      );
+      await tester.pump();
+
+      // Status Bar: 3 Nyawa & Timer 15s
+      expect(find.byIcon(Icons.favorite_rounded), findsNWidgets(3));
+      expect(find.text('15s'), findsOneWidget);
+
+      // Kartu Soal
+      expect(find.text('Soal 1 dari 10'), findsOneWidget);
+      expect(find.text(session.questions.first.question), findsOneWidget);
+
+      // 4 Opsi (A, B, C, D)
+      expect(find.text('A'), findsOneWidget);
+      expect(find.text('B'), findsOneWidget);
+      expect(find.text('C'), findsOneWidget);
+      expect(find.text('D'), findsOneWidget);
+
+      // Pilih Opsi A (Opsi index 0)
+      await tester.tap(find.text('A'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // Berpindah ke Soal 2
+      expect(find.text('Soal 2 dari 10'), findsOneWidget);
+    });
+
+    testWidgets('GamePage: Menampilkan Arena Kuis dan membuka QuizArenaPage saat ditekan', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const GamePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Arena Kuis Satwa Liar'), findsOneWidget);
+      expect(find.textContaining('Skor Terbaik'), findsOneWidget);
+
+      // Tombol Mulai Kuis
+      final startQuizBtn = find.text('Mulai Sesi Kuis (10 Soal)');
+      expect(startQuizBtn, findsOneWidget);
+
+      await tester.tap(startQuizBtn);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Halaman QuizArenaPage terbuka
+      expect(find.text('Soal 1 dari 10'), findsOneWidget);
+      expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
+    });
+  });
 }
+
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import 'quiz_arena_page.dart';
 
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
@@ -12,6 +14,31 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   AppViewStatus _currentStatus = AppViewStatus.content;
+  bool _isStartingQuiz = false;
+
+  Future<void> _handleStartQuiz() async {
+    setState(() => _isStartingQuiz = true);
+    try {
+      final session = await QuizService.instance.startQuizSession();
+      if (mounted) {
+        setState(() => _isStartingQuiz = false);
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => QuizArenaPage(session: session)),
+        );
+        setState(() {}); // refresh best score
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isStartingQuiz = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memulai kuis: $e'),
+            backgroundColor: AppColors.merahStatus,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -320,23 +347,27 @@ class _GamePageState extends State<GamePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Arena Kuis Satwa Liar',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.teksGelap,
+              const Expanded(
+                child: Text(
+                  'Arena Kuis Satwa Liar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.teksGelap,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.sageTua,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  'Skor Terbaik: 1.250',
-                  style: TextStyle(
+                child: Text(
+                  'Skor Terbaik: ${QuizService.instance.getBestQuizScore() > 0 ? QuizService.instance.getBestQuizScore().toString() : 'Belum Ada'}',
+                  style: const TextStyle(
                     color: AppColors.teksPutih,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -352,9 +383,15 @@ class _GamePageState extends State<GamePage> {
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.sports_esports_outlined, size: 18),
-            label: const Text('Mulai Sesi Kuis (10 Soal)'),
+            onPressed: _isStartingQuiz ? null : _handleStartQuiz,
+            icon: _isStartingQuiz
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+                  )
+                : const Icon(Icons.sports_esports_outlined, size: 18),
+            label: Text(_isStartingQuiz ? 'Menyiapkan Soal Server...' : 'Mulai Sesi Kuis (10 Soal)'),
           ),
         ],
       ),
@@ -387,14 +424,18 @@ class _GamePageState extends State<GamePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Goyang HP (Shake-to-Quiz)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.teksGelap,
+                    const Expanded(
+                      child: Text(
+                        'Goyang HP (Shake-to-Quiz)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.teksGelap,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
