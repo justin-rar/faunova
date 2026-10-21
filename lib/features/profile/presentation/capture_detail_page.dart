@@ -15,6 +15,7 @@ import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
 import '../../feed/presentation/widgets/create_post_sheet.dart';
+import 'widgets/multi_timezone_card.dart';
 
 class CaptureDetailPage extends StatefulWidget {
   final CaptureModel capture;
@@ -143,9 +144,17 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
 
           // 4. Panel Metadata Sensor & Lapangan
           _buildSensorMetadataCard(),
+          const SizedBox(height: 14),
+
+          // 5. Panel Waktu Observasi Lapangan 4 Zona (Plan 40, 136, 318)
+          MultiTimeZoneCard(
+            targetTime: capture.receivedAt,
+            title: 'Waktu Observasi 4 Zona',
+            subtitle: 'Waktu resmi penerimaan server dalam WIB, WITA, WIT, dan London',
+          ),
           const SizedBox(height: 20),
 
-          // 5. Tombol Aksi Lapangan
+          // 6. Tombol Aksi Lapangan
           _buildActionButtons(),
         ],
       ),

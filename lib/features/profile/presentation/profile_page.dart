@@ -11,6 +11,8 @@ import '../models/public_profile_model.dart';
 import 'widgets/collection_grid_view.dart';
 import 'widgets/collection_map_view.dart';
 import 'widgets/edit_profile_sheet.dart';
+import 'widgets/currency_converter_card.dart';
+import 'widgets/multi_timezone_card.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -258,11 +260,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             _buildVerifiedSubscriptionCard(),
             const SizedBox(height: 14),
 
-            // 3. Badge Shelf (Grid Pencapaian)
+            // 3. Estimasi Kurs Centang Biru (Plan 78, 127) - Hive AES-256
+            const CurrencyConverterCard(),
+            const SizedBox(height: 14),
+
+            // 4. Jam Observasi Dunia 4 Zona (Plan 40, 136, 318) - Live Clock WIB, WITA, WIT, London
+            const MultiTimeZoneCard(
+              title: 'Jam Observasi Lapangan (4 Zona)',
+              subtitle: 'Sinkronisasi taktis WIB, WITA, WIT, dan London (BST/GMT)',
+            ),
+            const SizedBox(height: 14),
+
+            // 5. Badge Shelf (Grid Pencapaian)
             _buildBadgeShelfCard(),
             const SizedBox(height: 14),
 
-            // 4. Sub-tab: Postingan Publik vs Koleksi Privat + Verifikasi Rantai
+            // 6. Sub-tab: Postingan Publik vs Koleksi Privat + Verifikasi Rantai
             _buildSubTabsSection(),
           ],
         ),
@@ -485,7 +498,42 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             ),
           ),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: AppColors.gading,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (ctx) => Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Langganan Centang Biru',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.teksGelap,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const CurrencyConverterCard(),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               minimumSize: const Size(80, 36),

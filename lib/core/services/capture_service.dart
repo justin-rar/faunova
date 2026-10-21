@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../../features/camera/models/capture_model.dart';
 import '../../features/camera/models/chain_verification_result.dart';
+import 'encrypted_storage_service.dart';
 
 class CaptureException implements Exception {
   final String message;
@@ -38,6 +39,13 @@ class CaptureService {
   void initMockDemoCaptures() {
     _demoCaptures.clear();
     _initMockDemoCaptures();
+    const demoUserId = '00000000-0000-0000-0000-000000000001';
+    try {
+      EncryptedStorageService.instance.saveUserCaptures(
+        demoUserId,
+        List<CaptureModel>.from(_demoCaptures.reversed),
+      );
+    } catch (_) {}
   }
 
   /// Mengetahui jumlah item koleksi di cache demo
@@ -167,7 +175,7 @@ class CaptureService {
           ? Map<String, dynamic>.from(response.first as Map)
           : Map<String, dynamic>.from(response as Map);
 
-      return CaptureModel.fromJson({
+      final model = CaptureModel.fromJson({
         'id': row['capture_id'],
         'scan_id': scanId,
         'user_id': userId,
@@ -182,6 +190,14 @@ class CaptureService {
         'created_at': row['created_at'],
         'received_at': row['created_at'],
       });
+
+      // Simpan capture terbaru ke Hive terenkripsi (Plan 5.2 & 78)
+      try {
+        final existingCached = EncryptedStorageService.instance.getUserCaptures(userId);
+        EncryptedStorageService.instance.saveUserCaptures(userId, [model, ...existingCached]);
+      } catch (_) {}
+
+      return model;
     } on PostgrestException catch (e) {
       debugPrint('CaptureService PostgrestException: ${e.message} (${e.code})');
       if (e.code == '23505') {
@@ -286,12 +302,17 @@ class CaptureService {
     }
   }
 
-  /// Mengambil daftar koleksi tangkapan satwa milik user (dari database atau demo cache)
+  /// Mengambil daftar koleksi tangkapan satwa milik user (dari database atau Hive terenkripsi / demo)
   Future<List<CaptureModel>> fetchUserCaptures([String? targetUserId]) async {
     final client = _getSupabaseClient();
-    final currentUserId = targetUserId ?? _getCurrentUserId();
+    final currentUserId = targetUserId ?? _getCurrentUserId() ?? '00000000-0000-0000-0000-000000000001';
 
-    if (AppConfig.isDemoMode || client == null || currentUserId == null) {
+    if (AppConfig.isDemoMode || client == null) {
+      // 1. Coba baca dari Hive terenkripsi dulu (Plan 5.2, 40, 78)
+      final cachedList = EncryptedStorageService.instance.getUserCaptures(currentUserId);
+      if (cachedList.isNotEmpty) {
+        return cachedList;
+      }
       if (_demoCaptures.isEmpty) {
         _initMockDemoCaptures();
       }
@@ -307,9 +328,19 @@ class CaptureService {
           .order('seq', ascending: false);
 
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((item) => CaptureModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+      final captures = data.map((item) => CaptureModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+
+      // Simpan ke Hive terenkripsi untuk dibaca secara luring (offline) per Plan 40 & 78
+      EncryptedStorageService.instance.saveUserCaptures(currentUserId, captures);
+
+      return captures;
     } catch (e) {
-      debugPrint('CaptureService fetchUserCaptures error: $e');
+      debugPrint('CaptureService fetchUserCaptures error: $e. Membaca dari Hive cache lokal terenkripsi.');
+      // 2. Offline fallback ke Hive terenkripsi jika koneksi server gagal
+      final cachedList = EncryptedStorageService.instance.getUserCaptures(currentUserId);
+      if (cachedList.isNotEmpty) {
+        return cachedList;
+      }
       if (_demoCaptures.isNotEmpty) {
         return List<CaptureModel>.from(_demoCaptures.reversed);
       }
@@ -475,6 +506,12 @@ class CaptureService {
     );
 
     _demoCaptures.add(capture);
+    try {
+      EncryptedStorageService.instance.saveUserCaptures(
+        demoUserId,
+        List<CaptureModel>.from(_demoCaptures.reversed),
+      );
+    } catch (_) {}
     return capture;
   }
 

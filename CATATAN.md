@@ -577,10 +577,57 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 006 di Supabase Dashboard**: Berkas `supabase/migrations/006_profile_edit_and_search.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat expression indexes, RPC `update_my_profile`, `search_accounts`, dan `search_species`.
 
 ### 3. Langkah Berikutnya (Sesi S12)
-- **Sesi S12 (Hive Terenkripsi & Konversi Waktu 4 Zona)**:
-  - Cache koleksi satwa offline menggunakan Hive berenkripsi AES-256 (Plan 5.2).
-  - Cache kurs mata uang (IDR, USD, JPY) untuk simulasi langganan Centang Biru.
-  - Widget konverter waktu 4 zona (WIB, WITA, WIT, dan London/UTC) untuk catatan waktu observasi taktis.
+- Sesi S12 (Hive Terenkripsi & Konversi Waktu 4 Zona) — Telah dikerjakan di bawah.
+
+---
+
+## Sesi S12 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Database Lokal Hive Terenkripsi AES-256 (`EncryptedStorageService`) (Plan 5.2, 78, 563)**:
+  - Diterapkan di `lib/core/services/encrypted_storage_service.dart`.
+  - Mengamankan database lokal menggunakan `HiveAesCipher` dengan kunci 256-bit (32 bytes) yang disimpan di `FlutterSecureStorage` (key: `faunova_hive_aes_256_key`).
+  - Mengelola 3 box terenkripsi:
+    - `faunova_collections_cache_box`: Menyimpan cache koleksi satwa pengguna (`saveUserCaptures` / `getUserCaptures`) sehingga dapat dibaca secara luring (offline) tanpa koneksi internet.
+    - `faunova_currency_rates_box`: Menyimpan data kurs mata uang, timestamp pembaruan, dan mata uang dasar.
+    - `faunova_app_settings_box`: Menyimpan skor kuis tertinggi lokal (`best_quiz_score`) dan preferensi luring.
+  - **Pembersihan Cache Logout (Plan 563)**: Metode `clearPrivateCacheOnSignOut()` terintegrasi di `AuthService.signOut()`, menghapus seluruh data privat koleksi satwa saat pengguna keluar akun.
+  - Mekanisme *Graceful Recovery*: Jika kunci enkripsi atau berkas box rusak, sistem otomatis memulihkan dan membuat kunci baru tanpa membuat aplikasi crash.
+- **Konversi 4 Zona Waktu Presisi (`TimeZoneService`) (Plan 40, 136, 318)**:
+  - Diterapkan di `lib/core/services/timezone_service.dart`.
+  - Mengonversi waktu `received_at` UTC dari server secara deterministik ke dalam 4 zona:
+    - **WIB (Waktu Indonesia Barat)**: UTC+7 (`Asia/Jakarta`, Sumatra, Jawa, Kalbar, Kalteng).
+    - **WITA (Waktu Indonesia Tengah)**: UTC+8 (`Asia/Makassar`, Bali, NTB, NTT, Kalsel, Kaltim, Sulawesi).
+    - **WIT (Waktu Indonesia Timur)**: UTC+9 (`Asia/Jayapura`, Maluku, Papua).
+    - **London (`Europe/London`)**: Dilengkapi kalkulasi otomatis British Summer Time (**BST**, UTC+1) vs Greenwich Mean Time (**GMT**, UTC+0) berdasarkan kalender Minggu terakhir Maret dan Oktober.
+  - Penentuan tanggal kalender resmi server WIB (`getCurrentDateWib`) untuk perhitungan streak dan reset harian tanpa bergantung pada jam lokal perangkat (Plan 136).
+- **Layanan Kurs Mata Uang (`CurrencyService`) (Plan 78, 127, 398, 418, 562)**:
+  - Diterapkan di `lib/core/services/currency_service.dart`.
+  - Menangani 3 mata uang utama: **IDR**, **USD**, dan **JPY**.
+  - Mengambil kurs dari API publik dengan timeout 5 detik dan menyimpannya langsung ke Hive terenkripsi.
+  - Fallback luring yang tangguh: Jika jaringan putus atau API gagal, kurs otomatis dibaca dari cache Hive, dan harga IDR tetap beroperasi normal (Plan 398).
+  - Format harga taktis: IDR Rp15.000 / 30 hari (Resmi Midtrans), USD (Estimasi ~$0.93 USD), JPY (Estimasi ~¥143 JPY).
+- **Komponen Tampilan Baru**:
+  - `MultiTimeZoneCard`: Menampilkan jam hidup real-time 4 zona (WIB, WITA, WIT, London BST/GMT) di `ProfilePage` serta waktu penerimaan server spesifik di `CaptureDetailPage`.
+  - `CurrencyConverterCard`: Kartu interaktif estimasi kurs langganan Centang Biru dalam 3 mata uang dengan indikator cache Hive terenkripsi dan tombol "Perbarui Kurs".
+- **Integrasi Layanan & Halaman**:
+  - `CaptureService`: `fetchUserCaptures` otomatis menyimpan hasil ke Hive terenkripsi saat online dan membaca dari Hive saat luring/koneksi server bermasalah.
+  - `AuthService`: Terintegrasi dengan `clearPrivateCacheOnSignOut()`.
+  - `CaptureDetailPage`: Dilengkapi `MultiTimeZoneCard` untuk audit waktu server 4 zona.
+  - `ProfilePage`: Dilengkapi `CurrencyConverterCard` dan `MultiTimeZoneCard`.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint.
+  - `flutter test`: **59 dari 59 tes unit & widget lulus 100%**, mencakup operasi enkripsi Hive, isolasi logout, akurasi konversi waktu 4 zona (WIB, WITA, WIT, London BST/GMT), konversi mata uang, serta rendering widget `MultiTimeZoneCard` dan `CurrencyConverterCard`.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Tidak ada konfigurasi database manual untuk Sesi S12** ✅ (Seluruh fitur berjalan di sisi klien menggunakan Hive AES-256 lokal dan API publik gratis).
+
+### 3. Langkah Berikutnya (Sesi S13)
+- **Sesi S13 (Fitur Kuis Biologi Satwa & Skor Server)**:
+  - Implementasi RPC `start_quiz_session` dan `finish_quiz_session` (kunci jawaban tidak pernah dikirim ke klien per AGENTS.md aturan keras).
+  - UI Arena Kuis: Timer hitung mundur, sistem nyawa (3 nyawa), combo streak, dan skor akhir dihitung di server.
+  - Bank soal biologi satwa Indonesia.
+
 
 
 

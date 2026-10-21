@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
+import 'encrypted_storage_service.dart';
 
 /// Layanan autentikasi Supabase Auth untuk Faunova.
 /// Menangani pendaftaran (register), login (email/password), lupa password, dan logout.
@@ -124,8 +125,12 @@ class AuthService {
     }
   }
 
-  /// Keluar dari akun (logout) dan menghapus sesi tersimpan
+  /// Keluar dari akun (logout) dan menghapus sesi tersimpan serta cache privat (Plan 563)
   Future<void> signOut() async {
+    try {
+      await EncryptedStorageService.instance.clearPrivateCacheOnSignOut();
+    } catch (_) {}
+
     if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
       developer.log('Mode Demo: Simulasi logout', name: 'AuthService');
       _isDemoAuthenticated = false;

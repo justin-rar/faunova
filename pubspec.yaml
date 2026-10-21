@@ -13,10 +13,14 @@ dependencies:
     sdk: flutter
   flutter_compass: ^0.8.1
   flutter_map: ^8.3.2
+  flutter_secure_storage: ^11.2.0
   geolocator: ^14.1.2
   google_fonts: ^9.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   http: ^1.6.0
   image: ^4.12.0
+  intl: ^0.20.3
   latlong2: ^0.10.1
   supabase_flutter: ^2.18.3
   url_launcher: ^6.3.3

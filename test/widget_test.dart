@@ -41,6 +41,11 @@ import 'package:faunova/core/services/profile_service.dart';
 import 'package:faunova/features/profile/presentation/widgets/edit_profile_sheet.dart';
 import 'package:faunova/core/services/search_service.dart';
 import 'package:faunova/features/search/presentation/search_page.dart';
+import 'package:faunova/core/services/encrypted_storage_service.dart';
+import 'package:faunova/core/services/currency_service.dart';
+import 'package:faunova/core/services/timezone_service.dart';
+import 'package:faunova/features/profile/presentation/widgets/currency_converter_card.dart';
+import 'package:faunova/features/profile/presentation/widgets/multi_timezone_card.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -1121,7 +1126,7 @@ void main() {
 
       // Pindah ke sub-tab 'Koleksi & Peta'
       final collectionTab = find.text('Koleksi & Peta');
-      await tester.ensureVisible(collectionTab);
+      await tester.scrollUntilVisible(collectionTab, 300.0, scrollable: find.byType(Scrollable).first);
       expect(collectionTab, findsOneWidget);
       await tester.tap(collectionTab);
       await tester.pumpAndSettle();
@@ -1131,7 +1136,7 @@ void main() {
 
       // Tombol Verifikasi Rantai
       final verifyChainButton = find.text('Verifikasi Rantai (verify_chain)');
-      await tester.ensureVisible(verifyChainButton);
+      await tester.scrollUntilVisible(verifyChainButton, 300.0, scrollable: find.byType(Scrollable).first);
       expect(verifyChainButton, findsOneWidget);
 
       // Tekan tombol verifikasi rantai
@@ -1609,4 +1614,186 @@ void main() {
       expect(find.text('Kucing Kuwuk (Kucing Hutan)'), findsOneWidget);
     });
   });
+
+  group('S12 - Hive Terenkripsi, Kurs Mata Uang, dan Konversi Waktu 4 Zona (Plan 40, 78, 127, 136, 318)', () {
+    setUp(() async {
+      await EncryptedStorageService.instance.init();
+      await CurrencyService.instance.init();
+    });
+
+    test('EncryptedStorageService: Menyimpan dan membaca koleksi, kurs, setting, serta pembersihan logout', () async {
+      const testUserId = 'test-user-s12-001';
+      final sampleCapture = CaptureModel(
+        id: 'cap-s12-test',
+        scanId: 'scan-s12-test',
+        userId: testUserId,
+        photoObjectPath: 'assets/test.jpg',
+        speciesName: 'Komodo',
+        category: 'Varanus komodoensis',
+        description: 'Kadal purba terbesar di dunia.',
+        latitude: -8.5833,
+        longitude: 119.4833,
+        cameraHeading: 180.0,
+        receivedAt: DateTime.utc(2026, 10, 21, 10, 0, 0),
+        seq: 1,
+        previousHash: 'genesis-s12',
+        blockHash: 'blockhash-s12',
+        photoSha256: 'sha-s12',
+        createdAt: DateTime.utc(2026, 10, 21, 10, 0, 0),
+      );
+
+      // Simpan koleksi ke Hive terenkripsi
+      await EncryptedStorageService.instance.saveUserCaptures(testUserId, [sampleCapture]);
+      final retrieved = EncryptedStorageService.instance.getUserCaptures(testUserId);
+      expect(retrieved.length, equals(1));
+      expect(retrieved.first.speciesName, equals('Komodo'));
+      expect(retrieved.first.seq, equals(1));
+
+      // Simpan kurs mata uang ke Hive terenkripsi
+      await EncryptedStorageService.instance.saveCurrencyRates(
+        rates: {'IDR': 1.0, 'USD': 0.000062, 'JPY': 0.0095},
+        lastUpdatedAt: DateTime.utc(2026, 10, 21, 12, 0, 0),
+        baseCurrency: 'IDR',
+      );
+      final ratesCached = EncryptedStorageService.instance.getCurrencyRates();
+      expect(ratesCached, isNotNull);
+      expect(ratesCached!['base'], equals('IDR'));
+
+      // Simpan setting & skor
+      await EncryptedStorageService.instance.saveBestQuizScore(850);
+      expect(EncryptedStorageService.instance.getBestQuizScore(), equals(850));
+
+      await EncryptedStorageService.instance.saveSetting('offline_mode_active', true);
+      expect(EncryptedStorageService.instance.getSetting('offline_mode_active'), isTrue);
+
+      // Pembersihan cache privat saat logout (Plan 563)
+      await EncryptedStorageService.instance.clearPrivateCacheOnSignOut();
+      final afterLogout = EncryptedStorageService.instance.getUserCaptures(testUserId);
+      expect(afterLogout.isEmpty, isTrue);
+    });
+
+    test('TimeZoneService: Konversi presisi WIB, WITA, WIT, dan London (BST/GMT)', () {
+      // 1. Waktu musim panas (Juli) -> London harus BST (UTC+1)
+      final summerUtc = DateTime.utc(2026, 7, 15, 12, 0, 0);
+      expect(TimeZoneService.isLondonBst(summerUtc), isTrue);
+      final londonSummer = TimeZoneService.toLondon(summerUtc);
+      expect(londonSummer.hour, equals(13)); // UTC+1
+
+      // 2. Waktu musim dingin (Desember) -> London harus GMT (UTC+0)
+      final winterUtc = DateTime.utc(2026, 12, 15, 12, 0, 0);
+      expect(TimeZoneService.isLondonBst(winterUtc), isFalse);
+      final londonWinter = TimeZoneService.toLondon(winterUtc);
+      expect(londonWinter.hour, equals(12)); // UTC+0
+
+      // 3. Konversi Indonesia (WIB UTC+7, WITA UTC+8, WIT UTC+9)
+      final wib = TimeZoneService.toWib(summerUtc);
+      final wita = TimeZoneService.toWita(summerUtc);
+      final wit = TimeZoneService.toWit(summerUtc);
+      expect(wib.hour, equals(19));
+      expect(wita.hour, equals(20));
+      expect(wit.hour, equals(21));
+
+      // 4. Tanggal Server WIB (Plan 136)
+      final dateWib = TimeZoneService.getCurrentDateWib(DateTime.utc(2026, 10, 21, 23, 0, 0));
+      // Jam 23:00 UTC tanggal 21 = Jam 06:00 WIB tanggal 22
+      expect(dateWib.day, equals(22));
+
+      // 5. getAllZones mengembalikan 4 zona lengkap
+      final allZones = TimeZoneService.getAllZones(summerUtc);
+      expect(allZones.length, equals(4));
+      expect(allZones.any((z) => z.code == TimeZoneCode.wib), isTrue);
+      expect(allZones.any((z) => z.code == TimeZoneCode.wita), isTrue);
+      expect(allZones.any((z) => z.code == TimeZoneCode.wit), isTrue);
+      expect(allZones.any((z) => z.code == TimeZoneCode.london), isTrue);
+    });
+
+    test('CurrencyService: Konversi IDR, USD, JPY dan pemformatan harga resmi/estimasi', () {
+      final currency = CurrencyService.instance;
+      const baseIdr = 15000;
+
+      // IDR tetap IDR
+      expect(currency.convertFromIdr(baseIdr, 'IDR'), equals(15000.0));
+      expect(currency.formatPrice(baseIdr, 'IDR'), equals('Rp15.000'));
+
+      // USD terkonversi positif
+      final usdVal = currency.convertFromIdr(baseIdr, 'USD');
+      expect(usdVal, greaterThan(0.0));
+      expect(usdVal, lessThan(2.0)); // Sekitar $0.93 USD
+      final usdFormatted = currency.formatPrice(baseIdr, 'USD');
+      expect(usdFormatted, contains('\$'));
+      expect(usdFormatted, contains('USD'));
+
+      // JPY terkonversi positif
+      final jpyVal = currency.convertFromIdr(baseIdr, 'JPY');
+      expect(jpyVal, greaterThan(50.0));
+      expect(jpyVal, lessThan(300.0)); // Sekitar ¥143 JPY
+      final jpyFormatted = currency.formatPrice(baseIdr, 'JPY');
+      expect(jpyFormatted, contains('¥'));
+      expect(jpyFormatted, contains('JPY'));
+
+      // Mock rates
+      currency.setMockRates(usd: 0.00007, jpy: 0.01);
+      expect(currency.convertFromIdr(100000, 'USD'), closeTo(7.0, 0.0001));
+      expect(currency.convertFromIdr(10000, 'JPY'), closeTo(100.0, 0.0001));
+    });
+
+    testWidgets('MultiTimeZoneCard: Menampilkan 4 zona waktu dengan label WIB, WITA, WIT, dan BST/GMT', (tester) async {
+      final fixedUtc = DateTime.utc(2026, 10, 21, 14, 30, 0);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MultiTimeZoneCard(
+                targetTime: fixedUtc,
+                title: 'Waktu Observasi Lapangan',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Waktu Observasi Lapangan'), findsOneWidget);
+      expect(find.text('WIB'), findsOneWidget);
+      expect(find.text('WITA'), findsOneWidget);
+      expect(find.text('WIT'), findsOneWidget);
+      expect(find.text('UTC+7'), findsOneWidget);
+      expect(find.text('UTC+8'), findsOneWidget);
+      expect(find.text('UTC+9'), findsOneWidget);
+    });
+
+    testWidgets('CurrencyConverterCard: Menampilkan estimasi harga 3 mata uang dan tombol perbarui', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: SingleChildScrollView(
+              child: CurrencyConverterCard(baseAmountIdr: 15000),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Estimasi Kurs Centang Biru'), findsOneWidget);
+      expect(find.text('IDR (Resmi)'), findsOneWidget);
+      expect(find.text('Rp15.000'), findsOneWidget);
+      expect(find.text('USD (Est.)'), findsOneWidget);
+      expect(find.text('JPY (Est.)'), findsOneWidget);
+      expect(find.textContaining('Cache Hive Terenkripsi'), findsOneWidget);
+
+      // Tekan tombol Perbarui
+      final refreshBtn = find.text('Perbarui');
+      expect(refreshBtn, findsOneWidget);
+      await tester.tap(refreshBtn);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      // Verifikasi respons/feedback
+      expect(find.textContaining('kurs'), findsWidgets);
+    });
+  });
 }
+
