@@ -671,10 +671,66 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 007 di Supabase Dashboard**: Berkas `supabase/migrations/007_quiz_system.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat tabel kuis, RPC `start_quiz_session` & `finish_quiz_session`, dan bank soal.
 
 ### 3. Langkah Berikutnya (Sesi S14)
-- **Sesi S14 (Daily Streak Check-in & Tantangan Hari Ini)**:
-  - Logika streak harian berbasis kalender resmi WIB (Aturan 2: kuota & streak hanya di server).
-  - RPC pencegahan klaim ganda per hari WIB.
-  - Fitur Tantangan Biologi Harian (+50 Poin) dengan verifikasi server.
+- Sesi S14 (Daily Streak Check-in & Tantangan Hari Ini) — Telah dikerjakan di bawah.
+
+---
+
+## Sesi S14 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Skema & Database Migrasi 008 (`supabase/migrations/008_streak_and_daily_challenge.sql`) (Plan 5.8, 168-170, 197-200, 392, AGENTS.md)**:
+  - Diterapkan di `supabase/migrations/008_streak_and_daily_challenge.sql`.
+  - **Fungsi Tanggal Resmi WIB (`public.wib_today()`)**: Mengembalikan tanggal kalender WIB (`Asia/Jakarta`) dari waktu server PostgreSQL secara deterministik (`(now() AT TIME ZONE 'Asia/Jakarta')::DATE`) agar reset hari tidak bergantung pada jam perangkat lokal (Plan 136).
+  - **Tabel Log Tantangan Harian (`daily_challenge_log`)**:
+    - Kolom: `id`, `user_id` (FK `profiles`), `challenge_date` (DATE), `question_id` (FK `quiz_questions`), `selected_option`, `is_correct`, `answered_at`.
+    - Constraint Unik: `CONSTRAINT uq_daily_challenge_user_date UNIQUE (user_id, challenge_date)` untuk mencegah klaim ganda per hari.
+    - Keamanan RLS: Pengguna hanya dapat membaca riwayat tantangan milik sendiri (`auth.uid() = user_id`).
+  - **RPC `claim_daily_streak()` (`SECURITY DEFINER`) (Plan 168-170, 543)**:
+    - Mengunci baris `profiles` pengguna dengan `FOR UPDATE` untuk mencegah race condition.
+    - Pengecekan Idempotensi: Jika `last_streak_claim_date = wib_today()`, server mengembalikan status bahwa streak sudah diklaim hari ini (`already_claimed = true, is_new_claim = false`).
+    - Jika klaim dilakukan di hari berikutnya (`last_streak_claim_date = wib_today() - 1`), streak bertambah `+1`.
+    - Jika terlewat satu hari atau lebih, streak otomatis di-reset ke `1` (Plan 169).
+    - Memperbarui `profiles.streak_count` dan `profiles.last_streak_claim_date` secara atomik di server (Aturan Keras 2).
+  - **RPC `get_streak_status()` (`SECURITY DEFINER`)**: Mengambil jumlah streak terkini, tanggal klaim terakhir, dan status apakah sudah check-in hari ini.
+  - **RPC `get_daily_challenge()` (`SECURITY DEFINER`) (Plan 198, Aturan Keras 5)**:
+    - Memilih 1 soal tantangan harian deterministik seragam untuk seluruh pengguna berdasarkan tanggal WIB (`ORDER BY md5(id::text || v_today::text) LIMIT 1`).
+    - Jika pengguna **belum menjawab**: Field `correct_option` dan `explanation` dirahasiakan (dikirim `null`) sesuai Aturan Keras 5.
+    - Jika pengguna **sudah menjawab**: Menampilkan jawaban yang dipilih, status kebenaran, kunci jawaban resmi, dan pembahasan ilmiah.
+  - **RPC `answer_daily_challenge(p_selected_option INT)` (`SECURITY DEFINER`) (Plan 199)**:
+    - Memvalidasi bahwa tantangan hari ini belum pernah dijawab sebelumnya (menolak pengiriman duplikat).
+    - Memeriksa kebenaran jawaban langsung ke `quiz_questions` di server.
+    - Mencatat hasil ke `daily_challenge_log` dan mengembalikan evaluasi, poin bonus (+50 Poin jika benar), serta pembahasan edukatif.
+- **Model Data Klien (`lib/features/game/models/`)**:
+  - `StreakStatusModel`: Menampung `streakCount`, `lastClaimDate`, `isClaimedToday`, `wibToday`, dan pesan respons server.
+  - `DailyChallengeModel`: Menampung data soal tantangan harian tanpa membocorkan kunci sebelum dijawab.
+- **Layanan Streak & Tantangan (`StreakService`) (`lib/core/services/streak_service.dart`)**:
+  - Terintegrasi dengan RPC Supabase (`claim_daily_streak`, `get_streak_status`, `get_daily_challenge`, `answer_daily_challenge`).
+  - Dilengkapi simulasi fallback offline/demo yang akurat berbasis tanggal WIB dan Hive terenkripsi AES-256.
+  - Sinkronisasi otomatis cache streak ke `EncryptedStorageService`.
+- **Pembaruan Halaman Game (`GamePage`) (`lib/features/game/presentation/game_page.dart`)**:
+  - **Kartu Tracker Streak**:
+    - Menampilkan jumlah hari berturut-turut secara dinamis (`$streak Hari Berturut-turut 🔥`).
+    - Tombol "Klaim" interaktif dengan status loading; otomatis beralih menjadi badge "Sudah Klaim" dengan ikon centang ketika sudah check-in.
+    - Indikator 7 hari (Senin–Minggu) yang dipetakan secara akurat dengan hari aktif WIB (`currentWibWeekday`).
+  - **Kartu Tantangan Hari Ini**:
+    - Menampilkan tag kategori taksonomi satwa, badge `+50 Poin`, dan teks pertanyaan.
+    - Sebelum dijawab: 4 kartu pilihan (A, B, C, D) interaktif langsung dapat diketuk dengan satu sentuhan.
+    - Setelah dijawab: Menampilkan banner status (hijau/sage jika benar, merah jika salah), perbandingan opsi yang dipilih vs kunci jawaban, dan kotak pembahasan ilmiah berikon bohlam emas.
+    - Catatan jadwal reset: "Tantangan baru tersedia besok pukul 00:00 WIB."
+  - Penanganan layout responsif dengan `Expanded` untuk mencegah RenderFlex overflow pada teks jadwal kuis.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: **0 issues** / bersih total tanpa error lint.
+  - `flutter test`: **67 dari 67 tes unit & widget lulus 100%** (termasuk 4 tes baru untuk S14 yang memverifikasi penambahan streak, penolakan klaim ganda, kerahasiaan kunci jawaban tantangan, penolakan submission kedua, dan rendering interaktif `GamePage`).
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 008 di Supabase Dashboard**: Berkas `supabase/migrations/008_streak_and_daily_challenge.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat fungsi `wib_today()`, tabel `daily_challenge_log`, dan RPC `claim_daily_streak`, `get_streak_status`, `get_daily_challenge`, serta `answer_daily_challenge`.
+
+### 3. Langkah Berikutnya (Sesi S15)
+- **Sesi S15 (Shake-to-Quiz / Goyang HP)**:
+  - Integrasi sensor accelerometer (`sensors_plus`) hanya aktif saat tab Game terbuka.
+  - Kuota 3x per hari per WIB di server (`shake_log`).
+  - Jawaban dicek server dan berkontribusi ke badge Si Goyang.
+
 
 
 

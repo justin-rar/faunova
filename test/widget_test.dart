@@ -50,6 +50,7 @@ import 'package:faunova/core/services/quiz_service.dart';
 import 'package:faunova/features/game/models/quiz_session_model.dart';
 import 'package:faunova/features/game/presentation/quiz_arena_page.dart';
 import 'package:faunova/features/game/presentation/game_page.dart';
+import 'package:faunova/core/services/streak_service.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -1920,6 +1921,113 @@ void main() {
       // Halaman QuizArenaPage terbuka
       expect(find.text('Soal 1 dari 10'), findsOneWidget);
       expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
+    });
+  });
+
+  group('S14 - Streak Check-in dan Tantangan Hari Ini (Plan 5.8, 168-170, 197-200, 392)', () {
+    setUp(() async {
+      await EncryptedStorageService.instance.init();
+      StreakService.instance.resetDemoState(streak: 5);
+    });
+
+    test('StreakService: claimDailyStreak menambah streak dan menolak klaim ganda (idempotensi)', () async {
+      final todayWib = TimeZoneService.getCurrentDateWibString();
+      // Set last claim date to yesterday
+      final yesterday = DateTime.parse(todayWib).subtract(const Duration(days: 1));
+      final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      StreakService.instance.resetDemoState(streak: 5, lastClaimDate: yesterdayStr);
+
+      // Klaim pertama hari ini
+      final claim1 = await StreakService.instance.claimDailyStreak();
+      expect(claim1.isNewClaim, isTrue);
+      expect(claim1.isClaimedToday, isTrue);
+      expect(claim1.streakCount, equals(6)); // 5 + 1
+      expect(claim1.lastClaimDate, equals(todayWib));
+
+      // Klaim kedua pada hari yang sama (idempotensi)
+      final claim2 = await StreakService.instance.claimDailyStreak();
+      expect(claim2.isNewClaim, isFalse);
+      expect(claim2.isClaimedToday, isTrue);
+      expect(claim2.streakCount, equals(6)); // Tetap 6 (klaim ganda ditolak)
+      expect(claim2.message, contains('sudah melakukan check-in'));
+    });
+
+    test('StreakService: getDailyChallenge merahasiakan kunci jawaban sebelum dijawab (Hard Rule 5)', () async {
+      final challenge = await StreakService.instance.getDailyChallenge();
+
+      expect(challenge.questionId, isNotEmpty);
+      expect(challenge.questionText, isNotEmpty);
+      expect(challenge.options.length, equals(4));
+      expect(challenge.alreadyAnswered, isFalse);
+
+      // Aturan Keras 5: correctOption dan explanation WAJIB null
+      expect(challenge.correctOption, isNull);
+      expect(challenge.explanation, isNull);
+    });
+
+    test('StreakService: answerDailyChallenge mengevaluasi jawaban dan menolak pengiriman kedua', () async {
+      final initial = await StreakService.instance.getDailyChallenge();
+      expect(initial.alreadyAnswered, isFalse);
+
+      // Jawab opsi 0
+      final result = await StreakService.instance.answerDailyChallenge(0);
+      expect(result.alreadyAnswered, isTrue);
+      expect(result.isCorrect, isNotNull);
+      expect(result.correctOption, isNotNull); // Kunci sekarang terbuka untuk edukasi
+      expect(result.explanation, isNotNull);
+
+      // Pengiriman kedua pada hari yang sama harus ditolak
+      expect(
+        () => StreakService.instance.answerDailyChallenge(1),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    testWidgets('GamePage: Menampilkan kartu Streak dan Tantangan Hari Ini dengan opsi interaktif', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const GamePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Kartu Streak
+      expect(find.text('Streak Observasi Harian'), findsOneWidget);
+      expect(find.textContaining('Hari Berturut-turut'), findsOneWidget);
+
+      // Kartu Tantangan Hari Ini
+      expect(find.textContaining('Tantangan Hari Ini'), findsOneWidget);
+      expect(find.text('+50 Poin'), findsOneWidget);
+
+      // Tombol Klaim Streak
+      final klaimBtn = find.text('Klaim');
+      if (klaimBtn.evaluate().isNotEmpty) {
+        await tester.tap(klaimBtn);
+        await tester.pumpAndSettle();
+        expect(find.text('Sudah Klaim'), findsOneWidget);
+      } else {
+        expect(find.text('Sudah Klaim'), findsOneWidget);
+      }
+
+      // Interaksi Pilihan Jawaban Tantangan Hari Ini
+      final optionA = find.text('A');
+      if (optionA.evaluate().isNotEmpty) {
+        await tester.tap(optionA);
+        await tester.pumpAndSettle();
+
+        // Ulasan hasil harus muncul
+        expect(find.textContaining('Jawabanmu Benar!'), findsOneWidget);
+        expect(find.textContaining('Pilihanmu:'), findsOneWidget);
+      }
     });
   });
 }

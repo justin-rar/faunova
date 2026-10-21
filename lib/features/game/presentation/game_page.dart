@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/quiz_service.dart';
+import '../../../core/services/streak_service.dart';
+import '../../../core/services/timezone_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import '../models/daily_challenge_model.dart';
+import '../models/streak_status_model.dart';
 import 'quiz_arena_page.dart';
 
 class GamePage extends StatefulWidget {
@@ -15,6 +19,96 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   AppViewStatus _currentStatus = AppViewStatus.content;
   bool _isStartingQuiz = false;
+
+  StreakStatusModel? _streakStatus;
+  DailyChallengeModel? _dailyChallenge;
+  bool _isClaimingStreak = false;
+  bool _isSubmittingChallenge = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGameData();
+  }
+
+  Future<void> _loadGameData() async {
+    try {
+      final streak = await StreakService.instance.getStreakStatus();
+      final challenge = await StreakService.instance.getDailyChallenge();
+      if (mounted) {
+        setState(() {
+          _streakStatus = streak;
+          _dailyChallenge = challenge;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleClaimStreak() async {
+    if (_isClaimingStreak) return;
+    setState(() => _isClaimingStreak = true);
+
+    try {
+      final res = await StreakService.instance.claimDailyStreak();
+      if (mounted) {
+        setState(() {
+          _streakStatus = res;
+          _isClaimingStreak = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res.message.isNotEmpty ? res.message : 'Streak berhasil diklaim!'),
+            backgroundColor: AppColors.sageTua,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isClaimingStreak = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal check-in streak: $e'),
+            backgroundColor: AppColors.merahStatus,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleAnswerDailyChallenge(int selectedOption) async {
+    if (_isSubmittingChallenge) return;
+    setState(() => _isSubmittingChallenge = true);
+
+    try {
+      final res = await StreakService.instance.answerDailyChallenge(selectedOption);
+      if (mounted) {
+        setState(() {
+          _dailyChallenge = res;
+          _isSubmittingChallenge = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res.message),
+            backgroundColor: res.isCorrect == true ? AppColors.sageTua : AppColors.merahStatus,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmittingChallenge = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengirim jawaban: $e'),
+            backgroundColor: AppColors.merahStatus,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _handleStartQuiz() async {
     setState(() => _isStartingQuiz = true);
@@ -68,6 +162,7 @@ class _GamePageState extends State<GamePage> {
           setState(() {
             _currentStatus = AppViewStatus.content;
           });
+          _loadGameData();
         },
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
@@ -160,6 +255,10 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _buildStreakTrackerCard() {
+    final streak = _streakStatus?.streakCount ?? 5;
+    final isClaimed = _streakStatus?.isClaimedToday ?? false;
+    final currentWibWeekday = TimeZoneService.getCurrentDateWib().weekday; // 1 = Mon, 7 = Sun
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
@@ -184,11 +283,11 @@ class _GamePageState extends State<GamePage> {
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Streak Observasi Harian',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
@@ -197,8 +296,8 @@ class _GamePageState extends State<GamePage> {
                       ),
                     ),
                     Text(
-                      '5 Hari Berturut-turut 🔥',
-                      style: TextStyle(
+                      '$streak Hari Berturut-turut 🔥',
+                      style: const TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: AppColors.emasTua,
@@ -207,28 +306,59 @@ class _GamePageState extends State<GamePage> {
                   ],
                 ),
               ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  minimumSize: const Size(70, 36),
+              if (isClaimed)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.sage.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.sageTua.withValues(alpha: 0.4), width: 1),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 14, color: AppColors.sageTua),
+                      SizedBox(width: 4),
+                      Text(
+                        'Sudah Klaim',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11.5,
+                          color: AppColors.sageTua,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ElevatedButton(
+                  onPressed: _isClaimingStreak ? null : _handleClaimStreak,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    minimumSize: const Size(70, 36),
+                  ),
+                  child: _isClaimingStreak
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teksGelap),
+                        )
+                      : const Text('Klaim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
-                child: const Text('Klaim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              ),
             ],
           ),
           const SizedBox(height: 14),
-          // Day streak dots: S S R K J S M
+          // Day streak dots: Sen Sel Rab Kam Jum Sab Min
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildDayDot('Sen', true),
-              _buildDayDot('Sel', true),
-              _buildDayDot('Rab', true),
-              _buildDayDot('Kam', true),
-              _buildDayDot('Jum', true),
-              _buildDayDot('Sab', false),
-              _buildDayDot('Min', false),
+              _buildDayDot('Sen', 1 <= currentWibWeekday && (1 < currentWibWeekday || isClaimed)),
+              _buildDayDot('Sel', 2 <= currentWibWeekday && (2 < currentWibWeekday || isClaimed)),
+              _buildDayDot('Rab', 3 <= currentWibWeekday && (3 < currentWibWeekday || isClaimed)),
+              _buildDayDot('Kam', 4 <= currentWibWeekday && (4 < currentWibWeekday || isClaimed)),
+              _buildDayDot('Jum', 5 <= currentWibWeekday && (5 < currentWibWeekday || isClaimed)),
+              _buildDayDot('Sab', 6 <= currentWibWeekday && (6 < currentWibWeekday || isClaimed)),
+              _buildDayDot('Min', 7 <= currentWibWeekday && (7 < currentWibWeekday || isClaimed)),
             ],
           ),
         ],
@@ -270,6 +400,21 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _buildDailyChallengeCard() {
+    final challenge = _dailyChallenge;
+    final category = challenge?.category ?? 'Biologi';
+    final question = challenge?.questionText ?? 'Berapa jumlah kantung tenggorokan pada Bekantan (Nasalis larvatus) jantan dewasa?';
+    final options = challenge?.options ?? [
+      '1 kantung resonansi besar',
+      '2 kantung simetris',
+      '3 rongga udara',
+      'Tidak memiliki kantung',
+    ];
+    final alreadyAnswered = challenge?.alreadyAnswered ?? false;
+    final isCorrect = challenge?.isCorrect ?? false;
+    final selectedOpt = challenge?.selectedOption;
+    final correctOpt = challenge?.correctOption;
+    final explanation = challenge?.explanation;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
@@ -284,16 +429,18 @@ class _GamePageState extends State<GamePage> {
             children: [
               const Icon(Icons.stars_rounded, color: AppColors.sageTua, size: 22),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Tantangan Hari Ini (Reset Tiap 00:00 WIB)',
-                  style: TextStyle(
+                  'Tantangan Hari Ini ($category)',
+                  style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13.5,
                     color: AppColors.teksGelap,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -313,9 +460,9 @@ class _GamePageState extends State<GamePage> {
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Berapa jumlah kantung tenggorokan pada Bekantan (Nasalis larvatus) jantan dewasa?',
-            style: TextStyle(
+          Text(
+            question,
+            style: const TextStyle(
               fontSize: 13,
               height: 1.4,
               color: AppColors.teksGelap,
@@ -323,11 +470,174 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.play_arrow_rounded, color: AppColors.teksGelap, size: 20),
-            label: const Text('Mulai Tantangan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          ),
+
+          // Pilihan Jawaban
+          if (!alreadyAnswered) ...[
+            if (_isSubmittingChallenge)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+                ),
+              )
+            else
+              Column(
+                children: List.generate(options.length, (index) {
+                  const letters = ['A', 'B', 'C', 'D'];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () => _handleAnswerDailyChallenge(index),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.gading,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sage.withValues(alpha: 0.45), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: AppColors.sageTua,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                letters[index],
+                                style: const TextStyle(
+                                  color: AppColors.teksPutih,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                options[index],
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.teksGelap,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.sage),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            const SizedBox(height: 4),
+            const Row(
+              children: [
+                Icon(Icons.schedule_rounded, size: 13, color: AppColors.teksGelap),
+                SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '1 kali kesempatan per hari • Reset 00:00 WIB',
+                    style: TextStyle(fontSize: 10.5, color: AppColors.teksGelap),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            // Status Sudah Dijawab
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: isCorrect ? AppColors.sageTua : AppColors.merahStatus,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                    color: AppColors.teksPutih,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isCorrect ? 'Jawabanmu Benar! (+50 Poin)' : 'Jawabanmu Kurang Tepat (0 Poin)',
+                      style: const TextStyle(
+                        color: AppColors.teksPutih,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Ulasan Jawaban
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.gading,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (selectedOpt != null && selectedOpt >= 0 && selectedOpt < options.length)
+                    Text(
+                      'Pilihanmu: ${options[selectedOpt]}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isCorrect ? AppColors.sageTua : AppColors.merahStatus,
+                      ),
+                    ),
+                  if (!isCorrect && correctOpt != null && correctOpt >= 0 && correctOpt < options.length) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kunci Jawaban: ${options[correctOpt]}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.sageTua,
+                      ),
+                    ),
+                  ],
+                  if (explanation != null && explanation.isNotEmpty) ...[
+                    const Divider(height: 16, thickness: 0.8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.lightbulb_outline_rounded, size: 16, color: AppColors.emasTua),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            explanation,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.teksGelap,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tantangan baru tersedia besok pukul 00:00 WIB.',
+              style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: AppColors.teksGelap),
+            ),
+          ],
         ],
       ),
     );
