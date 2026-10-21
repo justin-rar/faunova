@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/biometric_service.dart';
 import '../../../core/theme/app_colors.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
@@ -21,7 +22,75 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isObscured = true;
   bool _isLoading = false;
+  bool _isBiometricLoading = false;
+  bool _canUseBiometrics = false;
+  bool _isLockedOut = false;
+  String? _savedEmail;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricStatus();
+  }
+
+  Future<void> _checkBiometricStatus() async {
+    final enabled = BiometricService.instance.isBiometricEnabled();
+    final hasSession = await BiometricService.instance.hasSavedSession();
+    final canUseHw = await BiometricService.instance.canUseBiometrics();
+    final locked = BiometricService.instance.isLockedOut();
+    final email = await BiometricService.instance.getSavedUserEmail();
+
+    if (mounted) {
+      setState(() {
+        _canUseBiometrics = enabled && hasSession && canUseHw;
+        _isLockedOut = locked;
+        _savedEmail = email;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    if (_isBiometricLoading) return;
+
+    setState(() {
+      _isBiometricLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await BiometricService.instance.performBiometricLogin();
+      if (!result.success) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = result.errorMessage;
+            _isLockedOut = result.isLockedOut;
+            if (result.isLockedOut) {
+              _canUseBiometrics = false;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal melakukan autentikasi sidik jari: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBiometricLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(LoginPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _checkBiometricStatus();
+  }
 
   @override
   void dispose() {
@@ -43,6 +112,8 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+      // Reset status lockout biometrik bila login email berhasil
+      await _checkBiometricStatus();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -284,9 +355,42 @@ class _LoginPageState extends State<LoginPage> {
                                     _buildDemoBanner(),
                                     const SizedBox(height: 16),
                                   ],
+                                  if (_isLockedOut) ...[
+                                    _buildLockoutBanner(),
+                                    const SizedBox(height: 16),
+                                  ],
                                   if (_errorMessage != null) ...[
                                     _buildErrorBanner(_errorMessage!),
                                     const SizedBox(height: 16),
+                                  ],
+                                  if (_canUseBiometrics && !_isLockedOut) ...[
+                                    _buildBiometricLoginButton(),
+                                    const SizedBox(height: 18),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Divider(
+                                            color: Colors.white.withValues(alpha: 0.2),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                                          child: Text(
+                                            'atau gunakan email',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.white.withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Divider(
+                                            color: Colors.white.withValues(alpha: 0.2),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 18),
                                   ],
                                   _buildFieldLabel('Alamat Email'),
                                   const SizedBox(height: 7),
@@ -610,6 +714,116 @@ class _LoginPageState extends State<LoginPage> {
                     letterSpacing: 0.3,
                   ),
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLockoutBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFB3261E).withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFF8A80).withValues(alpha: 0.6), width: 1.2),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_clock_rounded, color: Color(0xFFFF8A80), size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Tombol sidik jari dinonaktifkan sementara karena 5 kali percobaan gagal berturut-turut. Silakan masuk menggunakan email dan kata sandi.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFFFFCDD2),
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBiometricLoginButton() {
+    return GestureDetector(
+      onTap: _isBiometricLoading ? null : _handleBiometricLogin,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.sageTua.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.emas.withValues(alpha: 0.7), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.emas.withValues(alpha: 0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.gading,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.emas, width: 2),
+              ),
+              child: _isBiometricLoading
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.fingerprint_rounded,
+                      color: AppColors.sageTua,
+                      size: 26,
+                    ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Masuk dengan Sidik Jari',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _savedEmail != null && _savedEmail!.isNotEmpty
+                        ? 'Buka sesi tersimpan untuk $_savedEmail'
+                        : 'Buka sesi akun tersimpan secara instan',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: AppColors.emas,
+              size: 16,
+            ),
+          ],
         ),
       ),
     );

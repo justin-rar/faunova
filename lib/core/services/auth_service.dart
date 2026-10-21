@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
+import 'biometric_service.dart';
 import 'encrypted_storage_service.dart';
 
 /// Layanan autentikasi Supabase Auth untuk Faunova.
@@ -95,6 +96,18 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
+
+      // Jika berhasil masuk, reset kegagalan biometrik & perbarui sesi jika biometrik aktif
+      if (response.session != null) {
+        await BiometricService.instance.resetFailedAttempts();
+        if (BiometricService.instance.isBiometricEnabled()) {
+          await BiometricService.instance.saveCurrentSession(
+            email: response.user?.email,
+            refreshToken: response.session?.refreshToken,
+          );
+        }
+      }
+
       return response;
     } on AuthException catch (e) {
       developer.log('AuthException saat signIn: ${e.message}', name: 'AuthService', error: e);
@@ -125,10 +138,11 @@ class AuthService {
     }
   }
 
-  /// Keluar dari akun (logout) dan menghapus sesi tersimpan serta cache privat (Plan 563)
+  /// Keluar dari akun (logout) dan menghapus sesi tersimpan serta cache privat (Plan 75, 563)
   Future<void> signOut() async {
     try {
       await EncryptedStorageService.instance.clearPrivateCacheOnSignOut();
+      await BiometricService.instance.clearSavedSession();
     } catch (_) {}
 
     if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
@@ -149,6 +163,13 @@ class AuthService {
   /// Masuk dengan mode demo (untuk pengujian antarmuka tanpa server)
   void enterDemoMode() {
     _isDemoAuthenticated = true;
+    BiometricService.instance.resetFailedAttempts();
+    if (BiometricService.instance.isBiometricEnabled()) {
+      BiometricService.instance.saveCurrentSession(
+        email: 'demo@faunova.app',
+        refreshToken: 'faunova_demo_session_token',
+      );
+    }
     _demoAuthStreamController.add(true);
   }
 }

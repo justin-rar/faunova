@@ -54,8 +54,10 @@ import 'package:faunova/core/services/streak_service.dart';
 import 'package:faunova/core/services/shake_service.dart';
 import 'package:faunova/features/game/presentation/widgets/shake_quiz_sheet.dart';
 import 'package:faunova/core/services/badge_service.dart';
+import 'package:faunova/core/services/biometric_service.dart';
 import 'package:faunova/features/profile/models/badge_model.dart';
 import 'package:faunova/features/profile/presentation/widgets/badge_celebration_dialog.dart';
+import 'package:faunova/features/profile/presentation/widgets/biometric_setting_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -2317,6 +2319,159 @@ void main() {
       expect(find.text('Terbuka'), findsWidgets);
     });
   });
+
+  group('S17 - Autentikasi Biometrik: Toggle, Sesi Tersimpan, dan Proteksi 5x Gagal (Plan 5.1)', () {
+    setUp(() async {
+      await EncryptedStorageService.instance.init();
+      BiometricService.instance.resetMockOverrides();
+      await BiometricService.instance.resetFailedAttempts();
+      await BiometricService.instance.setBiometricEnabled(false);
+      await BiometricService.instance.clearSavedSession();
+    });
+
+    tearDown(() async {
+      BiometricService.instance.resetMockOverrides();
+      await BiometricService.instance.resetFailedAttempts();
+      await BiometricService.instance.setBiometricEnabled(false);
+      await BiometricService.instance.clearSavedSession();
+    });
+
+    test('BiometricService: Verifikasi status hardware, ketersediaan sensor, dan pendaftaran sidik jari', () async {
+      final hw = await BiometricService.instance.isHardwareAvailable();
+      expect(hw, isTrue);
+
+      final enrolled = await BiometricService.instance.hasEnrolledBiometrics();
+      expect(enrolled, isTrue);
+
+      final canUse = await BiometricService.instance.canUseBiometrics();
+      expect(canUse, isTrue);
+
+      // Uji simulasi hardware tidak tersedia (Plan 77)
+      BiometricService.instance.setMockDependencies(mockIsDeviceSupported: false, mockCanCheckBiometrics: false);
+      expect(await BiometricService.instance.isHardwareAvailable(), isFalse);
+      expect(await BiometricService.instance.canUseBiometrics(), isFalse);
+
+      BiometricService.instance.resetMockOverrides();
+    });
+
+    test('BiometricService: Pengaturan toggle disimpan lokal dan pengelolaan sesi tersimpan di secure storage (Plan 72, 75, 76)', () async {
+      // 1. Toggle tersimpan di storage lokal perangkat (bukan di Supabase)
+      expect(BiometricService.instance.isBiometricEnabled(), isFalse);
+
+      await BiometricService.instance.setBiometricEnabled(true);
+      expect(BiometricService.instance.isBiometricEnabled(), isTrue);
+
+      // 2. Simpan sesi (hanya refresh token/sesi, kata sandi tidak pernah disimpan)
+      expect(await BiometricService.instance.hasSavedSession(), isFalse);
+
+      await BiometricService.instance.saveCurrentSession(
+        email: 'satwa@faunova.id',
+        refreshToken: 'mock_refresh_token_faunova_123',
+      );
+
+      expect(await BiometricService.instance.hasSavedSession(), isTrue);
+      expect(await BiometricService.instance.getSavedUserEmail(), equals('satwa@faunova.id'));
+
+      // 3. Logout manual menghapus sesi tersimpan (Plan 75)
+      await BiometricService.instance.clearSavedSession();
+      expect(await BiometricService.instance.hasSavedSession(), isFalse);
+      expect(await BiometricService.instance.getSavedUserEmail(), isNull);
+    });
+
+    test('BiometricService: Proteksi 5x gagal mengunci biometrik dan reset saat berhasil (Plan 74)', () async {
+      expect(BiometricService.instance.getFailedAttempts(), equals(0));
+      expect(BiometricService.instance.isLockedOut(), isFalse);
+
+      // Simulasi kegagalan bertahap 1 sampai 5 kali
+      for (int i = 1; i <= 4; i++) {
+        final count = await BiometricService.instance.recordFailedAttempt();
+        expect(count, equals(i));
+        expect(BiometricService.instance.isLockedOut(), isFalse);
+      }
+
+      // Kegagalan ke-5: Terkunci (Lockout)
+      final count5 = await BiometricService.instance.recordFailedAttempt();
+      expect(count5, equals(5));
+      expect(BiometricService.instance.isLockedOut(), isTrue);
+
+      // Eksekusi login biometrik saat terkunci langsung ditolak
+      final res = await BiometricService.instance.performBiometricLogin();
+      expect(res.success, isFalse);
+      expect(res.isLockedOut, isTrue);
+      expect(res.errorMessage, contains('Batas 5 kali'));
+
+      // Reset counter saat login berhasil (email & kata sandi)
+      await BiometricService.instance.resetFailedAttempts();
+      expect(BiometricService.instance.getFailedAttempts(), equals(0));
+      expect(BiometricService.instance.isLockedOut(), isFalse);
+    });
+
+    testWidgets('BiometricSettingSheet: Menampilkan status sensor, pendaftaran, dan toggle switch (Plan 73, 77)', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: BiometricSettingSheet(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pengaturan & Sidik Jari'), findsOneWidget);
+      expect(find.text('Sensor Biometrik'), findsOneWidget);
+      expect(find.text('Pendaftaran Sidik Jari'), findsOneWidget);
+      expect(find.text('Masuk dengan Sidik Jari'), findsOneWidget);
+      expect(find.byType(Switch), findsOneWidget);
+      expect(find.text('Tutup'), findsOneWidget);
+
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('LoginPage: Tombol biometrik tampil saat sesi ada dan disembunyikan saat terkunci 5x (Plan 74)', (tester) async {
+      await tester.runAsync(() async {
+        await BiometricService.instance.setBiometricEnabled(true);
+        await BiometricService.instance.saveCurrentSession(
+          email: 'kolektor@faunova.id',
+          refreshToken: 'valid_refresh_token_123',
+        );
+        await BiometricService.instance.resetFailedAttempts();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const LoginPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tombol sidik jari harus tampil
+      expect(find.text('Masuk dengan Sidik Jari'), findsOneWidget);
+      expect(find.text('Buka sesi tersimpan untuk kolektor@faunova.id'), findsOneWidget);
+
+      // 2. Simulasikan 5 kali gagal berturut-turut (Plan 74)
+      await tester.runAsync(() async {
+        for (int i = 0; i < 5; i++) {
+          await BiometricService.instance.recordFailedAttempt();
+        }
+      });
+
+      // Rebuild LoginPage
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: LoginPage(key: UniqueKey()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tombol sidik jari harus disembunyikan dan banner peringatan terkunci tampil
+      expect(find.text('Masuk dengan Sidik Jari'), findsNothing);
+      expect(find.textContaining('Tombol sidik jari dinonaktifkan sementara'), findsOneWidget);
+    });
+  });
 }
+
 
 

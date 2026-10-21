@@ -11,6 +11,7 @@ import '../../camera/models/chain_verification_result.dart';
 import '../models/badge_model.dart';
 import '../models/public_profile_model.dart';
 import 'widgets/badge_celebration_dialog.dart';
+import 'widgets/biometric_setting_sheet.dart';
 import 'widgets/collection_grid_view.dart';
 import 'widgets/collection_map_view.dart';
 import 'widgets/edit_profile_sheet.dart';
@@ -185,6 +186,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   onSelected: (value) {
                     if (value == 'edit_profile') {
                       _showEditProfileSheet();
+                    } else if (value == 'setting_biometrik') {
+                      BiometricSettingSheet.show(context);
                     } else if (value == 'logout') {
                       _showLogoutDialog(context);
                     } else {

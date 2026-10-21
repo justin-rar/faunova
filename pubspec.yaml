@@ -22,6 +22,7 @@ dependencies:
   image: ^4.12.0
   intl: ^0.20.3
   latlong2: ^0.10.1
+  local_auth: ^3.0.2
   sensors_plus: ^7.1.1
   supabase_flutter: ^2.18.3
   url_launcher: ^6.3.3

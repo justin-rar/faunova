@@ -839,10 +839,52 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 010 di Supabase Dashboard**: Berkas `supabase/migrations/010_badge_system.sql` telah dibuat dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat tabel `badges`, `user_badges`, seed 8 lencana resmi, dan RPC `get_user_badges()`.
 
 ### 3. Langkah Berikutnya (Sesi S17)
-- **Sesi S17 (Biometrik: toggle, sesi tersimpan, 5x gagal)**:
-  - Pengaturan autentikasi biometrik (Fingerprint / Face ID) menggunakan `local_auth`.
-  - Penyimpanan sesi terenkripsi aman (`flutter_secure_storage`).
-  - Logika fallback PIN/password dan penguncian sementara setelah 5 kali gagal verifikasi biometrik sesuai Plan 5.1.
+- Dilanjutkan dan diselesaikan pada Sesi S17 di bawah.
+
+---
+
+## Sesi S17 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Integrasi `local_auth` & Konfigurasi Platform Android (Plan 5.1: 71-77)**:
+  - Package `local_auth: ^3.0.2` ditambahkan ke `pubspec.yaml`.
+  - Android `MainActivity.kt` diperbarui untuk meng-extend `FlutterFragmentActivity` (persyaratan wajib dialog BiometricPrompt Android).
+  - Izin `<uses-permission android:name="android.permission.USE_BIOMETRIC" />` ditambahkan ke `android/app/src/main/AndroidManifest.xml`.
+- **Layanan Autentikasi Biometrik (`lib/core/services/biometric_service.dart`)**:
+  - Singleton `BiometricService.instance`:
+    - **Pemeriksaan Hardware & Sensor (Plan 77)**: `isHardwareAvailable()`, `hasEnrolledBiometrics()`, dan `canUseBiometrics()`. Menangani kasus perangkat tanpa sensor biometrik atau sidik jari yang belum didaftarkan di pengaturan OS.
+    - **Pengaturan Toggle Lokal (Plan 76)**: `isBiometricEnabled()` dan `setBiometricEnabled(bool)`. Status toggle disimpan di penyimpanan aman lokal perangkat via `EncryptedStorageService`, bukan di Supabase.
+    - **Pengelolaan Sesi Tersimpan (Plan 72, 75)**: `saveCurrentSession()`, `hasSavedSession()`, `getSavedUserEmail()`, dan `clearSavedSession()`. Hanya token sesi/refresh token yang disimpan di `FlutterSecureStorage`; kata sandi pengguna **tidak pernah disimpan**.
+    - **Pembersihan Otomatis Saat Logout Manual (Plan 75)**: Terintegrasi dengan `AuthService.instance.signOut()`, memastikan bahwa logout manual menghapus sesi tersimpan sehingga login berikutnya wajib memasukkan email dan kata sandi.
+    - **Proteksi 5x Gagal Berturut-turut (Plan 74)**: `recordFailedAttempt()`, `getFailedAttempts()`, `isLockedOut()`, dan `resetFailedAttempts()`. Jika pengguna gagal memindai sidik jari 5 kali berturut-turut, sistem mengaktifkan status lockout sementara dan menolak autentikasi biometrik. Counter di-reset kembali ke 0 saat login dengan email & kata sandi berhasil.
+    - **Eksekusi Login Biometrik (`performBiometricLogin`)**: Memanggil `authenticate(localizedReason: 'Pindai sidik jari Anda...')`, mereset counter gagal saat lolos, dan memulihkan sesi login aktif.
+- **Lembar Pengaturan Biometrik (`BiometricSettingSheet`) (`lib/features/profile/presentation/widgets/biometric_setting_sheet.dart`)**:
+  - Tampilan elegan mengikuti palet resmi Faunova (latar gading, kartu sage muda, tombol emas).
+  - Menampilkan status hardware (tersedia/tidak tersedia) dan status pendaftaran sidik jari.
+  - **Verifikasi Wajib Sebelum Mengaktifkan Toggle (Plan 73)**: Saat pengguna menghidupkan switch, sistem mewajibkan verifikasi sidik jari terlebih dahulu sebelum status toggle tersimpan menjadi aktif.
+  - Menampilkan banner peringatan status penguncian (lockout) beserta tombol untuk mereset percobaan.
+- **Integrasi Menu Profil (`lib/features/profile/presentation/profile_page.dart`)**:
+  - Menambahkan menu `Pengaturan Sidik Jari` pada popup menu titik tiga (`Icons.more_vert_rounded`) di halaman Profil.
+  - Membuka modal bottom sheet `BiometricSettingSheet.show(context)`.
+- **Pembaruan Halaman Masuk (`lib/features/auth/presentation/login_page.dart`)**:
+  - Mendeteksi ketersediaan biometrik, sesi tersimpan, dan status lockout secara reaktif pada `initState` dan `didUpdateWidget`.
+  - **Tombol Biometrik Emas-Sage**: Menampilkan tombol "Masuk dengan Sidik Jari" dengan keterangan email akun yang tersimpan jika fitur aktif dan ada sesi tersimpan.
+  - **Penyembunyian Tombol Saat Lockout (Plan 74)**: Jika terjadi 5 kali gagal berturut-turut, tombol sidik jari otomatis disembunyikan, digantikan oleh banner peringatan lockout (`_buildLockoutBanner`), dan pengguna diwajibkan masuk menggunakan formulir email & kata sandi.
+  - Login berhasil via form email mereset lockout counter secara otomatis.
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint maupun warning.
+  - `flutter test`: **81 dari 81 tes unit & widget lulus 100%** (termasuk 5 pengujian baru untuk S17: status hardware & enrollment, penyimpanan toggle & sesi tersimpan, proteksi 5x lockout & reset, lembar pengaturan biometrik, serta penampilan/penyembunyian tombol sidik jari di `LoginPage`).
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Sensor Sidik Jari / Face ID di HP Fisik**: Pemicuan dialog pemindai sensor biometrik fisik nyata (diuji pada pengujian HP fisik S23).
+- **Catatan Konfigurasi Database Supabase**: **TIDAK ADA migrasi SQL Supabase untuk Sesi S17**. Sesuai aturan Plan 76, seluruh status toggle biometrik dan token sesi disimpan secara lokal di perangkat (`flutter_secure_storage` & Hive lokal).
+
+### 3. Langkah Berikutnya (Sesi S18)
+- **Sesi S18 (Notifikasi Lokal Terjadwal: streak, tantangan, masa aktif centang biru)**:
+  - Konfigurasi `flutter_local_notifications` dan time-zone schedule.
+  - Penjadwalan pengingat harian streak (pukul 19.00).
+  - Penjadwalan pengingat tantangan harian baru (pukul 08.00).
+  - Notifikasi pengingat H-3 sebelum masa aktif Centang Biru berakhir.
 
 
 
