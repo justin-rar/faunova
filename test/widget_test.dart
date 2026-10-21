@@ -35,7 +35,12 @@ import 'package:faunova/features/feed/presentation/feed_page.dart';
 import 'package:faunova/features/feed/presentation/widgets/post_card.dart';
 import 'package:faunova/features/feed/presentation/widgets/create_post_sheet.dart';
 import 'package:faunova/core/services/social_service.dart';
+import 'package:faunova/features/profile/models/public_profile_model.dart';
 import 'package:faunova/features/profile/presentation/public_profile_page.dart';
+import 'package:faunova/core/services/profile_service.dart';
+import 'package:faunova/features/profile/presentation/widgets/edit_profile_sheet.dart';
+import 'package:faunova/core/services/search_service.dart';
+import 'package:faunova/features/search/presentation/search_page.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -1461,6 +1466,147 @@ void main() {
 
       // Memastikan PublicProfilePage terbuka
       expect(find.text('Observasi Publik (1)'), findsOneWidget);
+    });
+  });
+
+  group('S11 - Profil Sendiri, Edit Profil, dan Pencarian Akun & Spesies (Plan 5.2, 5.4, 5.7)', () {
+    setUp(() {
+      ProfileService.instance.initMockDemoMyProfile();
+    });
+
+    test('ProfileService: getMyProfile dan updateMyProfile validasi batas panjang', () async {
+      final initial = await ProfileService.instance.getMyProfile();
+      expect(initial.displayName, equals('Arya Wicaksana'));
+      expect(initial.username, equals('arya_wallacea'));
+
+      // Update sukses
+      final updated = await ProfileService.instance.updateMyProfile(
+        displayName: 'Arya Wicaksana Wallacea',
+        bio: 'Peneliti satwa endemik Wallacea & pegiat sains warga.',
+      );
+      expect(updated.displayName, equals('Arya Wicaksana Wallacea'));
+      expect(updated.bio, contains('Peneliti satwa'));
+
+      // Validasi nama terlalu pendek (<2 char)
+      expect(
+        () => ProfileService.instance.updateMyProfile(displayName: 'A', bio: ''),
+        throwsA(isA<ProfileException>()),
+      );
+    });
+
+    test('SearchService: searchAccounts memprioritaskan akun Centang Biru di urutan teratas', () async {
+      final allAccounts = await SearchService.instance.searchAccounts('');
+      expect(allAccounts.isNotEmpty, isTrue);
+
+      // Pastikan akun Centang Biru selalu berada sebelum akun tanpa centang
+      bool seenUnverified = false;
+      for (final acc in allAccounts) {
+        if (!acc.isVerified) {
+          seenUnverified = true;
+        } else if (seenUnverified) {
+          fail('Akun terverifikasi ${acc.displayName} ditemukan setelah akun yang belum terverifikasi!');
+        }
+      }
+
+      // Cari dengan kata kunci spesifik
+      final budiSearch = await SearchService.instance.searchAccounts('budi');
+      expect(budiSearch.any((a) => a.username == 'budi_satria'), isTrue);
+    });
+
+    test('SearchService: searchSpecies mengembalikan taksonomi dan memfilter kelas fauna', () async {
+      // Cari nama satwa
+      final jalakResults = await SearchService.instance.searchSpecies('jalak');
+      expect(jalakResults.any((s) => s.speciesName == 'Jalak Bali'), isTrue);
+
+      // Filter kategori 'Mamalia'
+      final mamaliaResults = await SearchService.instance.searchSpecies('', category: 'Mamalia');
+      for (final sp in mamaliaResults) {
+        expect(sp.taxonomyClass, equals('Mamalia'));
+      }
+
+      // Filter kategori 'Aves'
+      final avesResults = await SearchService.instance.searchSpecies('', category: 'Aves (Burung)');
+      for (final sp in avesResults) {
+        expect(sp.taxonomyClass, equals('Aves'));
+      }
+    });
+
+    testWidgets('EditProfileSheet: Form pengeditan profil menampilkan field dan memperbarui nama', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final profile = await ProfileService.instance.getMyProfile();
+      PublicProfileModel? savedResult;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: EditProfileSheet(
+              initialProfile: profile,
+              onSaved: (res) => savedResult = res,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit Profil Kolektor'), findsOneWidget);
+      expect(find.text('@arya_wallacea'), findsOneWidget);
+      expect(find.text('Nama Tampilan'), findsOneWidget);
+      expect(find.text('Simpan Perubahan'), findsOneWidget);
+
+      // Ubah nama tampilan
+      final nameField = find.byType(TextField).first;
+      await tester.enterText(nameField, 'Arya Wicaksana Baru');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Simpan Perubahan'));
+      await tester.pumpAndSettle();
+
+      expect(savedResult, isNotNull);
+      expect(savedResult!.displayName, equals('Arya Wicaksana Baru'));
+    });
+
+    testWidgets('SearchPage: Menampilkan tab Akun Pengguna & Katalog Spesies serta interaksi filter', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const SearchPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tab Akun Pengguna
+      expect(find.text('Akun Pengguna'), findsOneWidget);
+      expect(find.text('Katalog Spesies'), findsOneWidget);
+      expect(find.text('Hasil Akun (Prioritas Centang Biru Teratas)'), findsOneWidget);
+      expect(find.text('Balai Konservasi Sumber Daya Alam'), findsOneWidget);
+
+      // Pindah ke Tab Katalog Spesies
+      await tester.tap(find.text('Katalog Spesies'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jalak Bali'), findsOneWidget);
+      expect(find.text('Mamalia'), findsWidgets);
+      expect(find.text('Reptilia'), findsWidgets);
+
+      // Filter kategori Mamalia
+      await tester.tap(find.text('Mamalia').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kucing Kuwuk (Kucing Hutan)'), findsOneWidget);
     });
   });
 }

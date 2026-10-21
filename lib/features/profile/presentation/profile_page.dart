@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/capture_service.dart';
+import '../../../core/services/profile_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
+import '../models/public_profile_model.dart';
 import 'widgets/collection_grid_view.dart';
 import 'widgets/collection_map_view.dart';
+import 'widgets/edit_profile_sheet.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,6 +24,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   AppViewStatus _currentStatus = AppViewStatus.content;
 
   List<CaptureModel> _captures = [];
+  PublicProfileModel? _myProfile;
   bool _isLoadingCaptures = false;
   String? _capturesError;
   int _collectionMode = 0; // 0: Grid Koleksi, 1: Peta Persebaran
@@ -36,6 +40,35 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       }
     });
     _loadCaptures();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final p = await ProfileService.instance.getMyProfile();
+      if (mounted) {
+        setState(() {
+          _myProfile = p;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _showEditProfileSheet() {
+    if (_myProfile == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => EditProfileSheet(
+        initialProfile: _myProfile!,
+        onSaved: (updated) {
+          setState(() {
+            _myProfile = updated;
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -117,7 +150,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   elevation: 4,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   onSelected: (value) {
-                    if (value == 'logout') {
+                    if (value == 'edit_profile') {
+                      _showEditProfileSheet();
+                    } else if (value == 'logout') {
                       _showLogoutDialog(context);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -129,6 +164,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     }
                   },
                   itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit_profile',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18, color: AppColors.teksGelap),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Edit Profil Kolektor',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const PopupMenuItem(
                       value: 'saran_kesan',
                       child: Row(
@@ -285,6 +335,14 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   Widget _buildProfileHeroCard() {
+    final displayName = _myProfile?.displayName ?? 'Arya Wicaksana';
+    final username = _myProfile?.username ?? 'arya_wallacea';
+    final bioText = _myProfile?.bio.isNotEmpty == true
+        ? _myProfile!.bio
+        : 'Penjelajah biodiversitas Indonesia Timur. Mengarsipkan reptilia dan aves endemik ke dalam buku besar terenkripsi.';
+    final isVerified = _myProfile?.isVerified ?? true;
+    final initialLetter = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A';
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
@@ -297,12 +355,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 34,
                 backgroundColor: AppColors.sageTua,
                 child: Text(
-                  'A',
-                  style: TextStyle(
+                  initialLetter,
+                  style: const TextStyle(
                     color: AppColors.teksPutih,
                     fontWeight: FontWeight.bold,
                     fontSize: 26,
@@ -310,7 +368,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -318,8 +376,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       children: [
                         Flexible(
                           child: Text(
-                            'Arya Wicaksana',
-                            style: TextStyle(
+                            displayName,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: AppColors.teksGelap,
@@ -327,16 +385,18 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        SizedBox(width: 5),
-                        Icon(Icons.verified_rounded, color: Color(0xFF1E88E5), size: 18),
+                        if (isVerified) ...[
+                          const SizedBox(width: 5),
+                          const Icon(Icons.verified_rounded, color: Color(0xFF1E88E5), size: 18),
+                        ],
                       ],
                     ),
                     Text(
-                      '@arya_wallacea',
-                      style: TextStyle(fontSize: 12.5, color: AppColors.teksGelap, fontWeight: FontWeight.w500),
+                      '@$username',
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.teksGelap, fontWeight: FontWeight.w500),
                     ),
-                    SizedBox(height: 3),
-                    Text(
+                    const SizedBox(height: 3),
+                    const Text(
                       'Kolektor Satwa Wallacea',
                       style: TextStyle(fontSize: 11.5, color: AppColors.emasTua, fontWeight: FontWeight.w600),
                     ),
@@ -347,14 +407,29 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           ),
           const SizedBox(height: 12),
           Text(
-            'Penjelajah biodiversitas Indonesia Timur. Mengarsipkan reptilia dan aves endemik ke dalam buku besar terenkripsi.',
+            bioText,
             style: TextStyle(
               fontSize: 12.5,
               height: 1.4,
               color: AppColors.teksGelap.withValues(alpha: 0.9),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _showEditProfileSheet,
+            icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.teksGelap),
+            label: const Text(
+              'Edit Profil',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.sage, width: 1.2),
+              backgroundColor: Colors.white.withValues(alpha: 0.6),
+              minimumSize: const Size(double.infinity, 36),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 14),
           const Divider(height: 1, color: AppColors.sage),
           const SizedBox(height: 12),
           Row(

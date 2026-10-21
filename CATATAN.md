@@ -519,9 +519,69 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 005 di Supabase Dashboard**: Berkas `supabase/migrations/005_follow_and_following_feed.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat RPC `toggle_follow_user`, `get_following_feed`, `get_public_profile`, `get_user_public_posts`, dan penyelarasan `get_for_you_feed`.
 
 ### 3. Langkah Berikutnya (Sesi S11)
-- **Sesi S11 (Profil Sendiri, Edit Profil, Pencarian Akun & Spesies)**:
-  - Fitur pengeditan profil sendiri (nama tampilan, bio, foto avatar).
-  - Halaman Pencarian (`SearchPage`): pencarian akun pengguna dan taksonomi spesies satwa (Mamalia, Aves, Reptilia, Amfibi) dengan debouncing pencarian.
+- Sesi S11 (Profil Sendiri, Edit Profil, Pencarian Akun & Spesies) — Telah dikerjakan di bawah.
+
+---
+
+## Sesi S11 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Fungsi Postgres & Migrasi `006_profile_edit_and_search.sql` (Plan 5.2, 5.4, 5.7, 126)**:
+  - Expression indexes untuk pencarian cepat:
+    - `idx_public_profiles_username_lower`: `lower(username)`
+    - `idx_public_profiles_display_name_lower`: `lower(display_name)`
+    - `idx_captures_species_name_lower`: `lower(species_name)`
+  - RPC `public.update_my_profile(p_display_name TEXT, p_bio TEXT, p_avatar_path TEXT)`:
+    - Memvalidasi batas panjang karakter secara ketat di sisi server (nama tampilan 2..60 karakter, bio maksimal 300 karakter).
+    - Memperbarui `display_name`, `bio`, `avatar_path`, dan `updated_at` milik `auth.uid()`.
+    - Mengembalikan rekaman profil terbaru tanpa mengekspos kolom privat.
+  - RPC `public.search_accounts(p_keyword TEXT, p_limit INT)`:
+    - Pencarian akun pengguna berdasarkan username dan display name.
+    - **Prioritas Centang Biru (Plan 5.4 & 126)**: Akun terverifikasi (`is_verified == true`) diprioritaskan di urutan paling atas (`ORDER BY is_verified DESC, created_at DESC`).
+    - Aman dari kebocoran koordinat atau kolom internal.
+  - RPC `public.search_species(p_keyword TEXT, p_class TEXT, p_limit INT)`:
+    - Mengagregasi katalog taksonomi satwa dari observasi komunitas.
+    - Filter berdasarkan kata kunci dan kelas taksonomi (Mamalia, Aves, Reptilia, Amfibi, dsb).
+    - **Aturan Keras**: Tidak mengekspos koordinat mentah satwa liar ke publik.
+- **Model Taksonomi Spesies (`SpeciesCatalogModel`)**:
+  - Diterapkan di `lib/features/search/models/species_catalog_model.dart`.
+  - Struktur data taksonomi satwa: nama umum, nama ilmiah/latin, kelas, status konservasi IUCN, dan jumlah total observasi.
+- **Layanan Profil Mandiri (`ProfileService`)**:
+  - Diterapkan di `lib/core/services/profile_service.dart`.
+  - Metode `getMyProfile` dan `updateMyProfile` dengan validasi input ramah pengguna.
+  - Dukungan fallback mode demo luring in-memory yang tersinkronisasi.
+- **Layanan Pencarian (`SearchService`)**:
+  - Diterapkan di `lib/core/services/search_service.dart`.
+  - Metode `searchAccounts` dan `searchSpecies` terintegrasi dengan RPC Supabase.
+  - Dilengkapi dataset katalog fauna Indonesia realistis (Komodo, Jalak Bali, Orangutan Sumatera, Harimau Sumatera, Cenderawasih, Penyu Hijau, Katak Pohon Jawa) untuk fallback luring instan.
+- **Formulir Edit Profil Modal (`EditProfileSheet`)**:
+  - Diterapkan di `lib/features/profile/presentation/widgets/edit_profile_sheet.dart`.
+  - Bottom sheet interaktif berpalet Faunova (latar gading, kartu sage muda, tombol emas).
+  - Validasi panjang teks real-time dengan counter karakter (Nama: 2–60 karakter, Bio: maks 300 karakter).
+  - Avatar pratinjau dinamis dengan badge status verifikasi.
+- **Pembaruan Halaman Profil Sendiri (`ProfilePage`)**:
+  - Terhubung langsung dengan `ProfileService.instance.getMyProfile()`.
+  - Nama tampilan, bio, dan inisial avatar tampil dinamis sesuai profil akun pengguna.
+  - Tombol "Edit Profil" tersemat rapi pada hero profil dan menu dropdown pojok kanan atas.
+- **Pembaruan Halaman Pencarian (`SearchPage`)**:
+  - Diterapkan di `lib/features/search/presentation/search_page.dart`.
+  - Dua tab navigasi taktis:
+    - **Akun Pengguna**: Pencarian akun dengan input debounced, kartu akun menampilkan badge Centang Biru prioritas, gelar biologis, dan dapat diketuk untuk membuka `PublicProfilePage`.
+    - **Katalog Spesies**: Filter chip horizontal (Semua, Mamalia, Aves, Reptilia, Amfibi), daftar spesies satwa lengkap dengan nama ilmiah, kelas taksonomi, dan status konservasi IUCN.
+  - Penanganan 4 state (`AppStateView`): Memuat, Kosong, Galat, Luring.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint.
+  - `flutter test`: **54 dari 54 tes unit & widget lulus 100%**, mencakup validasi batas karakter form edit profil, prioritas Centang Biru pada pencarian akun, filter taksonomi spesies fauna, interaksi `EditProfileSheet`, dan interaksi tab `SearchPage`.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 006 di Supabase Dashboard**: Berkas `supabase/migrations/006_profile_edit_and_search.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat expression indexes, RPC `update_my_profile`, `search_accounts`, dan `search_species`.
+
+### 3. Langkah Berikutnya (Sesi S12)
+- **Sesi S12 (Hive Terenkripsi & Konversi Waktu 4 Zona)**:
+  - Cache koleksi satwa offline menggunakan Hive berenkripsi AES-256 (Plan 5.2).
+  - Cache kurs mata uang (IDR, USD, JPY) untuk simulasi langganan Centang Biru.
+  - Widget konverter waktu 4 zona (WIB, WITA, WIT, dan London/UTC) untuk catatan waktu observasi taktis.
+
 
 
 
