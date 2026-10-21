@@ -726,10 +726,68 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 008 di Supabase Dashboard**: Berkas `supabase/migrations/008_streak_and_daily_challenge.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat fungsi `wib_today()`, tabel `daily_challenge_log`, dan RPC `claim_daily_streak`, `get_streak_status`, `get_daily_challenge`, serta `answer_daily_challenge`.
 
 ### 3. Langkah Berikutnya (Sesi S15)
-- **Sesi S15 (Shake-to-Quiz / Goyang HP)**:
-  - Integrasi sensor accelerometer (`sensors_plus`) hanya aktif saat tab Game terbuka.
-  - Kuota 3x per hari per WIB di server (`shake_log`).
-  - Jawaban dicek server dan berkontribusi ke badge Si Goyang.
+- Sesi S15 (Shake-to-Quiz / Goyang HP) — Telah dikerjakan di bawah.
+
+---
+
+## Sesi S15 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Skema & Database Migrasi 009 (`supabase/migrations/009_shake_to_quiz.sql`) (Plan 5.8, 190-196, 440, AGENTS.md)**:
+  - Diterapkan di `supabase/migrations/009_shake_to_quiz.sql`.
+  - **Tabel `shake_log` (Plan 440)**:
+    - Kolom: `id`, `user_id` (FK `profiles`), `date_wib` (DATE), `question_id` (FK `quiz_questions`), `status` ('claimed', 'answered', 'expired'), `selected_option`, `is_correct`, `claimed_at`, `answered_at`, `idempotency_key` (UUID).
+    - Constraint Unik: `CONSTRAINT uq_shake_log_user_idempotency UNIQUE (user_id, idempotency_key)` untuk memastikan idempotensi request klaim.
+    - Keamanan RLS: Hanya pemilik yang dapat membaca riwayat klaim kuis miliknya (`auth.uid() = user_id`).
+  - **RPC `get_shake_quota()` (`SECURITY DEFINER`)**:
+    - Menghitung kuota shake yang sudah dipakai pada hari ini (`COUNT(*) WHERE user_id = auth.uid() AND date_wib = wib_today()`).
+    - Mengembalikan `used_quota`, `max_quota` (3), dan `remaining_quota` (maks 3/hari WIB).
+  - **RPC `claim_shake_quiz(p_idempotency_key UUID)` (`SECURITY DEFINER`) (Plan 192, Aturan Keras 5)**:
+    - Validasi kuota harian: Menolak klaim jika kuota sudah mencapai 3/3 per hari WIB.
+    - Idempotensi: Jika `idempotency_key` yang sama dikirim ulang, server mengembalikan klaim yang sudah ada tanpa mengurangi kuota lagi.
+    - Memilih 1 soal acak aktif dari `quiz_questions`.
+    - **Aturan Keras 5 Ditaati Ketat**: Kunci jawaban (`correct_option`) dan pembahasan sama sekali **tidak pernah dikirim ke klien** saat soal diklaim.
+  - **RPC `answer_shake_quiz(p_claim_id UUID, p_selected_option INT)` (`SECURITY DEFINER`) (Plan 193)**:
+    - Mengunci baris klaim dengan `FOR UPDATE`.
+    - Menolak jika klaim tersebut sudah pernah dijawab sebelumnya (`status = 'answered'`).
+    - Memeriksa kebenaran jawaban langsung ke `quiz_questions` di server database.
+    - Memperbarui status klaim menjadi `'answered'` beserta `selected_option`, `is_correct`, dan `answered_at`.
+    - Mengembalikan hasil evaluasi, status kebenaran, kunci jawaban resmi, dan pembahasan edukatif.
+- **Sensor Akselerometer & Deteksi Goyang HP (`sensors_plus`) (Plan 191)**:
+  - Package `sensors_plus 7.1.1` terpasang rapi dan bersih.
+  - Metode `listenToShakeEvents()` di `ShakeService`:
+    - Menghitung magnitudo akselerasi secara fisik: `sqrt(x^2 + y^2 + z^2)`.
+    - Ambang batas (threshold) guncangan nyata: `22.0 m/s²`.
+    - **Debounce**: Mencegah pemicu ganda dengan mengabaikan sinyal selama 3 detik setelah goyangan pertama terdeteksi.
+    - **Haptic Feedback**: Memicu getaran taktil halus `HapticFeedback.mediumImpact()` saat goyangan valid terdeteksi.
+    - **Isolasi Siklus Hidup**: Listener akselerometer **hanya aktif saat tab Game dibuka** dan otomatis di-cancel (`dispose()`) saat pengguna berpindah tab atau keluar halaman.
+- **Model & Layanan Kuis Goyang HP (`lib/core/services/shake_service.dart`)**:
+  - Model: `ShakeQuotaModel`, `ShakeQuizClaimModel`, dan `ShakeQuizResultModel`.
+  - Terintegrasi penuh dengan RPC Supabase (`get_shake_quota`, `claim_shake_quiz`, `answer_shake_quiz`).
+  - Fallback simulasi luring/demo yang deterministik, menjaga fungsionalitas aplikasi dan tes widget tetap berjalan optimal.
+- **Lembar Interaktif Soal Kejutan (`ShakeQuizSheet`) (`lib/features/game/presentation/widgets/shake_quiz_sheet.dart`)**:
+  - Modal bottom sheet anggun berpalet Faunova (latar gading, kartu sage muda, tombol emas).
+  - Menampilkan badge kategori fauna dan sisa kuota harian.
+  - 4 kartu pilihan (A, B, C, D) interaktif dengan tombol panah.
+  - Layar hasil: Banner status keberhasilan (hijau sage jika benar, merah jika salah), perbandingan pilihan vs kunci jawaban, dan kotak pembahasan ilmiah berikon bohlam emas.
+- **Pembaruan Banner GamePage (`lib/features/game/presentation/game_page.dart`)**:
+  - Terhubung langsung dengan `ShakeService.instance.getShakeQuota()`.
+  - Menampilkan indikator kuota real-time: `Kuota $remaining/3`.
+  - Banner dapat diketuk langsung sebagai simulator alternatif pengujian di emulator/desktop yang tidak memiliki sensor fisik akselerometer.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint.
+  - `flutter test`: **72 dari 72 tes unit & widget lulus 100%** (termasuk 5 tes baru untuk S15 yang memverifikasi kuota awal 3/3, kerahasiaan kunci jawaban saat klaim, penolakan klaim ke-4 saat kuota habis, penolakan submit ganda, dan pembukaan `ShakeQuizSheet`).
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik & Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 009 di Supabase Dashboard**: Berkas `supabase/migrations/009_shake_to_quiz.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat tabel `shake_log` dan RPC `get_shake_quota`, `claim_shake_quiz`, serta `answer_shake_quiz`.
+- **Sensor Akselerometer di HP Fisik**: Goyangan fisik nyata pada perangkat mobile asli (diuji pada tahapan integrasi akhir S23).
+
+### 3. Langkah Berikutnya (Sesi S16)
+- **Sesi S16 (Sistem Badge Gelar & Pop-up Pencapaian)**:
+  - Tabel `badges` dan `user_badges` di database.
+  - Pengecekan syarat badge (Pemula, Kolektor, Rajin, Si Pintar, Juara Kuis, Sosialita, Rutin Menantang, Si Goyang) di server.
+  - Grid badge di Profil (terbuka berwarna, terkunci abu-abu dengan progress bar) dan dialog pop-up lokal saat badge baru terbuka.
+
 
 
 

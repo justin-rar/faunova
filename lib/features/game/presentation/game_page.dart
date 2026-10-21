@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/services/quiz_service.dart';
+import '../../../core/services/shake_service.dart';
 import '../../../core/services/streak_service.dart';
 import '../../../core/services/timezone_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../models/daily_challenge_model.dart';
+import '../models/shake_quiz_model.dart';
 import '../models/streak_status_model.dart';
 import 'quiz_arena_page.dart';
+import 'widgets/shake_quiz_sheet.dart';
 
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
@@ -22,26 +26,103 @@ class _GamePageState extends State<GamePage> {
 
   StreakStatusModel? _streakStatus;
   DailyChallengeModel? _dailyChallenge;
+  ShakeQuotaModel? _shakeQuota;
+  StreamSubscription? _shakeSubscription;
   bool _isClaimingStreak = false;
   bool _isSubmittingChallenge = false;
+  bool _isClaimingShake = false;
 
   @override
   void initState() {
     super.initState();
     _loadGameData();
+    _initShakeSensor();
+  }
+
+  @override
+  void dispose() {
+    _shakeSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initShakeSensor() {
+    // Listener accelerometer hanya aktif saat membuka tab Game (Plan 191)
+    _shakeSubscription = ShakeService.instance.listenToShakeEvents(
+      onShakeDetected: _handleShakeTriggered,
+    );
   }
 
   Future<void> _loadGameData() async {
     try {
       final streak = await StreakService.instance.getStreakStatus();
       final challenge = await StreakService.instance.getDailyChallenge();
+      final quota = await ShakeService.instance.getShakeQuota();
       if (mounted) {
         setState(() {
           _streakStatus = streak;
           _dailyChallenge = challenge;
+          _shakeQuota = quota;
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _handleShakeTriggered() async {
+    if (_isClaimingShake) return;
+    setState(() => _isClaimingShake = true);
+
+    try {
+      final quota = _shakeQuota ?? await ShakeService.instance.getShakeQuota();
+      if (quota.remainingQuota <= 0) {
+        if (mounted) {
+          setState(() => _isClaimingShake = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Kuota goyang HP harian kamu sudah habis (3/3). Reset 00:00 WIB.'),
+              backgroundColor: AppColors.merahStatus,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      final claim = await ShakeService.instance.claimShakeQuiz();
+      if (mounted) {
+        setState(() => _isClaimingShake = false);
+        if (claim.quotaExceeded) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(claim.message),
+              backgroundColor: AppColors.merahStatus,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          _loadGameData();
+          return;
+        }
+
+        // Tampilkan modal soal kejutan goyang HP
+        await ShakeQuizSheet.show(
+          context,
+          claim: claim,
+          onQuizFinished: () {
+            _loadGameData();
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isClaimingShake = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat kuis goyang HP: $e'),
+            backgroundColor: AppColors.merahStatus,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleClaimStreak() async {
@@ -709,65 +790,87 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _buildShakeToQuizBanner() {
+    final remaining = _shakeQuota?.remainingQuota ?? 3;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sage,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.sageTua.withValues(alpha: 0.3), width: 1),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.gading.withValues(alpha: 0.8),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.vibration_rounded, color: AppColors.teksGelap, size: 26),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: _isClaimingShake ? null : _handleShakeTriggered,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Goyang HP (Shake-to-Quiz)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.teksGelap,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.gading,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'Kuota 3/3',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
-                      ),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.gading.withValues(alpha: 0.8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: _isClaimingShake
+                      ? const SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.sageTua),
+                        )
+                      : const Icon(Icons.vibration_rounded, color: AppColors.teksGelap, size: 26),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Sensor accelerometer mendeteksi goyangan fisik untuk memunculkan soal kejutan acak.',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap, height: 1.3),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Goyang HP (Shake-to-Quiz)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppColors.teksGelap,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: AppColors.gading,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'Kuota $remaining/3',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.teksGelap,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Sensor accelerometer mendeteksi goyangan fisik (atau ketuk banner) untuk memunculkan soal kejutan.',
+                        style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap, height: 1.3),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -51,6 +51,8 @@ import 'package:faunova/features/game/models/quiz_session_model.dart';
 import 'package:faunova/features/game/presentation/quiz_arena_page.dart';
 import 'package:faunova/features/game/presentation/game_page.dart';
 import 'package:faunova/core/services/streak_service.dart';
+import 'package:faunova/core/services/shake_service.dart';
+import 'package:faunova/features/game/presentation/widgets/shake_quiz_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -2028,6 +2030,125 @@ void main() {
         expect(find.textContaining('Jawabanmu Benar!'), findsOneWidget);
         expect(find.textContaining('Pilihanmu:'), findsOneWidget);
       }
+    });
+  });
+
+  group('S15 - Shake-to-Quiz: Accelerometer, Kuota 3x/hari, dan Validasi Server (Plan 5.8, 190-196)', () {
+    setUp(() {
+      ShakeService.instance.resetDemoQuota();
+    });
+
+    test('ShakeService: getShakeQuota mengembalikan kuota awal 3/3 per hari WIB', () async {
+      final quota = await ShakeService.instance.getShakeQuota();
+
+      expect(quota.maxQuota, equals(3));
+      expect(quota.usedQuota, equals(0));
+      expect(quota.remainingQuota, equals(3));
+      expect(quota.dateWib, isNotEmpty);
+    });
+
+    test('ShakeService: claimShakeQuiz mengembalikan soal TANPA kunci jawaban & mengurangi kuota', () async {
+      // Klaim pertama
+      final claim1 = await ShakeService.instance.claimShakeQuiz(customIdempotencyKey: 'idemp-shake-1');
+
+      expect(claim1.claimId, isNotEmpty);
+      expect(claim1.questionId, isNotEmpty);
+      expect(claim1.category, isNotEmpty);
+      expect(claim1.questionText, isNotEmpty);
+      expect(claim1.options.length, equals(4));
+      expect(claim1.remainingQuota, equals(2)); // Kuota berkurang 1
+      expect(claim1.quotaExceeded, isFalse);
+
+      // Idempotensi: Klaim ulang dengan kunci idempotency yang sama mengembalikan klaim yang sama tanpa mengurangi kuota lagi
+      final claimRetry = await ShakeService.instance.claimShakeQuiz(customIdempotencyKey: 'idemp-shake-1');
+      expect(claimRetry.claimId, equals(claim1.claimId));
+      expect(claimRetry.remainingQuota, equals(2));
+    });
+
+    test('ShakeService: Menolak klaim ke-4 saat kuota 3/3 habis', () async {
+      // Klaim 3 kali hingga habis
+      await ShakeService.instance.claimShakeQuiz();
+      await ShakeService.instance.claimShakeQuiz();
+      await ShakeService.instance.claimShakeQuiz();
+
+      // Klaim ke-4 harus ditolak dengan quotaExceeded == true
+      final claim4 = await ShakeService.instance.claimShakeQuiz();
+      expect(claim4.quotaExceeded, isTrue);
+      expect(claim4.remainingQuota, equals(0));
+      expect(claim4.message, contains('sudah habis (3/3)'));
+    });
+
+    test('ShakeService: answerShakeQuiz mengevaluasi jawaban dan menolak submit kedua', () async {
+      final claim = await ShakeService.instance.claimShakeQuiz();
+
+      // Jawab opsi 1
+      final result = await ShakeService.instance.answerShakeQuiz(
+        claimId: claim.claimId,
+        selectedOption: 1,
+      );
+
+      expect(result.claimId, equals(claim.claimId));
+      expect(result.selectedOption, equals(1));
+      expect(result.isCorrect, isNotNull);
+      expect(result.correctOption, isNotNull);
+      expect(result.explanation, isNotEmpty);
+
+      // Submission kedua pada claimId yang sama harus ditolak
+      expect(
+        () => ShakeService.instance.answerShakeQuiz(
+          claimId: claim.claimId,
+          selectedOption: 0,
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    testWidgets('GamePage: Menampilkan banner Shake-to-Quiz dan membuka ShakeQuizSheet saat diketuk', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const GamePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Cari banner Shake-to-Quiz
+      final bannerTitle = find.text('Goyang HP (Shake-to-Quiz)');
+      expect(bannerTitle, findsOneWidget);
+      expect(find.textContaining('Kuota'), findsOneWidget);
+
+      // Ketuk banner untuk memicu kuis (simulasi goyang HP)
+      await tester.tap(bannerTitle);
+      await tester.pumpAndSettle();
+
+      // ShakeQuizSheet modal harus terbuka
+      expect(find.byType(ShakeQuizSheet), findsOneWidget);
+      expect(find.textContaining('Soal Kejutan'), findsOneWidget);
+
+      final sheetOptionA = find.descendant(of: find.byType(ShakeQuizSheet), matching: find.text('A'));
+      expect(sheetOptionA, findsOneWidget);
+
+      // Ketuk opsi A di dalam ShakeQuizSheet
+      await tester.tap(sheetOptionA);
+      await tester.pumpAndSettle();
+
+      // Ulasan hasil harus tampil
+      expect(find.textContaining('Jawabanmu'), findsWidgets);
+      expect(find.text('Selesai & Lanjutkan'), findsOneWidget);
+
+      // Tutup sheet
+      await tester.tap(find.text('Selesai & Lanjutkan'));
+      await tester.pumpAndSettle();
+
+      // Sheet tertutup, kembali ke GamePage
+      expect(find.text('Ekspedisi & Kuis Fauna'), findsOneWidget);
     });
   });
 }
