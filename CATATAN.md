@@ -463,10 +463,66 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 004 di Supabase Dashboard**: Berkas `supabase/migrations/004_create_post_and_feed.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat fungsi `faunova_snap_to_grid`, RPC `create_post`, `get_for_you_feed`, dan `toggle_post_like`.
 
 ### 3. Langkah Berikutnya (Sesi S10)
-- **Sesi S10 (Follow, Tab Mengikuti, Like & Profil Publik)**:
-  - Implementasi relasi follow pengguna (RPC `toggle_follow_user`, pengecekan status follow).
-  - Tab "Mengikuti" di `FeedPage` yang hanya menampilkan postingan dari akun yang diikuti.
-  - Tampilan halaman profil publik pengguna lain (`PublicProfilePage`) yang menampilkan koleksi publik dan tombol ikuti/berhenti mengikuti.
+- Sesi S10 (Follow, Tab Mengikuti, Like & Profil Publik).
+
+---
+
+## Sesi S10 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Fungsi Postgres & Migrasi `005_follow_and_following_feed.sql` (Plan 5.7, 5.9, 18)**:
+  - RPC `public.toggle_follow_user(p_target_user_id UUID)`:
+    - Operasi atomik & idempoten untuk mengikuti/berhenti mengikuti pengguna lain.
+    - Aturan keras: menolak `follower_id = followed_id` (tidak dapat mengikuti diri sendiri).
+    - Menghitung dan mengembalikan agregat terbaru `followers_count` dan `following_count`.
+  - RPC `public.get_following_feed(p_limit INT, p_cursor TIMESTAMPTZ)`:
+    - Mengambil feed linimasa akun yang diikuti oleh pengguna terautentikasi (`WHERE p.user_id IN (SELECT followed_id FROM follows WHERE follower_id = auth.uid())`).
+    - Keamanan koordinat publik terjamin dengan grid-snapping 0.01° (`display_latitude` & `display_longitude`).
+    - Mendukung pagination cursor keyset.
+  - RPC `public.get_public_profile(p_target_user_id UUID)`:
+    - Mengembalikan data profil publik yang disetujui (username, nama, avatar, bio, centang biru, streak, skor kuis, tanggal dibuat) serta agregat (`captures_count`, `posts_count`, `followers_count`, `following_count`, `is_followed_by_me`, `is_my_profile`).
+    - Aman dari kebocoran kolom sensitif / privat.
+  - RPC `public.get_user_public_posts(p_target_user_id UUID, p_limit INT)`:
+    - Mengembalikan postingan observasi publik milik author tertentu.
+  - Penyelarasan skema pada RPC `get_for_you_feed` (menggunakan `display_name` dan `avatar_path`).
+- **Model Profil Publik (`PublicProfileModel`)**:
+  - Diterapkan di `lib/features/profile/models/public_profile_model.dart`.
+  - Serialisasi, deserialisasi, dan `copyWith` helper untuk metadata profil publik dan agregat sosial.
+- **Layanan Sosial Komunitas (`SocialService`)**:
+  - Diterapkan di `lib/core/services/social_service.dart`.
+  - Mengelola `toggleFollow`, `fetchFollowingFeed`, `getPublicProfile`, `fetchUserPublicPosts`, dan pengecekan cepat `isFollowing`.
+  - Dukungan fallback luring & mode demo in-memory lengkap dengan profil realistis (*Budi Satria Wibowo*, *Siti Rahmawati*, *Dewi Lestari*).
+- **Halaman Profil Publik (`PublicProfilePage`)**:
+  - Diterapkan di `lib/features/profile/presentation/public_profile_page.dart`.
+  - AppBar taktis dengan username `@username` dan tombol kembali.
+  - Hero profil elegan: avatar inisial, nama lengkap, lencana verifikasi Centang Biru, bio lapangan, badge streak 🔥, dan skor kuis 🏆.
+  - Kartu metrik sosial 3 kolom: Observasi, Pengikut, dan Mengikuti.
+  - Tombol aksi pintar:
+    - Jika profil sendiri: menampilkan informasi "Ini adalah profil akun Anda".
+    - Jika belum diikuti: tombol emas `#C8A96B` ("+ Ikuti Penjelajah Ini").
+    - Jika sudah diikuti: tombol outlined sage tua ("Mengikuti" dengan centang).
+    - Optimistic UI update dengan notifikasi SnackBar informatif dan rollback aman.
+  - Bagian linimasa observasi publik author dengan daftar `PostCard` atau kartu kosong ramah jika belum ada tangkapan yang dibagikan.
+  - Dukungan gesture *Pull-to-Refresh*.
+- **Pembaruan Linimasa Dua Tab (`FeedPage`)**:
+  - Diterapkan di `lib/features/feed/presentation/feed_page.dart`.
+  - Tab "Mengikuti" terintegrasi penuh dengan `SocialService.instance.fetchFollowingFeed()`.
+  - Sinkronisasi status like idempoten di kedua tab ("Untuk Kamu" dan "Mengikuti").
+  - Penanganan state kosong di tab Mengikuti ketika pengguna belum mengikuti siapa pun, dilengkapi tombol pintasan untuk menjelajahi tab "Untuk Kamu".
+- **Integrasi Interaktif Kartu (`PostCard`)**:
+  - Header author (avatar, nama, username) kini dapat diketuk (`InkWell`) untuk langsung membuka `PublicProfilePage` author tersebut.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint.
+  - `flutter test`: **49 dari 49 tes unit & widget lulus 100%**, memvalidasi idempotensi toggle follow, isolasi tab feed mengikuti, integritas data profil publik, interaksi tombol follow `PublicProfilePage`, dan navigasi profil di `FeedPage`.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 005 di Supabase Dashboard**: Berkas `supabase/migrations/005_follow_and_following_feed.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat RPC `toggle_follow_user`, `get_following_feed`, `get_public_profile`, `get_user_public_posts`, dan penyelarasan `get_for_you_feed`.
+
+### 3. Langkah Berikutnya (Sesi S11)
+- **Sesi S11 (Profil Sendiri, Edit Profil, Pencarian Akun & Spesies)**:
+  - Fitur pengeditan profil sendiri (nama tampilan, bio, foto avatar).
+  - Halaman Pencarian (`SearchPage`): pencarian akun pengguna dan taksonomi spesies satwa (Mamalia, Aves, Reptilia, Amfibi) dengan debouncing pencarian.
+
 
 
 

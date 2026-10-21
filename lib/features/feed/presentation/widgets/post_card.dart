@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../profile/presentation/public_profile_page.dart';
 import '../../models/post_model.dart';
 
 class PostCard extends StatelessWidget {
@@ -89,56 +90,77 @@ class PostCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 19,
-            backgroundColor: AppColors.sageTua,
-            child: Text(
-              post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : 'U',
-              style: const TextStyle(
-                color: AppColors.teksPutih,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PublicProfilePage(
+                      userId: post.authorId,
+                      initialAuthorName: post.authorName,
+                      initialAuthorUsername: post.authorUsername,
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 19,
+                    backgroundColor: AppColors.sageTua,
+                    child: Text(
+                      post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : 'U',
+                      style: const TextStyle(
+                        color: AppColors.teksPutih,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                post.authorName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.teksGelap,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (post.isAuthorVerified) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: Color(0xFF1E88E5),
+                                size: 15,
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          '@${post.authorUsername} • ${post.timeAgo}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.teksGelap.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        post.authorName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.teksGelap,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (post.isAuthorVerified) ...[
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.verified_rounded,
-                        color: Color(0xFF1E88E5),
-                        size: 15,
-                      ),
-                    ],
-                  ],
-                ),
-                Text(
-                  '@${post.authorUsername} • ${post.timeAgo}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.teksGelap.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(width: 8),
           // Badge Blok Rantai Kanonis
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

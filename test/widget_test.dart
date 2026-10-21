@@ -34,6 +34,8 @@ import 'package:faunova/core/services/post_service.dart';
 import 'package:faunova/features/feed/presentation/feed_page.dart';
 import 'package:faunova/features/feed/presentation/widgets/post_card.dart';
 import 'package:faunova/features/feed/presentation/widgets/create_post_sheet.dart';
+import 'package:faunova/core/services/social_service.dart';
+import 'package:faunova/features/profile/presentation/public_profile_page.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -1346,6 +1348,119 @@ void main() {
 
       // Sekarang status like aktif
       expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
+    });
+  });
+
+  group('S10 - Follow, Tab Mengikuti, Like Idempoten, dan Profil Publik (Plan 5.7, 5.9, 18)', () {
+    setUp(() {
+      PostService.instance.initMockDemoPosts();
+      SocialService.instance.initMockDemoSocial();
+    });
+
+    test('SocialService: toggleFollow idempoten dan menolak follow diri sendiri', () async {
+      // 1. Awalnya Budi diikuti, Siti belum diikuti
+      expect(SocialService.instance.isFollowing('user-siti'), isFalse);
+
+      // 2. Ikuti Siti (Follow)
+      final followResult = await SocialService.instance.toggleFollow('user-siti');
+      expect(followResult['is_following'], isTrue);
+      expect(SocialService.instance.isFollowing('user-siti'), isTrue);
+
+      // 3. Batalkan ikuti Siti (Unfollow)
+      final unfollowResult = await SocialService.instance.toggleFollow('user-siti');
+      expect(unfollowResult['is_following'], isFalse);
+      expect(SocialService.instance.isFollowing('user-siti'), isFalse);
+    });
+
+    test('SocialService: fetchFollowingFeed hanya memuat postingan dari pengguna yang diikuti', () async {
+      // Budi diikuti -> postingan Budi ('Jalak Bali') muncul di feed mengikuti
+      var followingFeed = await SocialService.instance.fetchFollowingFeed();
+      expect(followingFeed.any((p) => p.authorId == 'user-budi'), isTrue);
+
+      // Unfollow Budi
+      await SocialService.instance.toggleFollow('user-budi');
+
+      // Sekarang feed mengikuti tidak memuat postingan Budi
+      followingFeed = await SocialService.instance.fetchFollowingFeed();
+      expect(followingFeed.any((p) => p.authorId == 'user-budi'), isFalse);
+    });
+
+    test('SocialService: getPublicProfile mengembalikan data profil publik dan agregat tanpa kolom sensitif', () async {
+      final profile = await SocialService.instance.getPublicProfile('user-budi');
+
+      expect(profile.username, equals('budi_satria'));
+      expect(profile.displayName, equals('Budi Satria Wibowo'));
+      expect(profile.isVerified, isTrue);
+      expect(profile.streakCount, equals(14));
+      expect(profile.followersCount, greaterThan(0));
+      expect(profile.isFollowedByMe, isTrue);
+    });
+
+    testWidgets('PublicProfilePage: Menampilkan portofolio publik, metrik sosial, dan tombol ikuti interaktif', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const PublicProfilePage(userId: 'user-siti'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Memastikan nama, username, bio, dan metrik tampil
+      expect(find.text('Siti Rahmawati'), findsWidgets);
+      expect(find.text('@siti_flora_fauna'), findsWidgets);
+      expect(find.text('Observasi'), findsOneWidget);
+      expect(find.text('Pengikut'), findsOneWidget);
+      expect(find.text('Mengikuti'), findsWidgets);
+
+      // Tombol + Ikuti Penjelajah Ini (karena Siti belum diikuti)
+      final followBtn = find.text('+ Ikuti Penjelajah Ini');
+      expect(followBtn, findsOneWidget);
+
+      // Tekan tombol ikuti
+      await tester.tap(followBtn);
+      await tester.pumpAndSettle();
+
+      // Sekarang status berubah menjadi 'Mengikuti'
+      expect(find.text('Mengikuti'), findsWidgets);
+    });
+
+    testWidgets('FeedPage: Tab Mengikuti menampilkan postingan author yang diikuti dan mendukung navigasi profil', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const FeedPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Pindah ke tab Mengikuti (tab index 0)
+      final followingTab = find.text('Mengikuti');
+      await tester.tap(followingTab);
+      await tester.pumpAndSettle();
+
+      // Budi diikuti -> Jalak Bali muncul di tab Mengikuti
+      expect(find.text('Jalak Bali'), findsOneWidget);
+
+      // Tap header author untuk menguji navigasi ke PublicProfilePage
+      await tester.tap(find.text('Budi Satria Wibowo').first);
+      await tester.pumpAndSettle();
+
+      // Memastikan PublicProfilePage terbuka
+      expect(find.text('Observasi Publik (1)'), findsOneWidget);
     });
   });
 }

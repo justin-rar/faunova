@@ -1,5 +1,12 @@
+// ==============================================================================
+// FAUNOVA PRESENTATION: FeedPage
+// Halaman Linimasa Komunitas Dua Tab: "Mengikuti" dan "Untuk Kamu"
+// Sesuai Plan 5.7, 5.9, 18 & AGENTS.md (Sesi S9 & S10)
+// ==============================================================================
+
 import 'package:flutter/material.dart';
 import '../../../core/services/post_service.dart';
+import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
@@ -18,13 +25,14 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   AppViewStatus _currentStatus = AppViewStatus.content;
 
   List<PostModel> _forYouPosts = [];
+  List<PostModel> _followingPosts = [];
   bool _isLoadingFeed = false;
   String? _feedError;
 
   @override
   void initState() {
     super.initState();
-    // Default aktif di tab 'Untuk Kamu' (index 1), persis seperti referensi
+    // Default aktif di tab 'Untuk Kamu' (index 1), persis seperti referensi desain
     _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
     _loadFeed();
   }
@@ -36,10 +44,15 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     });
 
     try {
-      final posts = await PostService.instance.fetchForYouFeed();
+      final results = await Future.wait([
+        PostService.instance.fetchForYouFeed(),
+        SocialService.instance.fetchFollowingFeed(),
+      ]);
+
       if (mounted) {
         setState(() {
-          _forYouPosts = posts;
+          _forYouPosts = results[0];
+          _followingPosts = results[1];
           _isLoadingFeed = false;
         });
       }
@@ -54,35 +67,66 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _toggleLike(PostModel post) async {
-    final idx = _forYouPosts.indexWhere((p) => p.id == post.id);
-    if (idx == -1) return;
+    // Sinkronisasi status like di kedua tab (idempoten)
+    final forYouIdx = _forYouPosts.indexWhere((p) => p.id == post.id);
+    final followingIdx = _followingPosts.indexWhere((p) => p.id == post.id);
 
-    final current = _forYouPosts[idx];
-    final newLiked = !current.isLikedByMe;
-    final newCount = newLiked ? current.likesCount + 1 : (current.likesCount > 0 ? current.likesCount - 1 : 0);
+    final currentLiked = post.isLikedByMe;
+    final newLiked = !currentLiked;
+    final newCount = newLiked ? post.likesCount + 1 : (post.likesCount > 0 ? post.likesCount - 1 : 0);
 
     setState(() {
-      _forYouPosts[idx] = current.copyWith(
-        isLikedByMe: newLiked,
-        likesCount: newCount,
-      );
+      if (forYouIdx != -1) {
+        _forYouPosts[forYouIdx] = _forYouPosts[forYouIdx].copyWith(
+          isLikedByMe: newLiked,
+          likesCount: newCount,
+        );
+      }
+      if (followingIdx != -1) {
+        _followingPosts[followingIdx] = _followingPosts[followingIdx].copyWith(
+          isLikedByMe: newLiked,
+          likesCount: newCount,
+        );
+      }
     });
 
     try {
       final result = await PostService.instance.togglePostLike(post.id);
       if (mounted && result['likes_count'] != null) {
+        final serverLiked = result['is_liked'] == true;
+        final serverCount = (result['likes_count'] as num).toInt();
+
         setState(() {
-          _forYouPosts[idx] = _forYouPosts[idx].copyWith(
-            isLikedByMe: result['is_liked'] == true,
-            likesCount: (result['likes_count'] as num).toInt(),
-          );
+          if (forYouIdx != -1) {
+            _forYouPosts[forYouIdx] = _forYouPosts[forYouIdx].copyWith(
+              isLikedByMe: serverLiked,
+              likesCount: serverCount,
+            );
+          }
+          if (followingIdx != -1) {
+            _followingPosts[followingIdx] = _followingPosts[followingIdx].copyWith(
+              isLikedByMe: serverLiked,
+              likesCount: serverCount,
+            );
+          }
         });
       }
     } catch (_) {
-      // Rollback jika gagal
+      // Rollback jika server gagal
       if (mounted) {
         setState(() {
-          _forYouPosts[idx] = current;
+          if (forYouIdx != -1) {
+            _forYouPosts[forYouIdx] = _forYouPosts[forYouIdx].copyWith(
+              isLikedByMe: currentLiked,
+              likesCount: post.likesCount,
+            );
+          }
+          if (followingIdx != -1) {
+            _followingPosts[followingIdx] = _followingPosts[followingIdx].copyWith(
+              isLikedByMe: currentLiked,
+              likesCount: post.likesCount,
+            );
+          }
         });
       }
     }
@@ -159,48 +203,103 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
       emptyMessage: 'Cari kolektor satwa dan ikuti jurnal observasi lapangan mereka!',
       errorMessage: 'Gagal memuat feed mengikuti. Periksa sambungan data Anda.',
       offlineMessage: 'Mode luring. Menampilkan postingan tersimpan dari cache terenkripsi.',
-      onRetry: () {
-        setState(() {
-          _currentStatus = AppViewStatus.content;
-        });
-      },
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
-        children: [
-          _buildJournalFeedItem(
-            authorName: 'Budi Satria Wibowo',
-            authorUsername: 'budi_satria',
-            isVerified: true,
-            commonName: 'Jalak Bali',
-            scientificName: 'Leucopsar rothschildi',
-            taxonomyClass: 'Aves • Passeriformes',
-            conservationStatus: 'Kritis (CR)',
-            locationArea: 'Taman Nasional Bali Barat (Grid Snapped)',
-            timeAgo: '20 menit lalu',
-            likesCount: 38,
-            blockSeq: 14,
-            fieldNotes: 'Teramati sepasang Jalak Bali bertengger di dahan pohon beringin pesisir Teluk Brumbun. Bulu jambul tegak sempurna.',
-            imageAccent: const Color(0xFF4A6572),
-            animalIcon: Icons.flutter_dash_rounded,
-          ),
-          const SizedBox(height: 18),
-          _buildJournalFeedItem(
-            authorName: 'Siti Rahmawati',
-            authorUsername: 'siti_flora_fauna',
-            isVerified: true,
-            commonName: 'Kucing Kuwuk (Kucing Hutan)',
-            scientificName: 'Prionailurus bengalensis',
-            taxonomyClass: 'Mammalia • Carnivora',
-            conservationStatus: 'Risiko Rendah (LC)',
-            locationArea: 'Lereng Gunung Ciremai, Kuningan',
-            timeAgo: '2 jam lalu',
-            likesCount: 114,
-            blockSeq: 9,
-            fieldNotes: 'Tertangkap kamera di semak belukar dekat aliran sungai berbatu saat senja. Gerakan sangat lincah dan waspada.',
-            imageAccent: const Color(0xFF6B5841),
-            animalIcon: Icons.pets_rounded,
-          ),
-        ],
+      onRetry: _loadFeed,
+      child: RefreshIndicator(
+        onRefresh: _loadFeed,
+        color: AppColors.sageTua,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+          children: [
+            _buildStateSwitcherCard(),
+            const SizedBox(height: 16),
+            if (_isLoadingFeed && _followingPosts.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(color: AppColors.sageTua),
+              )
+            else if (_feedError != null && _followingPosts.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.merahStatus.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.merahStatus, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      _feedError!,
+                      style: const TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: _loadFeed,
+                      child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              )
+            else if (_followingPosts.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.sageMuda.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.people_outline_rounded, size: 36, color: AppColors.sageTua),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Belum Mengikuti Penjelajah',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ikuti penjelajah satwa lain untuk melihat observasi lapangan terbaru mereka di sini.',
+                      style: TextStyle(fontSize: 12, color: AppColors.teksGelap.withValues(alpha: 0.7)),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _tabController.animateTo(1); // Beralih ke tab 'Untuk Kamu'
+                      },
+                      icon: const Icon(Icons.explore_rounded, size: 16, color: AppColors.teksGelap),
+                      label: const Text('Jelajahi Tab "Untuk Kamu"'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.emas,
+                        foregroundColor: AppColors.teksGelap,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              for (int i = 0; i < _followingPosts.length; i++) ...[
+                PostCard(
+                  post: _followingPosts[i],
+                  onLike: () => _toggleLike(_followingPosts[i]),
+                ),
+                if (i < _followingPosts.length - 1) const SizedBox(height: 18),
+              ],
+          ],
+        ),
       ),
     );
   }
@@ -361,296 +460,6 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
       ),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       visualDensity: VisualDensity.compact,
-    );
-  }
-
-  Widget _buildJournalFeedItem({
-    required String authorName,
-    required String authorUsername,
-    required bool isVerified,
-    required String commonName,
-    required String scientificName,
-    required String taxonomyClass,
-    required String conservationStatus,
-    required String locationArea,
-    required String timeAgo,
-    required int likesCount,
-    required int blockSeq,
-    required String fieldNotes,
-    required Color imageAccent,
-    required IconData animalIcon,
-  }) {
-    return RepaintBoundary(
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.sageMuda,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: AppColors.sage.withValues(alpha: 0.35),
-            width: 1,
-          ),
-        ),
-        clipBehavior: Clip.hardEdge,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Author Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 19,
-                  backgroundColor: AppColors.sageTua,
-                  child: Text(
-                    authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                      color: AppColors.teksPutih,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              authorName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: AppColors.teksGelap,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.verified_rounded,
-                              color: Color(0xFF1E88E5),
-                              size: 15,
-                            ),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        '@$authorUsername • $timeAgo',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.teksGelap.withValues(alpha: 0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Verifiable Chain Block Badge (Plan 5.2)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.sageTua,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.link_rounded, size: 12, color: AppColors.teksPutih),
-                      const SizedBox(width: 4),
-                      Text(
-                        '#$blockSeq',
-                        style: const TextStyle(
-                          color: AppColors.teksPutih,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 2. Field Observation Photo Surface
-          Container(
-            height: 210,
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: imageAccent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(animalIcon, size: 54, color: AppColors.gading.withValues(alpha: 0.9)),
-                      const SizedBox(height: 8),
-                      Text(
-                        commonName,
-                        style: const TextStyle(
-                          color: AppColors.gading,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Snapped Location Pill
-                Positioned(
-                  bottom: 10,
-                  left: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.location_on_rounded, size: 12, color: AppColors.gading),
-                        const SizedBox(width: 4),
-                        Text(
-                          locationArea,
-                          style: const TextStyle(
-                            color: AppColors.gading,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 3. Species Classification & Field Notes
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            commonName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.teksGelap,
-                            ),
-                          ),
-                          Text(
-                            scientificName,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontStyle: FontStyle.italic,
-                              color: AppColors.teksGelap.withValues(alpha: 0.85),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Conservation status tag
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: conservationStatus.contains('CR')
-                            ? AppColors.merahStatus.withValues(alpha: 0.15)
-                            : AppColors.sageTua.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        conservationStatus,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: conservationStatus.contains('CR')
-                              ? AppColors.merahStatus
-                              : AppColors.sageTua,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  fieldNotes,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    height: 1.4,
-                    color: AppColors.teksGelap,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Footer row with Like and Hash Chain verification mark
-                Row(
-                  children: [
-                    InkWell(
-                      onTap: () {},
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.favorite_rounded,
-                              color: AppColors.merahStatus,
-                              size: 19,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '$likesCount Suka',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: AppColors.teksGelap,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(
-                      taxonomyClass,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.teksGelap.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.share_outlined,
-                      color: AppColors.teksGelap,
-                      size: 19,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
     );
   }
 }

@@ -54,6 +54,9 @@ class PostService {
     };
   }
 
+  /// Daftar postingan demo saat ini (read-only)
+  List<PostModel> get demoPosts => List.unmodifiable(_demoPosts);
+
   /// Mereset data feed demo untuk keperluan pengujian
   void resetDemoPosts() {
     _demoPosts.clear();
