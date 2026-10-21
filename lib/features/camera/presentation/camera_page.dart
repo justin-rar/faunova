@@ -19,7 +19,8 @@ enum TargetSampleType {
 }
 
 class CameraPage extends StatefulWidget {
-  const CameraPage({super.key});
+  final bool isActive;
+  const CameraPage({super.key, this.isActive = true});
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -36,7 +37,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   bool _isCameraInitialized = false;
   bool _isProcessingScan = false;
   String _processingStageMessage = 'Menyiapkan pemindaian...';
-  TargetSampleType _selectedTarget = TargetSampleType.hardwareCamera;
+  TargetSampleType _selectedTarget = TargetSampleType.butterflyAnimal;
 
   // Flash mode state
   FlashMode _currentFlashMode = FlashMode.auto;
@@ -45,26 +46,55 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initSensorsAndCamera();
+    if (widget.isActive) {
+      _initSensorsAndCamera();
+    }
+  }
+
+  @override
+  void didUpdateWidget(CameraPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      // Masuk ke tab kamera -> aktifkan sensor
+      _initSensorsAndCamera();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      // Keluar dari tab kamera -> matikan kamera agar tidak membebani emulator/HP
+      _disposeCamera();
+    }
+  }
+
+  void _disposeCamera({bool notify = true}) {
+    final controller = _cameraController;
+    _cameraController = null;
+    _isCameraInitialized = false;
+    if (controller != null) {
+      try {
+        controller.dispose();
+      } catch (_) {}
+    }
+    SensorLocationService.instance.stopCompassListener();
+    if (notify && mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
-    SensorLocationService.instance.stopCompassListener();
+    _disposeCamera(notify: false);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!widget.isActive) return;
     final cameraController = _cameraController;
     if (cameraController == null || !cameraController.value.isInitialized) {
       return;
     }
     if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
+      _disposeCamera();
+    } else if (state == AppLifecycleState.resumed && _selectedTarget == TargetSampleType.hardwareCamera) {
       _initCamera();
     }
   }
@@ -74,8 +104,10 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     SensorLocationService.instance.startCompassListener();
     _checkGpsStatus();
 
-    // 2. Hardware Camera
-    await _initCamera();
+    // 2. Hardware Camera (hanya jika target adalah kamera fisik)
+    if (_selectedTarget == TargetSampleType.hardwareCamera) {
+      await _initCamera();
+    }
   }
 
   Future<void> _checkGpsStatus() async {
@@ -104,17 +136,19 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
         final controller = CameraController(
           backCamera,
-          ResolutionPreset.high,
+          ResolutionPreset.medium,
           enableAudio: false,
           imageFormatGroup: ImageFormatGroup.jpeg,
         );
 
         await controller.initialize();
-        if (mounted) {
+        if (mounted && widget.isActive) {
           setState(() {
             _cameraController = controller;
             _isCameraInitialized = true;
           });
+        } else {
+          controller.dispose();
         }
       }
     } catch (e) {
@@ -723,6 +757,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
         setState(() {
           _selectedTarget = type;
         });
+        if (type == TargetSampleType.hardwareCamera && !_isCameraInitialized) {
+          _initCamera();
+        } else if (type != TargetSampleType.hardwareCamera && _isCameraInitialized) {
+          _disposeCamera();
+        }
       },
       selectedColor: AppColors.sageTua,
       backgroundColor: AppColors.gading,

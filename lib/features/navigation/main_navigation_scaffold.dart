@@ -16,14 +16,6 @@ class MainNavigationScaffold extends StatefulWidget {
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    FeedPage(),
-    SearchPage(),
-    CameraPage(),
-    GamePage(),
-    ProfilePage(),
-  ];
-
   void _onTabSelected(int index) {
     if (_currentIndex != index) {
       setState(() {
@@ -34,6 +26,14 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      const FeedPage(),
+      const SearchPage(),
+      _currentIndex == 2 ? const CameraPage(isActive: true) : const SizedBox.shrink(),
+      const GamePage(),
+      const ProfilePage(),
+    ];
+
     return Scaffold(
       extendBody: true,
       body: Stack(
@@ -42,7 +42,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
           Positioned.fill(
             child: IndexedStack(
               index: _currentIndex,
-              children: _pages,
+              children: pages,
             ),
           ),
           // Bottom bar kaca menempel di paling bawah dan mem-blur konten di baliknya
