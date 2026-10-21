@@ -321,10 +321,52 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 2. Belum Teruji / Membutuhkan Perangkat Fisik
 - **Eksekusi Migrasi SQL 002 di Database Supabase Cloud**: File migrasi `supabase/migrations/002_scan_chats_and_atomic_quota.sql` telah siap dan perlu di-copy-paste ke SQL Editor Dashboard Supabase oleh pengguna (serta deploy ulang Edge Function `ai-gateway`).
 
-### 3. Langkah Berikutnya (Sesi S7)
-- **Sesi S7 (`save-capture` dan Hash-Chain Kanonis)**:
-  - Endpoint `save-capture` dan advisory lock per user (`pg_advisory_xact_lock(hashtext('capture:' || user_id))`).
-  - Pembuatan rantai hash SHA-256 kanonis (`previous_hash`, `block_hash`, `seq`).
-  - Mengubah satu kolom pada blok akan membuat verifikasi rantai gagal.
+### 3. Langkah Berikutnya (Selesai pada Sesi S7)
+- Melanjutkan ke Sesi S7 (save-capture dan Hash-Chain Kanonis).
+
+---
+
+## Sesi S7 (Hari 4) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Optimasi Latensi Gemini & Resolusi Kamera (Hasil Pengujian HP Fisik)**:
+  - Menambahkan konfigurasi `thinkingConfig: { thinkingLevel: "low" }` pada Edge Function `ai-gateway` (mode scan & mode chat), memangkas waktu tunggu dari 20–150 detik menjadi 1–3 detik.
+  - Menambahkan pengaman `AbortSignal.timeout(20000)` di server dan `.timeout(30 detik)` di klien Flutter (`ScanService` & `ChatService`).
+  - Menyesuaikan kompresi foto kamera menjadi 960px kualitas 75 (~80–120 KB), mempercepat kompresi CPU perangkat dan proses tokenisasi citra di Gemini.
+  - Edge Function `ai-gateway` versi teroptimasi berhasil dideploy ke Supabase Cloud.
+- **Skema Database & Migrasi SQL 003 (`supabase/migrations/003_hash_chain_and_save_capture.sql`)**:
+  - **Fungsi Enkode Kanonis `public.faunova_canonical_encode`**: Format deterministik baku `seq|previous_hash|photo_sha256|latitude|longitude|camera_heading|received_at|user_id` dengan koordinat 6 desimal, heading 2 desimal, dan waktu ISO-8601 UTC microsecond (`.US`).
+  - **Fungsi Hashing `public.faunova_calculate_block_hash`**: Menghitung SHA-256 (64 hex characters) via ekstensi `pgcrypto`.
+  - **Trigger Imutabilitas Rantai `public.prevent_capture_chain_tamper`**: Menolak secara keras setiap upaya UPDATE pada kolom-kolom rantai kanonis di tabel `captures` (`seq`, `previous_hash`, `block_hash`, `photo_sha256`, koordinat, heading, `received_at`, `user_id`).
+  - **RPC Atomik `public.save_capture_with_chain`**:
+    - Serialisasi transaksi dengan advisory lock per user: `pg_advisory_xact_lock(hashtextextended(v_user_id::TEXT, 0))`.
+    - Validasi keras: kepemilikan scan (`user_id = auth.uid()`), hanya menerima hasil satwa terverifikasi (`is_animal = true`), serta mencegah duplikasi simpan (`capture_status = 'saved'`).
+    - Penentuan sambungan rantai: Blok Genesis (`seq = 1`) memakai `previous_hash = SHA-256(user_id)`, sedangkan blok berikutnya (`seq > 1`) menyambung ke `block_hash` blok sebelumnya.
+    - Penyisipan atomik ke tabel `public.captures` dan pembaruan status `scans`.
+  - **Fungsi Verifikasi Rantai Database (`verify_chain` & `verify_block`)**:
+    - `verify_chain(p_user_id)`: Memeriksa seluruh rantai user dari blok 1 sampai N, mendeteksi baris atau kolom yang dimanipulasi, dan mengembalikan nomor blok yang cacat (`broken_seq`).
+    - `verify_block(p_capture_id)`: Verifikasi cepat integritas satu blok terhadap blok pendahulunya.
+- **Model & Layanan Klien Flutter (`CaptureService`, `CaptureModel`, `ChainVerificationResult`)**:
+  - Diterapkan di `lib/features/camera/models/capture_model.dart`, `lib/features/camera/models/chain_verification_result.dart`, dan `lib/core/services/capture_service.dart`.
+  - Mendukung eksekusi RPC online via Supabase serta generator rantai deterministik untuk mode demo/offline.
+  - Format pembantu tampilan ramah pengguna: `shortBlockHash` dan `shortPreviousHash`.
+- **Integrasi Tombol "Simpan ke Koleksi" di `ScanResultPage`**:
+  - Mengubah `ScanResultPage` menjadi stateful untuk melacak status proses penyimpanan (`_isSaving`) dan hasil blok (`_savedCapture`).
+  - Tampilan tombol responsif: animasi loading saat menghubungkan ke rantai kanonis, dan tombol terverifikasi bertuliskan `Tersimpan di Koleksi (Blok #X)` setelah sukses.
+  - Dialog modal konfirmasi elegan dengan rincian: Nomor Blok, Previous Hash, Block Hash SHA-256, dan status "Sah & Tamper-Evident".
+  - Pada scan bukan satwa (`is_animal = false`), tombol simpan dikunci secara permanen.
+- **Verifikasi & Rangkaian Tes**:
+  - `flutter analyze`: 0 issues / bersih tanpa warning.
+  - `flutter test`: 32 dari 32 tes unit & widget lulus 100%, termasuk pengujian serialisasi kanonis, determinisme hash genesis, pengujian tamper detection (memanipulasi 1 kolom koordinat membatalkan validitas rantai), dan pengujian UI tombol simpan serta dialog konfirmasi.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database
+- **Eksekusi SQL Migrasi 003 di Supabase Dashboard**: Berkas `supabase/migrations/003_hash_chain_and_save_capture.sql` telah disiapkan dan perlu disalin (copy-paste) ke SQL Editor Supabase Dashboard lalu dijalankan (klik **Run**).
+
+### 3. Langkah Berikutnya (Sesi S8)
+- **Sesi S8 (Koleksi Satwa, Peta, dan Verifikasi Rantai)**:
+  - Antarmuka Grid Koleksi Satwa dan Halaman Detail Tangkapan.
+  - Peta OpenStreetMap dengan penanda lokasi tangkapan satwa.
+  - Tombol aksi **"Verifikasi Rantai"** di profil/koleksi dengan indikator visual integritas blockchain kanonis.
+
 
 

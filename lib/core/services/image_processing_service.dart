@@ -23,12 +23,12 @@ class ImageProcessingService {
   const ImageProcessingService._();
 
   /// Mengompresi foto dan membuang metadata EXIF di sisi klien
-  /// sesuai Plan 5.2 & AGENTS.md.
-  /// Standar: Max dimensi 1280px, kualitas JPEG 85, EXIF sepenuhnya dibuang.
+  /// Sesuai Plan 5.2 & AGENTS.md.
+  /// Standar optimal mobile: Max dimensi 960px, kualitas JPEG 75, EXIF sepenuhnya dibuang.
   static Future<ProcessedImageResult> processCameraImage(
     Uint8List rawBytes, {
-    int maxDimension = 1280,
-    int quality = 85,
+    int maxDimension = 960,
+    int quality = 75,
   }) async {
     return compute(_processImageTask, {
       'rawBytes': rawBytes,

@@ -1,19 +1,31 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../core/services/capture_service.dart';
 import '../../../core/services/compass_heading_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import '../models/capture_model.dart';
 import '../models/scan_result_model.dart';
 import 'scan_chat_page.dart';
 
-class ScanResultPage extends StatelessWidget {
+class ScanResultPage extends StatefulWidget {
   final ScanResultModel scanResult;
 
   const ScanResultPage({
     super.key,
     required this.scanResult,
   });
+
+  @override
+  State<ScanResultPage> createState() => _ScanResultPageState();
+}
+
+class _ScanResultPageState extends State<ScanResultPage> {
+  bool _isSaving = false;
+  CaptureModel? _savedCapture;
+
+  ScanResultModel get scanResult => widget.scanResult;
 
   @override
   Widget build(BuildContext context) {
@@ -434,33 +446,50 @@ class ScanResultPage extends StatelessWidget {
         ),
         const SizedBox(height: 10),
 
-        // Tombol Simpan ke Koleksi (Disiapkan untuk S7)
+        // Tombol Simpan ke Koleksi Kanonis (Sesi S7)
         SizedBox(
           width: double.infinity,
           height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fitur Simpan ke Koleksi & Hash-Chain akan aktif pada Sesi S7'),
-                  backgroundColor: AppColors.sageTua,
+          child: _savedCapture != null
+              ? ElevatedButton.icon(
+                  onPressed: () => _showSaveSuccessDialog(_savedCapture!),
+                  icon: const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  label: Text(
+                    'Tersimpan di Koleksi (Blok #${_savedCapture!.seq})',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.sageTua,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                )
+              : OutlinedButton.icon(
+                  onPressed: _isSaving ? null : _onSaveToCollectionPressed,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+                        )
+                      : const Icon(Icons.bookmark_add_outlined, color: AppColors.sageTua),
+                  label: Text(
+                    _isSaving ? 'Menghubungkan ke Rantai Kanonis...' : 'Simpan ke Koleksi Kanonis',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.teksGelap,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.sageTua, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
-              );
-            },
-            icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.sageTua),
-            label: const Text(
-              'Simpan ke Koleksi Kanonis (Sesi S7)',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: AppColors.teksGelap,
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.sageTua, width: 1.5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
         ),
         const SizedBox(height: 10),
 
@@ -474,6 +503,152 @@ class ScanResultPage extends StatelessWidget {
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onSaveToCollectionPressed() async {
+    if (_isSaving || _savedCapture != null) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final capture = await CaptureService.instance.saveCapture(
+        scanId: scanResult.scanId,
+        photoPath: scanResult.localPhotoPath,
+        demoSpeciesName: scanResult.name,
+        demoCategory: scanResult.categoryOrSpecies,
+        demoPhotoSha256: scanResult.photoSha256,
+        demoLatitude: scanResult.latitude,
+        demoLongitude: scanResult.longitude,
+        demoHeading: scanResult.cameraHeading,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _savedCapture = capture;
+        _isSaving = false;
+      });
+
+      _showSaveSuccessDialog(capture);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: AppColors.merahStatus,
+        ),
+      );
+    }
+  }
+
+  void _showSaveSuccessDialog(CaptureModel capture) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: AppColors.gading,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: AppColors.sageTua,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Tersimpan di Koleksi!',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.teksGelap,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Spesies "${capture.speciesName}" telah berhasil diverifikasi dan dicatat ke dalam hash-chain kanonis SHA-256.',
+                style: const TextStyle(fontSize: 13, color: AppColors.teksGelap, height: 1.45),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    _buildDialogRow('Nomor Blok', '#${capture.seq}'),
+                    const Divider(height: 12),
+                    _buildDialogRow('Prev Hash', capture.shortPreviousHash),
+                    const Divider(height: 12),
+                    _buildDialogRow('Block Hash', capture.shortBlockHash),
+                    const Divider(height: 12),
+                    _buildDialogRow('Integritas', 'Sah & Tamper-Evident'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.emas,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'Mengerti',
+                style: TextStyle(
+                  color: AppColors.teksGelap,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: AppColors.teksGelap.withValues(alpha: 0.7),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.teksGelap,
           ),
         ),
       ],

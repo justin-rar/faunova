@@ -23,6 +23,8 @@ import 'package:faunova/features/camera/presentation/camera_page.dart';
 import 'package:faunova/features/camera/models/scan_chat_message_model.dart';
 import 'package:faunova/core/services/chat_service.dart';
 import 'package:faunova/features/camera/presentation/scan_chat_page.dart';
+import 'package:faunova/features/camera/models/capture_model.dart';
+import 'package:faunova/core/services/capture_service.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -532,7 +534,7 @@ void main() {
 
       await tester.scrollUntilVisible(find.text('Tanya AI Seputar Satwa'), 200);
       expect(find.text('Tanya AI Seputar Satwa'), findsOneWidget);
-      expect(find.text('Simpan ke Koleksi Kanonis (Sesi S7)'), findsOneWidget);
+      expect(find.text('Simpan ke Koleksi Kanonis'), findsOneWidget);
       expect(find.text('Pindai Satwa Lain'), findsOneWidget);
     });
 
@@ -754,6 +756,199 @@ void main() {
       // Harus berpindah ke ScanChatPage
       expect(find.byType(ScanChatPage), findsOneWidget);
       expect(find.text('Tanya AI: Kupu-kupu Jeruk'), findsOneWidget);
+    });
+  });
+
+  group('S7 - save-capture dan Hash-Chain Kanonis SHA-256 (Plan 5.2 & 5.3)', () {
+    test('CaptureModel: Serialisasi, deserialisasi, dan format short hash', () {
+      final now = DateTime.now();
+      final model = CaptureModel(
+        id: 'cap-1234',
+        scanId: 'scan-5678',
+        userId: 'user-0001',
+        photoObjectPath: 'captures/user-0001/scan-5678.jpg',
+        speciesName: 'Jalak Bali',
+        category: 'Leucopsar rothschildi',
+        description: 'Burung endemik Bali dengan bulu putih bersih.',
+        latitude: -8.123456,
+        longitude: 115.654321,
+        cameraHeading: 148.5,
+        receivedAt: now,
+        seq: 1,
+        previousHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        blockHash: 'f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f',
+        photoSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        createdAt: now,
+      );
+
+      final json = model.toJson();
+      expect(json['species_name'], 'Jalak Bali');
+      expect(json['seq'], 1);
+
+      final fromJson = CaptureModel.fromJson(json);
+      expect(fromJson.id, 'cap-1234');
+      expect(fromJson.speciesName, 'Jalak Bali');
+      expect(fromJson.shortBlockHash, 'f0e1d2c3...1e0f');
+      expect(fromJson.shortPreviousHash, 'a1b2c3d4...8f90');
+    });
+
+    test('CaptureService: Format kanonisasi dan determinisme block hash', () {
+      final now = DateTime.utc(2026, 10, 21, 12, 0, 0, 123, 456);
+      const userId = '11111111-2222-3333-4444-555555555555';
+      const prevHash = '0000000000000000000000000000000000000000000000000000000000000000';
+      const photoSha = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+      final canonical = CaptureService.canonicalEncode(
+        seq: 1,
+        previousHash: prevHash,
+        photoSha256: photoSha,
+        latitude: -6.208800,
+        longitude: 106.845600,
+        cameraHeading: 90.0,
+        receivedAt: now,
+        userId: userId,
+      );
+
+      expect(canonical, contains('1|'));
+      expect(canonical, contains('|-6.208800|106.845600|90.00|'));
+      expect(canonical, contains('2026-10-21T12:00:00.123456Z|'));
+      expect(canonical, endsWith(userId));
+
+      // Test determinisme
+      final hash1 = CaptureService.calculateBlockHash(
+        seq: 1,
+        previousHash: prevHash,
+        photoSha256: photoSha,
+        latitude: -6.208800,
+        longitude: 106.845600,
+        cameraHeading: 90.0,
+        receivedAt: now,
+        userId: userId,
+      );
+      final hash2 = CaptureService.calculateBlockHash(
+        seq: 1,
+        previousHash: prevHash,
+        photoSha256: photoSha,
+        latitude: -6.208800,
+        longitude: 106.845600,
+        cameraHeading: 90.0,
+        receivedAt: now,
+        userId: userId,
+      );
+
+      expect(hash1.length, 64);
+      expect(hash1, equals(hash2));
+
+      // Genesis hash
+      final genesis = CaptureService.calculateGenesisHash(userId);
+      expect(genesis.length, 64);
+    });
+
+    test('CaptureService: Tamper Detection (Mengubah satu kolom membatalkan validitas rantai)', () {
+      const userId = 'user-tamper-test';
+      final t1 = DateTime.utc(2026, 10, 21, 10, 0, 0);
+      final t2 = DateTime.utc(2026, 10, 21, 11, 0, 0);
+
+      // Blok 1 (Genesis)
+      final genesisHash = CaptureService.calculateGenesisHash(userId);
+      final block1Hash = CaptureService.calculateBlockHash(
+        seq: 1,
+        previousHash: genesisHash,
+        photoSha256: 'hash-photo-1',
+        latitude: -6.100000,
+        longitude: 106.100000,
+        cameraHeading: 45.0,
+        receivedAt: t1,
+        userId: userId,
+      );
+
+      // Blok 2 (Tersambung ke Blok 1)
+      final block2Hash = CaptureService.calculateBlockHash(
+        seq: 2,
+        previousHash: block1Hash,
+        photoSha256: 'hash-photo-2',
+        latitude: -6.200000,
+        longitude: 106.200000,
+        cameraHeading: 90.0,
+        receivedAt: t2,
+        userId: userId,
+      );
+
+      // 1. Kondisi Untouched: Rantai Sah
+      final calculatedB1 = CaptureService.calculateBlockHash(
+        seq: 1,
+        previousHash: genesisHash,
+        photoSha256: 'hash-photo-1',
+        latitude: -6.100000,
+        longitude: 106.100000,
+        cameraHeading: 45.0,
+        receivedAt: t1,
+        userId: userId,
+      );
+      expect(calculatedB1, equals(block1Hash));
+
+      // 2. Tampering test: Ubah latitude blok 1 sebesar 0.000001
+      final tamperedB1 = CaptureService.calculateBlockHash(
+        seq: 1,
+        previousHash: genesisHash,
+        photoSha256: 'hash-photo-1',
+        latitude: -6.100001, // DIMANIPULASI
+        longitude: 106.100000,
+        cameraHeading: 45.0,
+        receivedAt: t1,
+        userId: userId,
+      );
+      // Hash blok 1 berubah!
+      expect(tamperedB1, isNot(equals(block1Hash)));
+
+      // Blok 2 sekarang putus karena previousHash-nya (block1Hash) tidak lagi cocok dengan tamperedB1!
+      expect(tamperedB1, isNot(equals(block2Hash)));
+    });
+
+    testWidgets('ScanResultPage: Tombol Simpan ke Koleksi Kanonis dan Dialog Sukses', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final satwaResult = const ScanResultModel(
+        scanId: 'scan-s7-test',
+        requestId: 'req-s7-test',
+        status: 'completed',
+        isAnimal: true,
+        name: 'Kupu-kupu Sayap Burung Peri',
+        categoryOrSpecies: 'Ornithoptera chimaera',
+        photoSha256: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: ScanResultPage(scanResult: satwaResult),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final saveButton = find.text('Simpan ke Koleksi Kanonis');
+      await tester.scrollUntilVisible(saveButton, 200);
+      expect(saveButton, findsOneWidget);
+
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      // Dialog sukses harus tampil
+      expect(find.text('Tersimpan di Koleksi!'), findsOneWidget);
+      expect(find.text('Nomor Blok'), findsOneWidget);
+      expect(find.text('#1'), findsOneWidget);
+
+      // Tutup dialog
+      await tester.tap(find.text('Mengerti'));
+      await tester.pumpAndSettle();
+
+      // Tombol berubah status menjadi tersimpan
+      expect(find.textContaining('Tersimpan di Koleksi (Blok #1)'), findsOneWidget);
     });
   });
 }

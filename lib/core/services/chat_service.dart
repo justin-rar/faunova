@@ -148,6 +148,15 @@ class ChatService {
           'apikey': AppConfig.supabaseAnonKey,
         },
         body: jsonEncode(payload),
+      ).timeout(
+        const Duration(seconds: 25),
+        onTimeout: () {
+          throw const ChatException(
+            'Asisten AI membutuhkan waktu terlalu lama. Silakan coba kirim kembali.',
+            code: 'TIMEOUT',
+            statusCode: 504,
+          );
+        },
       );
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);

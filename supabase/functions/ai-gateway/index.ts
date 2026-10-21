@@ -268,14 +268,32 @@ serve(async (req: Request) => {
         generationConfig: {
           response_mime_type: "application/json",
           temperature: 0.2,
+          thinkingConfig: {
+            thinkingLevel: "low",
+          },
         },
       };
 
-      const geminiResp = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiPayload),
-      });
+      let geminiResp: Response;
+      try {
+        geminiResp = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(geminiPayload),
+          signal: AbortSignal.timeout(20000),
+        });
+      } catch (fetchErr: any) {
+        return new Response(
+          JSON.stringify({
+            error: "TIMEOUT_ERROR",
+            message: "Layanan identifikasi AI memakan waktu terlalu lama. Silakan coba bidik kembali.",
+          }),
+          {
+            status: 504,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
 
       if (!geminiResp.ok) {
         const errorText = await geminiResp.text();
@@ -578,17 +596,35 @@ serve(async (req: Request) => {
       });
 
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiApiKey}`;
-      const geminiResp = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: geminiContents,
-          generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 350,
-          },
-        }),
-      });
+      let geminiResp: Response;
+      try {
+        geminiResp = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: geminiContents,
+            generationConfig: {
+              temperature: 0.6,
+              maxOutputTokens: 350,
+              thinkingConfig: {
+                thinkingLevel: "low",
+              },
+            },
+          }),
+          signal: AbortSignal.timeout(15000),
+        });
+      } catch (fetchErr: any) {
+        return new Response(
+          JSON.stringify({
+            error: "TIMEOUT_ERROR",
+            message: "Asisten AI memakan waktu terlalu lama. Silakan coba kirim kembali.",
+          }),
+          {
+            status: 504,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
 
       if (!geminiResp.ok) {
         return new Response(

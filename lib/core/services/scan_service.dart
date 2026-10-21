@@ -88,6 +88,15 @@ class ScanService {
           'apikey': AppConfig.supabaseAnonKey,
         },
         body: jsonEncode(payload),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw const ScanException(
+            'Identifikasi AI membutuhkan waktu lebih dari 30 detik. Silakan coba bidik kembali.',
+            code: 'TIMEOUT',
+            statusCode: 504,
+          );
+        },
       );
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);
