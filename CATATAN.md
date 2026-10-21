@@ -1001,10 +1001,60 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
   `https://<project-ref>.supabase.co/functions/v1/midtrans-webhook`
 
 ### 3. Langkah Berikutnya (Sesi S20)
-- **Sesi S20 (Centang Biru: verified_until, ikon, kuota chat 10, prioritas pencarian)**:
-  - Validasi reaktif `verified_until` di seluruh antarmuka (ikon centang biru di avatar pengguna, postingan feed, profil publik, dan kolom pencarian).
-  - Peningkatan batas kuota tanya-jawab AI menjadi 10 pesan untuk pemilik centang biru aktif.
-  - Prioritas algoritma pemeringkatan hasil pencarian kolektor teratas untuk akun centang biru.
+- Dilanjutkan dan diselesaikan pada Sesi S20 di bawah.
+
+---
+
+## Sesi S20 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Migrasi Database Skema & RPC Prioritas (`supabase/migrations/012_verified_chat_and_search_priority.sql`)**:
+  - **Pembaruan RPC `get_public_profile(p_target_user_id)` (`SECURITY DEFINER`)**:
+    - Mengembalikan `verified_until` (TIMESTAMPTZ) dan komputasi dinamis status aktif `(verified_until IS NOT NULL AND verified_until > timezone('utc', now())) AS is_verified`.
+    - Menghilangkan ketergantungan status statis; kedaluwarsa Centang Biru terhitung otomatis saat data dibaca (Plan 120).
+  - **Pembaruan RPC `reserve_chat_quota(p_scan_id, p_user_id, p_limit)` (Aturan Keras 2 & Plan 125, 150)**:
+    - Membaca status `verified_until` pengguna langsung dari tabel `profiles` di database server.
+    - Menetapkan batas kuota efektif otomatis: 10 pertanyaan per scan jika Centang Biru aktif, atau 5 pertanyaan jika reguler/kedaluwarsa.
+    - Mencegah manipulasi kuota dari klien Flutter; kunci baris atomik bersyarat Postgres menjamin dua request paralel tidak dapat menembus batas kuota.
+  - **Pembaruan RPC `search_accounts(p_query, p_limit)` (Plan 5.4: 126)**:
+    - Menetapkan urutan kueri resmi:
+      `ORDER BY (p.verified_until IS NOT NULL AND p.verified_until > v_now) DESC, p.streak_count DESC, p.display_name ASC`
+    - Memastikan akun berstatus Centang Biru aktif selalu diprioritaskan di barisan teratas hasil pencarian kolektor.
+- **Model & Layanan Flutter (`PublicProfileModel`, `ChatService`, `SearchService`, `ProfileService`)**:
+  - `PublicProfileModel` (`lib/features/profile/models/public_profile_model.dart`):
+    - Penambahan properti `verifiedUntil` (DateTime?) dan getter cerdas `isVerifiedActive`.
+    - Helper `verifiedRemainingDays` untuk menghitung sisa hari langganan.
+    - Parsing `fromJson` otomatis mengevaluasi kedaluwarsa timestamp `verified_until.isAfter(DateTime.now())`.
+  - `ChatService` (`lib/core/services/chat_service.dart`):
+    - Getter `isUserVerified` terhubung dengan pengaturan terenkripsi dan mock testing.
+    - Logika `_generateDemoChatReply` otomatis memberikan limit kuota 10 pertanyaan bagi pengguna Centang Biru aktif dan 5 pertanyaan bagi pengguna reguler.
+    - Penanganan terstruktur `ChatQuotaExceededException` dengan batas kuota 10.
+  - `SearchService` (`lib/core/services/search_service.dart`):
+    - Pengurutan deterministik hasil pencarian: akun dengan `isVerifiedActive == true` diposisikan di urutan teratas baik pada mode RPC database online maupun simulasi demo/luring.
+- **Antarmuka Pengguna (UI)**:
+  - **Ikon Centang Biru Resmi (`Icons.verified_rounded`) di Seluruh Antarmuka (Plan 124)**:
+    - Tampil di header Hero Profil Kolektor (`ProfilePage`) di samping nama tampilan.
+    - Tampil di Kartu Postingan Linimasa Komunitas (`PostCard`) di samping nama penulis.
+    - Tampil di Layar Profil Publik (`PublicProfilePage`) di samping nama kolektor.
+    - Tampil di Kartu Hasil Pencarian Akun (`SearchPage`) di samping nama pengguna beserta highlight border biru.
+  - **Peningkatan Batas Kuota Tanya-Jawab AI (`ScanChatPage`)**:
+    - Counter kuota di header kaca secara dinamis menampilkan `10/10 Sisa` bagi pemegang Centang Biru aktif, dan `5/5 Sisa` bagi pengguna reguler.
+    - Ketika kuota reguler (5 pertanyaan) telah habis, bilah input menampilkan tombol aksi "Upgrade 10x" dengan ikon centang biru yang langsung membuka modal `UpgradeBlueCheckSheet`.
+  - **Kartu Langganan Profil (`ProfilePage`)**:
+    - Menampilkan status reaktif `Centang Biru Aktif` beserta tanggal akhir masa berlaku (`Aktif s/d DD MMM YYYY • Midtrans`) dan tombol "Perpanjang".
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint maupun warning.
+  - `flutter test`: **97 dari 97 tes unit & widget lulus 100%** (termasuk 5 pengujian komprehensif baru untuk S20: evaluasi `verified_until` & sisa hari, kuota 10 pertanyaan di `ChatService`, prioritas pencarian akun di `SearchService`, badge centang biru di `ProfilePage`, dan kuota 10x di `ScanChatPage`).
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 012 di Supabase Dashboard**: Berkas `supabase/migrations/012_verified_chat_and_search_priority.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk memperbarui fungsi `get_public_profile`, `reserve_chat_quota`, dan `search_accounts`.
+
+### 3. Langkah Berikutnya (Sesi S21)
+- **Sesi S21 (Saran & Kesan, menu pojok, Setting, rapikan state loading/error/empty)**:
+  - Halaman Saran & Kesan Kuliah PAM (sesuai instruksi tugas kuliah).
+  - Menu titik tiga di header seluruh halaman (Profil, Cari, Game, Kamera, Beranda).
+  - Halaman / dialog Pengaturan (Pengaturan Akun, Kebijakan Privasi, Info Aplikasi Faunova).
+  - Audit dan perapian seluruh tampilan state `loading`, `error`, `empty`, dan `offline` (Aturan Keras AGENTS.md: tidak ada layar yang kosong tanpa penjelasan).
 
 
 

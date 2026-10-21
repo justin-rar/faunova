@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/services/chat_service.dart';
+import '../../profile/presentation/widgets/upgrade_blue_check_sheet.dart';
 import '../models/scan_chat_message_model.dart';
 import '../models/scan_result_model.dart';
 
@@ -61,6 +62,12 @@ class _ScanChatPageState extends State<ScanChatPage> {
     });
 
     try {
+      if (mounted) {
+        setState(() {
+          _chatLimit = _chatService.isUserVerified ? 10 : 5;
+        });
+      }
+
       final history = await _chatService.fetchChatHistory(widget.scanResult.scanId);
       if (mounted) {
         setState(() {
@@ -666,6 +673,25 @@ class _ScanChatPageState extends State<ScanChatPage> {
                 ),
               ),
             ),
+            if (_chatLimit == 5) ...[
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () {
+                  UpgradeBlueCheckSheet.show(
+                    context,
+                    onSubscriptionUpdated: () => _loadHistory(),
+                  );
+                },
+                icon: const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF64B5F6)),
+                label: const Text('Upgrade 10x', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.sageTua,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: const Size(0, 32),
+                ),
+              ),
+            ],
           ],
         ),
       );

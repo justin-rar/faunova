@@ -287,7 +287,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (p.isVerified) ...[
+              if (p.isVerifiedActive) ...[
                 const SizedBox(width: 6),
                 const Icon(
                   Icons.verified_rounded,

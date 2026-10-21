@@ -426,7 +426,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     final bioText = _myProfile?.bio.isNotEmpty == true
         ? _myProfile!.bio
         : 'Penjelajah biodiversitas Indonesia Timur. Mengarsipkan reptilia dan aves endemik ke dalam buku besar terenkripsi.';
-    final isVerified = _myProfile?.isVerified ?? true;
+    final isVerified = _myProfile?.isVerifiedActive ?? false;
     final initialLetter = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A';
 
     return Container(
@@ -541,7 +541,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   Widget _buildVerifiedSubscriptionCard() {
-    final isVerified = _myProfile?.isVerified ?? false;
+    final isVerified = _myProfile?.isVerifiedActive ?? false;
     final verifiedUntil = _myProfile?.verifiedUntil;
 
     return InkWell(

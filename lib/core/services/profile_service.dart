@@ -65,6 +65,16 @@ class ProfileService {
     );
   }
 
+  @visibleForTesting
+  void setMockProfile(PublicProfileModel profile) {
+    _myDemoProfile = profile;
+  }
+
+  @visibleForTesting
+  void resetDemoProfile() {
+    initMockDemoMyProfile();
+  }
+
   /// Mengambil data profil pengguna yang sedang masuk
   Future<PublicProfileModel> getMyProfile() async {
     final client = _getSupabaseClient();

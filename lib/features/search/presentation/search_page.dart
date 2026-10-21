@@ -308,7 +308,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: account.isVerified
+          color: account.isVerifiedActive
               ? const Color(0xFF1E88E5).withValues(alpha: 0.35)
               : AppColors.sage.withValues(alpha: 0.25),
         ),
@@ -342,7 +342,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: account.isVerified ? AppColors.sageTua : AppColors.sage,
+                  backgroundColor: account.isVerifiedActive ? AppColors.sageTua : AppColors.sage,
                   child: Text(
                     account.displayName.isNotEmpty ? account.displayName[0].toUpperCase() : 'U',
                     style: const TextStyle(
@@ -370,7 +370,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (account.isVerified) ...[
+                          if (account.isVerifiedActive) ...[
                             const SizedBox(width: 5),
                             const Icon(
                               Icons.verified_rounded,

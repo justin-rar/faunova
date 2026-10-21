@@ -58,9 +58,8 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
     DateTime? verifiedExpiry;
     try {
       final myProfile = await ProfileService.instance.getMyProfile();
-      if (myProfile.isVerified) {
-        // Mock atau baca masa aktif
-        verifiedExpiry = DateTime.now().add(const Duration(days: 28));
+      if (myProfile.isVerifiedActive) {
+        verifiedExpiry = myProfile.verifiedUntil ?? DateTime.now().add(const Duration(days: 28));
       }
     } catch (_) {}
 

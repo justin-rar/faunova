@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../config/app_config.dart';
+import 'encrypted_storage_service.dart';
 import '../../features/camera/models/scan_chat_message_model.dart';
 import '../../features/camera/models/scan_result_model.dart';
 
@@ -58,6 +59,22 @@ class ChatService {
   // Cache lokal demo percakapan per scanId
   final Map<String, List<ScanChatMessageModel>> _demoChats = {};
   final Map<String, int> _demoChatCounts = {};
+
+  bool? _mockIsVerified;
+
+  @visibleForTesting
+  void setMockVerified(bool? verified) {
+    _mockIsVerified = verified;
+  }
+
+  bool get isUserVerified {
+    if (_mockIsVerified != null) return _mockIsVerified!;
+    try {
+      final demoSetting = EncryptedStorageService.instance.getSetting('demo_verified_active');
+      if (demoSetting == true) return true;
+    } catch (_) {}
+    return false;
+  }
 
   /// Mengambil riwayat percakapan untuk sebuah scan satwa
   Future<List<ScanChatMessageModel>> fetchChatHistory(String scanId) async {
@@ -207,13 +224,16 @@ class ChatService {
     ScanResultModel? scanContext,
   }) {
     final currentCount = _demoChatCounts[scanId] ?? 0;
-    const limit = 5;
+    final isVerified = isUserVerified;
+    final limit = isVerified ? 10 : 5;
 
     if (currentCount >= limit) {
-      throw const ChatQuotaExceededException(
-        'Batas 5 pertanyaan demo untuk scan ini telah tercapai. Aktifkan Centang Biru untuk 10 pertanyaan.',
-        chatCount: 5,
-        chatLimit: 5,
+      throw ChatQuotaExceededException(
+        isVerified
+            ? 'Batas 10 pertanyaan (Centang Biru) untuk scan ini telah tercapai.'
+            : 'Batas 5 pertanyaan demo untuk scan ini telah tercapai. Aktifkan Centang Biru untuk 10 pertanyaan.',
+        chatCount: currentCount,
+        chatLimit: limit,
       );
     }
 
@@ -266,5 +286,6 @@ class ChatService {
   void resetDemoState() {
     _demoChats.clear();
     _demoChatCounts.clear();
+    _mockIsVerified = null;
   }
 }

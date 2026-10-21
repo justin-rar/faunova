@@ -2805,6 +2805,189 @@ void main() {
       expect(find.text('Buka WebView Snap'), findsOneWidget);
     });
   });
+
+  group('S20 - Centang Biru: verified_until, Ikon, Kuota Chat 10, dan Prioritas Pencarian (Plan 5.4)', () {
+    test('PublicProfileModel: Evaluasi verified_until, isVerifiedActive, dan sisa hari masa aktif (Plan 120)', () {
+      // 1. Akun dengan verified_until di masa depan (> now) => isVerifiedActive == true
+      final futureDate = DateTime.now().add(const Duration(days: 25));
+      final profileActive = PublicProfileModel.fromJson({
+        'id': 'user-active',
+        'username': 'kolektor_pro',
+        'display_name': 'Kolektor Pro',
+        'bio': 'Pengamat satwa terverifikasi',
+        'is_verified': true,
+        'verified_until': futureDate.toIso8601String(),
+        'streak_count': 10,
+        'best_quiz_score': 90,
+        'captures_count': 5,
+        'posts_count': 2,
+        'followers_count': 20,
+        'following_count': 10,
+      });
+
+      expect(profileActive.isVerifiedActive, isTrue);
+      expect(profileActive.isVerified, isTrue);
+      expect(profileActive.verifiedRemainingDays, greaterThanOrEqualTo(24));
+
+      // 2. Akun dengan verified_until di masa lalu (< now) => otomatis kedaluwarsa (isVerifiedActive == false)
+      final pastDate = DateTime.now().subtract(const Duration(days: 2));
+      final profileExpired = PublicProfileModel.fromJson({
+        'id': 'user-expired',
+        'username': 'kolektor_expired',
+        'display_name': 'Kolektor Expired',
+        'bio': 'Langganan telah berakhir',
+        'is_verified': true, // Raw DB boolean true, tapi timestamp sudah lewat!
+        'verified_until': pastDate.toIso8601String(),
+        'streak_count': 10,
+        'best_quiz_score': 90,
+        'captures_count': 5,
+        'posts_count': 2,
+        'followers_count': 20,
+        'following_count': 10,
+      });
+
+      expect(profileExpired.isVerifiedActive, isFalse);
+      expect(profileExpired.isVerified, isFalse);
+      expect(profileExpired.verifiedRemainingDays, equals(0));
+    });
+
+    test('ChatService: Kuota tanya-jawab AI otomatis 10 pertanyaan untuk Centang Biru aktif (Plan 125, 150)', () async {
+      final chatService = ChatService.instance;
+      chatService.resetDemoState();
+
+      // Aktifkan Centang Biru
+      chatService.setMockVerified(true);
+      expect(chatService.isUserVerified, isTrue);
+
+      const scanId = 'scan-verified-test';
+      const sampleResult = ScanResultModel(
+        scanId: scanId,
+        requestId: 'req-v-test',
+        status: 'completed',
+        isAnimal: true,
+        name: 'Jalak Bali',
+        categoryOrSpecies: 'Leucopsar rothschildi',
+      );
+
+      // Lakukan 10 pertanyaan (harus diizinkan)
+      for (int i = 1; i <= 10; i++) {
+        final res = await chatService.sendMessage(
+          scanId: scanId,
+          message: 'Pertanyaan $i seputar makanan satwa',
+          scanContext: sampleResult,
+        );
+        expect(res.chatCount, equals(i));
+        expect(res.chatLimit, equals(10));
+        expect(res.remaining, equals(10 - i));
+      }
+
+      // Pertanyaan ke-11 harus menolak dengan ChatQuotaExceededException kuota 10
+      expect(
+        () => chatService.sendMessage(
+          scanId: scanId,
+          message: 'Pertanyaan ke-11 yang melebihi batas',
+          scanContext: sampleResult,
+        ),
+        throwsA(isA<ChatQuotaExceededException>().having((e) => e.chatLimit, 'chatLimit', 10)),
+      );
+
+      chatService.resetDemoState();
+    });
+
+    test('SearchService: Akun Centang Biru diprioritaskan di barisan teratas (Plan 126)', () async {
+      final accounts = await SearchService.instance.searchAccounts('');
+      expect(accounts.isNotEmpty, isTrue);
+
+      // Verifikasi urutan: semua akun dengan isVerifiedActive = true harus muncul SEBELUM akun tanpa centang
+      bool reachedUnverified = false;
+      for (final acc in accounts) {
+        if (!acc.isVerifiedActive) {
+          reachedUnverified = true;
+        } else if (reachedUnverified) {
+          fail('Akun centang biru aktif ${acc.displayName} muncul setelah akun non-centang!');
+        }
+      }
+    });
+
+    testWidgets('ProfilePage: Menampilkan badge centang biru dan status langganan aktif saat terverifikasi', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final verifiedProfile = PublicProfileModel(
+        id: 'my-verified-profile',
+        username: 'arya_wallacea',
+        displayName: 'Arya Wicaksana',
+        bio: 'Penjelajah biodiversitas Indonesia Timur.',
+        isVerified: true,
+        verifiedUntil: DateTime.now().add(const Duration(days: 28)),
+        streakCount: 20,
+        bestQuizScore: 98,
+        capturesCount: 8,
+        postsCount: 3,
+        followersCount: 300,
+        followingCount: 45,
+        isFollowedByMe: false,
+        isMyProfile: true,
+      );
+
+      ProfileService.instance.setMockProfile(verifiedProfile);
+      addTearDown(() {
+        ProfileService.instance.resetDemoProfile();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const ProfilePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Ikon centang biru harus muncul di profil
+      expect(find.byIcon(Icons.verified_rounded), findsWidgets);
+      expect(find.text('Centang Biru Aktif'), findsOneWidget);
+      expect(find.text('Perpanjang'), findsOneWidget);
+    });
+
+    testWidgets('ScanChatPage: Menampilkan kuota 10 untuk akun Centang Biru', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      ChatService.instance.resetDemoState();
+      ChatService.instance.setMockVerified(true);
+      addTearDown(() {
+        ChatService.instance.resetDemoState();
+      });
+
+      const sampleSatwa = ScanResultModel(
+        scanId: 'scan-chat-verified-ui',
+        requestId: 'req-verified-ui',
+        status: 'completed',
+        isAnimal: true,
+        name: 'Komodo',
+        categoryOrSpecies: 'Varanus komodoensis',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const ScanChatPage(scanResult: sampleSatwa),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Kuota awal untuk Centang Biru adalah 10/10 Sisa
+      expect(find.text('10/10 Sisa'), findsOneWidget);
+    });
+  });
 }
 
 

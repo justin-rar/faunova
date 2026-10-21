@@ -240,8 +240,8 @@ class SearchService {
 
       // Urutkan: Centang Biru di urutan paling atas!
       results.sort((a, b) {
-        if (a.isVerified && !b.isVerified) return -1;
-        if (!a.isVerified && b.isVerified) return 1;
+        if (a.isVerifiedActive && !b.isVerifiedActive) return -1;
+        if (!a.isVerifiedActive && b.isVerifiedActive) return 1;
         return a.displayName.compareTo(b.displayName);
       });
 

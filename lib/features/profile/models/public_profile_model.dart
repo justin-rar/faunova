@@ -35,15 +35,32 @@ class PublicProfileModel {
     required this.isMyProfile,
   });
 
+  bool get isVerifiedActive =>
+      verifiedUntil != null ? verifiedUntil!.isAfter(DateTime.now()) : isVerified;
+
+  int get verifiedRemainingDays {
+    if (verifiedUntil == null) return 0;
+    final diff = verifiedUntil!.difference(DateTime.now()).inDays;
+    return diff < 0 ? 0 : diff;
+  }
+
   factory PublicProfileModel.fromJson(Map<String, dynamic> json) {
+    final verifiedUntilParsed = json['verified_until'] != null
+        ? DateTime.tryParse(json['verified_until'].toString())
+        : null;
+    final bool rawVerified = json['is_verified'] == true;
+    final bool effectiveVerified = verifiedUntilParsed != null
+        ? verifiedUntilParsed.isAfter(DateTime.now())
+        : rawVerified;
+
     return PublicProfileModel(
       id: json['id'] as String? ?? '',
       username: json['username'] as String? ?? 'kolektor',
       displayName: json['display_name'] as String? ?? json['full_name'] as String? ?? 'Penjelajah Satwa',
       avatarPath: json['avatar_path'] as String? ?? json['avatar_url'] as String?,
       bio: json['bio'] as String? ?? '',
-      isVerified: json['is_verified'] == true,
-      verifiedUntil: json['verified_until'] != null ? DateTime.tryParse(json['verified_until'].toString()) : null,
+      isVerified: effectiveVerified,
+      verifiedUntil: verifiedUntilParsed,
       streakCount: (json['streak_count'] as num?)?.toInt() ?? 0,
       bestQuizScore: (json['best_quiz_score'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
