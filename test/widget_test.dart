@@ -25,6 +25,10 @@ import 'package:faunova/core/services/chat_service.dart';
 import 'package:faunova/features/camera/presentation/scan_chat_page.dart';
 import 'package:faunova/features/camera/models/capture_model.dart';
 import 'package:faunova/core/services/capture_service.dart';
+import 'package:faunova/features/profile/presentation/profile_page.dart';
+import 'package:faunova/features/profile/presentation/capture_detail_page.dart';
+import 'package:faunova/features/profile/presentation/widgets/collection_grid_view.dart';
+import 'package:faunova/features/profile/presentation/widgets/collection_map_view.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -906,6 +910,7 @@ void main() {
     });
 
     testWidgets('ScanResultPage: Tombol Simpan ke Koleksi Kanonis dan Dialog Sukses', (tester) async {
+      CaptureService.instance.resetDemoCaptures();
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() {
@@ -949,6 +954,195 @@ void main() {
 
       // Tombol berubah status menjadi tersimpan
       expect(find.textContaining('Tersimpan di Koleksi (Blok #1)'), findsOneWidget);
+    });
+  });
+
+  group('S8 - Koleksi Grid, Detail, Peta OpenStreetMap, dan Verifikasi Rantai (Plan 5.2, 5.7)', () {
+    setUp(() {
+      CaptureService.instance.initMockDemoCaptures();
+    });
+
+    test('CaptureService: fetchUserCaptures memuat koleksi satwa terurut terbalik (seq terbaru)', () async {
+      final captures = await CaptureService.instance.fetchUserCaptures();
+      expect(captures.isNotEmpty, isTrue);
+      expect(captures.length, greaterThanOrEqualTo(3));
+
+      // Urutan seq harus menurun (terbaru dahulu)
+      expect(captures.first.seq, greaterThan(captures.last.seq));
+
+      // Verifikasi integritas format kolom setiap capture
+      for (final cap in captures) {
+        expect(cap.seq, greaterThan(0));
+        expect(cap.speciesName.isNotEmpty, isTrue);
+        expect(cap.blockHash.length, equals(64));
+        expect(cap.previousHash.length, equals(64));
+        expect(cap.photoSha256.length, equals(64));
+      }
+    });
+
+    test('CaptureService: verifyUserChain memvalidasi keutuhan seluruh rantai blok', () async {
+      final result = await CaptureService.instance.verifyUserChain();
+      expect(result.isValid, isTrue);
+      expect(result.totalBlocks, greaterThanOrEqualTo(3));
+      expect(result.brokenSeq, isNull);
+      expect(result.message, contains('terverifikasi'));
+    });
+
+    testWidgets('CollectionGridView: Menampilkan kartu koleksi dengan badge #seq dan taksonomi satwa', (tester) async {
+      final dummyCaptures = await CaptureService.instance.fetchUserCaptures();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CollectionGridView(captures: dummyCaptures),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Memastikan kartu satwa dan nomor blok tampil
+      expect(find.text('#3'), findsOneWidget);
+      expect(find.text('#2'), findsOneWidget);
+      expect(find.text('#1'), findsOneWidget);
+      expect(find.text('Kupu-kupu Jeruk'), findsOneWidget);
+      expect(find.text('Jalak Bali'), findsOneWidget);
+
+      // Uji empty state saat koleksi kosong
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: CollectionGridView(captures: []),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Koleksi Masih Kosong'), findsOneWidget);
+      expect(find.textContaining('Anda belum memiliki tangkapan satwa'), findsOneWidget);
+    });
+
+    testWidgets('CaptureDetailPage: Menampilkan detail satwa, format kanonis, metadata sensor, dan verifikasi blok', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final captures = await CaptureService.instance.fetchUserCaptures();
+      final targetCapture = captures.firstWhere((c) => c.seq == 1);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: CaptureDetailPage(capture: targetCapture),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Header dan judul blok
+      expect(find.text('Blok Koleksi #1'), findsOneWidget);
+      expect(find.text('Jalak Bali'), findsOneWidget);
+      expect(find.text('Leucopsar rothschildi'), findsOneWidget);
+
+      // Panel Audit Hash Kanonis
+      expect(find.textContaining('Audit Rantai Kriptografis'), findsOneWidget);
+      expect(find.textContaining('Block Hash'), findsOneWidget);
+      expect(find.textContaining('Previous Hash'), findsOneWidget);
+      expect(find.textContaining('SHA-256 Byte Citra Asli'), findsOneWidget);
+
+      // Metadata Sensor & Lapangan
+      expect(find.textContaining('Metadata Sensor'), findsOneWidget);
+      expect(find.textContaining('Tenggara'), findsOneWidget);
+
+      // Uji tombol audit blok
+      final verifyButton = find.textContaining('verify_block');
+      await tester.ensureVisible(verifyButton);
+      expect(verifyButton, findsOneWidget);
+
+      await tester.tap(verifyButton);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('terverifikasi'), findsOneWidget);
+    });
+
+    testWidgets('CollectionMapView: Menampilkan peta OpenStreetMap dengan pin dan ringkasan lokasi', (tester) async {
+      final captures = await CaptureService.instance.fetchUserCaptures();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CollectionMapView(captures: captures, height: 350),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Badge total lokasi
+      expect(find.textContaining('Lokasi Terpetakan'), findsOneWidget);
+      expect(find.byIcon(Icons.add_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.remove_rounded), findsOneWidget);
+    });
+
+    testWidgets('ProfilePage: Sub-tab Koleksi & Peta serta Dialog Audit Verifikasi Rantai', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const ProfilePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Pindah ke sub-tab 'Koleksi & Peta'
+      final collectionTab = find.text('Koleksi & Peta');
+      await tester.ensureVisible(collectionTab);
+      expect(collectionTab, findsOneWidget);
+      await tester.tap(collectionTab);
+      await tester.pumpAndSettle();
+
+      // Banner Integritas Buku Besar harus tampil
+      expect(find.text('Integritas Buku Besar (Simple Blockchain)'), findsOneWidget);
+
+      // Tombol Verifikasi Rantai
+      final verifyChainButton = find.text('Verifikasi Rantai (verify_chain)');
+      await tester.ensureVisible(verifyChainButton);
+      expect(verifyChainButton, findsOneWidget);
+
+      // Tekan tombol verifikasi rantai
+      await tester.tap(verifyChainButton);
+      await tester.pumpAndSettle();
+
+      // Dialog Audit Verifikasi Rantai harus muncul
+      expect(find.text('Rantai Integritas Sah'), findsOneWidget);
+      expect(find.text('VALID (100% Cocok)'), findsOneWidget);
+      expect(find.textContaining('Blok Koleksi'), findsOneWidget);
+
+      // Tutup dialog
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
+
+      // Mode Switcher Peta
+      final mapToggle = find.textContaining('Peta (');
+      await tester.ensureVisible(mapToggle);
+      expect(mapToggle, findsOneWidget);
+      await tester.tap(mapToggle);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Lokasi Terpetakan'), findsOneWidget);
     });
   });
 }

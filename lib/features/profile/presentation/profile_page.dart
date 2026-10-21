@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/capture_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import '../../camera/models/capture_model.dart';
+import '../../camera/models/chain_verification_result.dart';
+import 'widgets/collection_grid_view.dart';
+import 'widgets/collection_map_view.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,10 +20,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TabController _tabController;
   AppViewStatus _currentStatus = AppViewStatus.content;
 
+  List<CaptureModel> _captures = [];
+  bool _isLoadingCaptures = false;
+  String? _capturesError;
+  int _collectionMode = 0; // 0: Grid Koleksi, 1: Peta Persebaran
+  bool _isVerifyingChain = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+    _loadCaptures();
   }
 
   @override
@@ -340,13 +357,13 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           const SizedBox(height: 16),
           const Divider(height: 1, color: AppColors.sage),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _MetricItem(label: 'Postingan', value: '14'),
-              _MetricItem(label: 'Pengikut', value: '218'),
-              _MetricItem(label: 'Mengikuti', value: '64'),
-              _MetricItem(label: 'Badge Sah', value: '4/8'),
+              _MetricItem(label: 'Koleksi', value: '${_captures.length}'),
+              const _MetricItem(label: 'Postingan', value: '0'),
+              const _MetricItem(label: 'Pengikut', value: '218'),
+              const _MetricItem(label: 'Badge Sah', value: '4/8'),
             ],
           ),
         ],
@@ -419,12 +436,14 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Lencana Gelar Pencapaian (MVP)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13.5,
-                  color: AppColors.teksGelap,
+              Expanded(
+                child: Text(
+                  'Lencana Gelar Pencapaian (MVP)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: AppColors.teksGelap,
+                  ),
                 ),
               ),
               Text(
@@ -439,13 +458,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           ),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBadgeItem(Icons.forest_rounded, 'Penjelajah', true),
-              _buildBadgeItem(Icons.visibility_rounded, 'Mata Elang', true),
-              _buildBadgeItem(Icons.auto_stories_rounded, 'Taksonomis', true),
-              _buildBadgeItem(Icons.link_rounded, 'Penjaga Rantai', true),
-              _buildBadgeItem(Icons.lock_outline_rounded, 'Terkunci', false),
+              Expanded(child: _buildBadgeItem(Icons.forest_rounded, 'Penjelajah', true)),
+              Expanded(child: _buildBadgeItem(Icons.visibility_rounded, 'Mata Elang', true)),
+              Expanded(child: _buildBadgeItem(Icons.auto_stories_rounded, 'Taksonomis', true)),
+              Expanded(child: _buildBadgeItem(Icons.link_rounded, 'Penjaga Rantai', true)),
+              Expanded(child: _buildBadgeItem(Icons.lock_outline_rounded, 'Terkunci', false)),
             ],
           ),
         ],
@@ -455,6 +473,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   Widget _buildBadgeItem(IconData icon, String label, bool isUnlocked) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 44,
@@ -481,8 +500,231 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             fontWeight: isUnlocked ? FontWeight.w700 : FontWeight.w500,
             color: isUnlocked ? AppColors.teksGelap : AppColors.sage,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Future<void> _loadCaptures() async {
+    setState(() {
+      _isLoadingCaptures = true;
+      _capturesError = null;
+    });
+
+    try {
+      final list = await CaptureService.instance.fetchUserCaptures();
+      if (mounted) {
+        setState(() {
+          _captures = list;
+          _isLoadingCaptures = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _capturesError = e.toString();
+          _isLoadingCaptures = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyChain() async {
+    setState(() {
+      _isVerifyingChain = true;
+    });
+
+    // Dialog progress audit
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: AppColors.gading,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                CircularProgressIndicator(color: AppColors.sageTua),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Mengaudit seluruh rantai blok SHA-256...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.teksGelap,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final result = await CaptureService.instance.verifyUserChain();
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() {
+          _isVerifyingChain = false;
+        });
+        _showChainVerificationDialog(result);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() {
+          _isVerifyingChain = false;
+        });
+        _showChainVerificationDialog(
+          ChainVerificationResult(
+            isValid: false,
+            totalBlocks: _captures.length,
+            message: 'Gagal menjalankan audit rantai: $e',
+          ),
+        );
+      }
+    }
+  }
+
+  void _showChainVerificationDialog(ChainVerificationResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.gading,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (result.isValid ? AppColors.sageTua : AppColors.merahStatus).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                result.isValid ? Icons.verified_user_rounded : Icons.gpp_bad_rounded,
+                color: result.isValid ? AppColors.sageTua : AppColors.merahStatus,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                result.isValid ? 'Rantai Integritas Sah' : 'Integritas Terputus!',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: result.isValid ? AppColors.sageTua : AppColors.merahStatus,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: (result.isValid ? AppColors.sage : AppColors.merahStatus).withValues(alpha: 0.35),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Blok:', style: TextStyle(fontSize: 12, color: AppColors.teksGelap)),
+                      Text(
+                        '${result.totalBlocks} Blok Koleksi',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.teksGelap),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 16, color: AppColors.sageMuda),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Status Rantai:', style: TextStyle(fontSize: 12, color: AppColors.teksGelap)),
+                      Flexible(
+                        child: Text(
+                          result.isValid ? 'VALID (100% Cocok)' : 'RUSAK / TAMPERED',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: result.isValid ? AppColors.sageTua : AppColors.merahStatus,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (result.brokenSeq != null) ...[
+                    const Divider(height: 16, color: AppColors.sageMuda),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Terputus Pada:', style: TextStyle(fontSize: 12, color: AppColors.merahStatus)),
+                        Text(
+                          'Urutan #${result.brokenSeq}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.merahStatus),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              result.message,
+              style: const TextStyle(fontSize: 12.5, color: AppColors.teksGelap, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.sageMuda.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_outlined, size: 16, color: AppColors.sageTua),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Fungsi database PostgreSQL `verify_chain` menghitung ulang serialisasi kanonis UTF-8 dari genesis hingga blok terakhir.',
+                      style: TextStyle(fontSize: 11, color: AppColors.teksGelap),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.sageTua,
+              foregroundColor: AppColors.teksPutih,
+            ),
+            child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -495,6 +737,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TabBar(
             controller: _tabController,
@@ -508,24 +751,82 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               Tab(text: 'Koleksi & Peta'),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Blockchain Hash-Chain Verifier Banner (Plan 5.2)
+          // Tampilan isi tab
+          if (_tabController.index == 0)
+            _buildPublicPostsTab()
+          else
+            _buildCollectionAndMapTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublicPostsTab() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.gading,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.gading,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.sage.withValues(alpha: 0.4), width: 1),
+              color: AppColors.sageMuda.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: AppColors.sageTua, size: 20),
-                    SizedBox(width: 8),
-                    Text(
+            child: const Icon(Icons.dynamic_feed_rounded, size: 36, color: AppColors.sageTua),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Belum Ada Postingan Publik',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.teksGelap,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Bagikan tangkapan dari koleksi pribadi Anda ke linimasa publik Faunova di Sesi S9.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.teksGelap.withValues(alpha: 0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollectionAndMapTab() {
+    final validCoordinatesCount = _captures.where((c) => c.latitude != null && c.longitude != null).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Blockchain Hash-Chain Verifier Banner (Plan 5.2)
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.gading,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.sage.withValues(alpha: 0.4), width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: AppColors.sageTua, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
                       'Integritas Buku Besar (Simple Blockchain)',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
@@ -533,31 +834,166 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                         color: AppColors.teksGelap,
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Setiap tangkapan dienkripsi dengan SHA-256 kanonis menyambung ke tangkapan sebelumnya.',
+                style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap, height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _isVerifyingChain ? null : _verifyChain,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.sageTua,
+                  side: const BorderSide(color: AppColors.sageTua, width: 1.2),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Setiap tangkapan dienkripsi dengan SHA-256 kanonis menyambung ke tangkapan sebelumnya.',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap, height: 1.35),
+                icon: _isVerifyingChain
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+                      )
+                    : const Icon(Icons.verified_user_rounded, size: 18),
+                label: const Text(
+                  'Verifikasi Rantai (verify_chain)',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Verifikasi Rantai: Seluruh blok valid (seq 1..14). Tidak ada manipulasi data.'),
-                        backgroundColor: AppColors.sageTua,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Tampilan Mode Switcher: Grid Koleksi vs Peta Persebaran
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _collectionMode = 0;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _collectionMode == 0 ? AppColors.sageTua : AppColors.gading,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _collectionMode == 0 ? AppColors.sageTua : AppColors.sage.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.grid_view_rounded,
+                        size: 16,
+                        color: _collectionMode == 0 ? AppColors.teksPutih : AppColors.teksGelap,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.verified_user_rounded, size: 18),
-                  label: const Text('Verifikasi Rantai (verify_chain)'),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Grid Koleksi (${_captures.length})',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _collectionMode == 0 ? AppColors.teksPutih : AppColors.teksGelap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _collectionMode = 1;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _collectionMode == 1 ? AppColors.sageTua : AppColors.gading,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _collectionMode == 1 ? AppColors.sageTua : AppColors.sage.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.map_rounded,
+                        size: 16,
+                        color: _collectionMode == 1 ? AppColors.teksPutih : AppColors.teksGelap,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Peta ($validCoordinatesCount)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _collectionMode == 1 ? AppColors.teksPutih : AppColors.teksGelap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Konten Koleksi
+        if (_isLoadingCaptures)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: const CircularProgressIndicator(color: AppColors.sageTua),
+          )
+        else if (_capturesError != null)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.merahStatus.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppColors.merahStatus, size: 32),
+                const SizedBox(height: 8),
+                Text(
+                  _capturesError!,
+                  style: const TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _loadCaptures,
+                  child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
+          )
+        else if (_collectionMode == 0)
+          CollectionGridView(
+            captures: _captures,
+            onRefresh: _loadCaptures,
+          )
+        else
+          CollectionMapView(
+            captures: _captures,
+            height: 380,
           ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -363,10 +363,57 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 003 di Supabase Dashboard**: Berkas `supabase/migrations/003_hash_chain_and_save_capture.sql` telah disiapkan dan perlu disalin (copy-paste) ke SQL Editor Supabase Dashboard lalu dijalankan (klik **Run**).
 
 ### 3. Langkah Berikutnya (Sesi S8)
-- **Sesi S8 (Koleksi Satwa, Peta, dan Verifikasi Rantai)**:
-  - Antarmuka Grid Koleksi Satwa dan Halaman Detail Tangkapan.
-  - Peta OpenStreetMap dengan penanda lokasi tangkapan satwa.
-  - Tombol aksi **"Verifikasi Rantai"** di profil/koleksi dengan indikator visual integritas blockchain kanonis.
+- Melanjutkan ke Sesi S8 (Koleksi Satwa Grid, Detail, Peta OpenStreetMap, dan Verifikasi Rantai).
+
+---
+
+## Sesi S8 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Koleksi Grid (`CollectionGridView`)**:
+  - Diterapkan di `lib/features/profile/presentation/widgets/collection_grid_view.dart`.
+  - Tampilan grid 2 kolom dengan kartu satwa elegan: thumbnail foto, badge nomor blok `#seq` berlatar emas, nama spesies, taksonomi latin miring (*scientific name*), tanggal observasi WIB, dan indikator rantai terenkripsi SHA-256.
+  - Penanganan state kosong (*empty state*) yang informatif dan ramah ketika pengguna belum menyimpan tangkapan satwa.
+  - Navigasi mulus ke `CaptureDetailPage` saat kartu satwa diketuk.
+- **Halaman Detail Tangkapan Satwa (`CaptureDetailPage`)**:
+  - Diterapkan di `lib/features/profile/presentation/capture_detail_page.dart`.
+  - Hero header foto satwa dengan badge nomor urut blok koleksi `#seq` dan status sah kanonis.
+  - Kartu taksonomi satwa (nama lokal, nama latin/genus, status konservasi, dan catatan lapangan).
+  - Panel Audit Hash-Chain Kanonis SHA-256 (Plan 5.2):
+    - Block Hash (#seq) lengkap 64 karakter heksadesimal dengan tombol "Salin".
+    - Previous Hash (Genesis atau Blok sebelumnya) lengkap 64 karakter dengan tombol "Salin".
+    - Photo SHA-256 byte citra asli lengkap dengan tombol "Salin".
+  - Tombol interaktif **"Uji Integritas Blok Ini (`verify_block`)"**: memicu fungsi audit RPC per blok terhadap blok pendahulunya dengan status audit visual real-time.
+  - Panel Metadata Sensor & Lapangan: Koordinat GPS 6 desimal, arah bidikan kompas taktis (derajat + 8 mata angin Indonesia), dan waktu pencatatan server (WIB).
+  - Tombol aksi **"Buka Lokasi di Google Maps"** menggunakan package `url_launcher` dengan parameter koordinat presisi.
+- **Peta Persebaran Koleksi OpenStreetMap (`CollectionMapView`)**:
+  - Diterapkan di `lib/features/profile/presentation/widgets/collection_map_view.dart`.
+  - Menggunakan `flutter_map: ^8.3.2` dan `latlong2: ^0.10.1` berbasis tile OpenStreetMap resmi tanpa ketergantungan API key berbayar.
+  - Menampilkan penanda/pin satwa dinamis pada setiap koordinat tangkapan dengan badge nomor blok `#seq`.
+  - Tombol kontrol navigasi peta taktis: perbesar (zoom in), perkecil (zoom out), dan tombol pusatkan kembali ke koordinat tengah koleksi.
+  - Interaksi pin: mengetuk pin memunculkan kartu ringkas mengambang (*floating preview card*) di bagian bawah peta berisi foto mini satwa, taksonomi, koordinat, tombol pintasan Google Maps, dan tombol langsung ke halaman detail blok.
+  - Penanganan state kosong jika tangkapan belum memiliki metadata GPS.
+- **Integrasi Sub-Tab Profil & Verifikasi Rantai Penuh (`ProfilePage`)**:
+  - Diterapkan di `lib/features/profile/presentation/profile_page.dart`.
+  - Penghitung dinamis total koleksi di hero profil (`Koleksi: N`).
+  - Sub-tab 2 "Koleksi & Peta" dilengkapi pengalih mode segmented: `[Grid Koleksi (N)]` dan `[Peta (M)]`.
+  - Banner audit integritas rantai dengan tombol **"Verifikasi Rantai (`verify_chain`)"**.
+  - Dialog laporan audit komprehensif:
+    - Jika rantai utuh: Tampilan perisai hijau, status `VALID (100% Cocok)`, jumlah total blok yang diverifikasi, dan penjelasan teknis rekalkulasi serialisasi kanonis database.
+    - Jika rantai terputus: Tampilan perisai merah peringatan, nomor urutan blok pertama yang terputus (`brokenSeq`), serta rincian pesan deteksi manipulasi data.
+- **Verifikasi & Rangkaian Pengujian**:
+  - `flutter analyze`: 0 issues / bersih tanpa warning.
+  - `flutter test`: 38 dari 38 tes unit & widget lulus 100%, memvalidasi pengurutan seq koleksi, RPC `verifyUserChain`, widget `CollectionGridView`, `CaptureDetailPage`, `CollectionMapView`, serta interaksi subtab dan dialog verifikasi rantai di `ProfilePage`.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Aplikasi Google Maps Eksternal**: Memerlukan pengetukan tombol "Buka Lokasi di Google Maps" pada HP fisik dengan Google Maps terpasang.
+- **Tile Cache OSM Luring**: Peta OpenStreetMap memerlukan koneksi internet untuk mengunduh tile peta resolusi tinggi saat pertama kali digeser.
+
+### 3. Langkah Berikutnya (Sesi S9)
+- **Sesi S9 (`create_post` & Feed Untuk Kamu)**:
+  - Implementasi RPC database `create_post` dengan grid snapping deterministik 0.01° di server (koordinat tepat tidak pernah keluar ke publik).
+  - Tampilan Feed linimasa "Untuk Kamu" dengan kartu postingan komunitas, foto satwa, radius perkiraan lokasi, tombol Buka Peta, dan tombol Suka (Like).
+
 
 
 

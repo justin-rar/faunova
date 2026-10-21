@@ -29,6 +29,20 @@ class CaptureService {
   // Cache lokal demo rantai koleksi
   final List<CaptureModel> _demoCaptures = [];
 
+  /// Mereset data demo cache untuk isolasi pengujian test runner
+  void resetDemoCaptures() {
+    _demoCaptures.clear();
+  }
+
+  /// Memuat ulang data demo awal 3 satwa terurut untuk demo dan pengujian
+  void initMockDemoCaptures() {
+    _demoCaptures.clear();
+    _initMockDemoCaptures();
+  }
+
+  /// Mengetahui jumlah item koleksi di cache demo
+  int get demoCapturesCount => _demoCaptures.length;
+
   /// Fungsi kanonisasi string sesuai fungsi database `public.faunova_canonical_encode`
   /// Format: seq|previous_hash|photo_sha256|latitude|longitude|camera_heading|received_at|user_id
   static String canonicalEncode({
@@ -270,6 +284,142 @@ class CaptureService {
         message: 'Gagal memverifikasi blok: $e',
       );
     }
+  }
+
+  /// Mengambil daftar koleksi tangkapan satwa milik user (dari database atau demo cache)
+  Future<List<CaptureModel>> fetchUserCaptures([String? targetUserId]) async {
+    final client = _getSupabaseClient();
+    final currentUserId = targetUserId ?? _getCurrentUserId();
+
+    if (AppConfig.isDemoMode || client == null || currentUserId == null) {
+      if (_demoCaptures.isEmpty) {
+        _initMockDemoCaptures();
+      }
+      return List<CaptureModel>.from(_demoCaptures.reversed);
+    }
+
+    try {
+      final response = await client
+          .from('captures')
+          .select('*')
+          .eq('user_id', currentUserId)
+          .isFilter('deleted_at', null)
+          .order('seq', ascending: false);
+
+      final List<dynamic> data = response as List<dynamic>;
+      return data.map((item) => CaptureModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+    } catch (e) {
+      debugPrint('CaptureService fetchUserCaptures error: $e');
+      if (_demoCaptures.isNotEmpty) {
+        return List<CaptureModel>.from(_demoCaptures.reversed);
+      }
+      throw CaptureException('Gagal memuat koleksi satwa: ${e.toString()}');
+    }
+  }
+
+  void _initMockDemoCaptures() {
+    if (_demoCaptures.isNotEmpty) return;
+    const demoUserId = '00000000-0000-0000-0000-000000000001';
+    final t1 = DateTime.utc(2026, 10, 19, 9, 30, 0);
+    final t2 = DateTime.utc(2026, 10, 20, 14, 15, 0);
+    final t3 = DateTime.utc(2026, 10, 21, 8, 45, 0);
+
+    // Blok 1 (Jalak Bali)
+    final h0 = calculateGenesisHash(demoUserId);
+    final h1 = calculateBlockHash(
+      seq: 1,
+      previousHash: h0,
+      photoSha256: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
+      latitude: -8.115600,
+      longitude: 114.527800,
+      cameraHeading: 148.0,
+      receivedAt: t1,
+      userId: demoUserId,
+    );
+    _demoCaptures.add(
+      CaptureModel(
+        id: 'mock-cap-1',
+        scanId: 'mock-scan-1',
+        userId: demoUserId,
+        photoObjectPath: 'assets/images/jalak_bali.jpg',
+        speciesName: 'Jalak Bali',
+        category: 'Leucopsar rothschildi',
+        description: 'Burung endemik Bali Barat dengan bulu putih bersih dan topeng biru terang di kelopak mata.',
+        latitude: -8.115600,
+        longitude: 114.527800,
+        cameraHeading: 148.0,
+        receivedAt: t1,
+        seq: 1,
+        previousHash: h0,
+        blockHash: h1,
+        photoSha256: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
+        createdAt: t1,
+      ),
+    );
+
+    // Blok 2 (Kucing Kuwuk)
+    final h2 = calculateBlockHash(
+      seq: 2,
+      previousHash: h1,
+      photoSha256: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+      latitude: -7.250400,
+      longitude: 110.428900,
+      cameraHeading: 220.0,
+      receivedAt: t2,
+      userId: demoUserId,
+    );
+    _demoCaptures.add(
+      CaptureModel(
+        id: 'mock-cap-2',
+        scanId: 'mock-scan-2',
+        userId: demoUserId,
+        photoObjectPath: 'assets/images/kucing_kuwuk.jpg',
+        speciesName: 'Kucing Kuwuk',
+        category: 'Prionailurus bengalensis',
+        description: 'Kucing liar kecil nokturnal dengan tutul macan tutul di hutan sekunder Jawa Tengah.',
+        latitude: -7.250400,
+        longitude: 110.428900,
+        cameraHeading: 220.0,
+        receivedAt: t2,
+        seq: 2,
+        previousHash: h1,
+        blockHash: h2,
+        photoSha256: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+        createdAt: t2,
+      ),
+    );
+
+    // Blok 3 (Kupu-kupu Jeruk)
+    final h3 = calculateBlockHash(
+      seq: 3,
+      previousHash: h2,
+      photoSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      latitude: -6.208800,
+      longitude: 106.845600,
+      cameraHeading: 90.0,
+      receivedAt: t3,
+      userId: demoUserId,
+    );
+    _demoCaptures.add(
+      CaptureModel(
+        id: 'mock-cap-3',
+        scanId: 'mock-scan-3',
+        userId: demoUserId,
+        photoObjectPath: 'assets/images/butterfly.jpg',
+        speciesName: 'Kupu-kupu Jeruk',
+        category: 'Papilio demoleus',
+        description: 'Kupu-kupu anggun tropis bertotol kuning hitam yang diabadikan pada observasi lapangan.',
+        latitude: -6.208800,
+        longitude: 106.845600,
+        cameraHeading: 90.0,
+        receivedAt: t3,
+        seq: 3,
+        previousHash: h2,
+        blockHash: h3,
+        photoSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        createdAt: t3,
+      ),
+    );
   }
 
   /// Generator demo capture untuk pengujian luring/offline
