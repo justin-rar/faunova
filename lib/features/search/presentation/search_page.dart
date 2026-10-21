@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/glass_app_bar.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -36,19 +37,47 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
     return Scaffold(
-      appBar: AppBar(
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        centerTitle: true,
         title: TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.emas,
-          indicatorWeight: 3,
+          isScrollable: true,
+          tabAlignment: TabAlignment.center,
+          dividerColor: Colors.transparent,
           indicatorSize: TabBarIndicatorSize.label,
-          labelColor: AppColors.teksPutih,
-          unselectedLabelColor: AppColors.sageMuda,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          indicator: const UnderlineTabIndicator(
+            borderSide: BorderSide(width: 3.0, color: Colors.white),
+            insets: EdgeInsets.symmetric(horizontal: 10),
+            borderRadius: BorderRadius.all(Radius.circular(3)),
+          ),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withValues(alpha: 0.60),
+          labelStyle: const TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
           tabs: const [
-            Tab(text: 'Akun Pengguna'),
-            Tab(text: 'Katalog Spesies'),
+            Tab(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('Akun Pengguna'),
+              ),
+            ),
+            Tab(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('Katalog Spesies'),
+              ),
+            ),
           ],
         ),
       ),
@@ -65,7 +94,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           });
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
             _buildSearchInput(),
             const SizedBox(height: 12),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/glass_app_bar.dart';
 
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
@@ -14,9 +15,20 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ekspedisi & Kuis Fauna'),
+      extendBodyBehindAppBar: true,
+      appBar: const GlassAppBar(
+        centerTitle: true,
+        title: Text(
+          'Ekspedisi & Kuis Fauna',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16.5,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
       ),
       body: AppStateView(
         status: _currentStatus,
@@ -31,7 +43,7 @@ class _GamePageState extends State<GamePage> {
           });
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
             _buildStateSwitcherCard(),
             const SizedBox(height: 14),

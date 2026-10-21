@@ -38,6 +38,12 @@ class AuthService {
     return _demoAuthStreamController.stream;
   }
 
+  Future<void> _ensureInitialized() async {
+    if (!AppConfig.isSupabaseInitialized && AppConfig.isSupabaseConfigured) {
+      await AppConfig.initializeSupabase();
+    }
+  }
+
   /// Mendaftarkan pengguna baru dengan email dan password
   Future<AuthResponse?> signUp({
     required String email,
@@ -45,9 +51,11 @@ class AuthService {
     required String fullName,
     required String username,
   }) async {
+    await _ensureInitialized();
     if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
-      developer.log('Mode Demo: Simulasi pendaftaran berhasil untuk $email', name: 'AuthService');
-      return null;
+      throw const AuthException(
+        'Koneksi Supabase belum aktif. Silakan mulai ulang aplikasi.',
+      );
     }
 
     try {
@@ -74,11 +82,11 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    await _ensureInitialized();
     if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
-      developer.log('Mode Demo: Simulasi login berhasil untuk $email', name: 'AuthService');
-      _isDemoAuthenticated = true;
-      _demoAuthStreamController.add(true);
-      return null;
+      throw const AuthException(
+        'Koneksi Supabase belum aktif. Gunakan tombol Mode Demo untuk simulasi offline.',
+      );
     }
 
     try {

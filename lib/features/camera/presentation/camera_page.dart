@@ -1,6 +1,22 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../core/data/sample_images.dart';
+import '../../../core/services/compass_heading_service.dart';
+import '../../../core/services/image_processing_service.dart';
+import '../../../core/services/scan_service.dart';
+import '../../../core/services/sensor_location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/glass_app_bar.dart';
+import 'scan_result_page.dart';
+
+enum TargetSampleType {
+  hardwareCamera,
+  butterflyAnimal,
+  komodoAnimal,
+  coffeeNonAnimal,
+}
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
@@ -9,278 +25,677 @@ class CameraPage extends StatefulWidget {
   State<CameraPage> createState() => _CameraPageState();
 }
 
-class _CameraPageState extends State<CameraPage> {
+class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   AppViewStatus _currentStatus = AppViewStatus.content;
+  double _cameraHeading = 148.0;
+  String _gpsStatus = 'GPS SIAP';
+  bool _isGpsLocked = true;
+
+  CameraController? _cameraController;
+  List<CameraDescription> _availableCameras = [];
+  bool _isCameraInitialized = false;
+  bool _isProcessingScan = false;
+  String _processingStageMessage = 'Menyiapkan pemindaian...';
+  TargetSampleType _selectedTarget = TargetSampleType.hardwareCamera;
+
+  // Flash mode state
+  FlashMode _currentFlashMode = FlashMode.auto;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initSensorsAndCamera();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
+    SensorLocationService.instance.stopCompassListener();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final cameraController = _cameraController;
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive) {
+      cameraController.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _initSensorsAndCamera() async {
+    // 1. Kompas & Lokasi
+    SensorLocationService.instance.startCompassListener();
+    _checkGpsStatus();
+
+    // 2. Hardware Camera
+    await _initCamera();
+  }
+
+  Future<void> _checkGpsStatus() async {
+    final locationResult = await SensorLocationService.instance.readCurrentLocation();
+    if (mounted) {
+      setState(() {
+        if (locationResult.hasValidCoordinates) {
+          _gpsStatus = locationResult.isMock == true ? 'MOCK GPS' : 'GPS SIAP';
+          _isGpsLocked = locationResult.isMock != true;
+        } else {
+          _gpsStatus = 'LOKASI NONAKTIF';
+          _isGpsLocked = false;
+        }
+      });
+    }
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      _availableCameras = await availableCameras();
+      if (_availableCameras.isNotEmpty) {
+        final backCamera = _availableCameras.firstWhere(
+          (c) => c.lensDirection == CameraLensDirection.back,
+          orElse: () => _availableCameras.first,
+        );
+
+        final controller = CameraController(
+          backCamera,
+          ResolutionPreset.high,
+          enableAudio: false,
+          imageFormatGroup: ImageFormatGroup.jpeg,
+        );
+
+        await controller.initialize();
+        if (mounted) {
+          setState(() {
+            _cameraController = controller;
+            _isCameraInitialized = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Hardware camera init exception: $e');
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    FlashMode nextMode;
+    switch (_currentFlashMode) {
+      case FlashMode.auto:
+        nextMode = FlashMode.always;
+        break;
+      case FlashMode.always:
+        nextMode = FlashMode.off;
+        break;
+      case FlashMode.off:
+      default:
+        nextMode = FlashMode.auto;
+        break;
+    }
+
+    try {
+      await _cameraController!.setFlashMode(nextMode);
+      setState(() {
+        _currentFlashMode = nextMode;
+      });
+    } catch (e) {
+      debugPrint('Failed to set flash mode: $e');
+    }
+  }
+
+  Future<void> _onShutterPressed() async {
+    if (_isProcessingScan) return;
+
+    setState(() {
+      _isProcessingScan = true;
+      _processingStageMessage = 'Menangkap citra satwa...';
+    });
+
+    try {
+      Uint8List rawBytes;
+      String? localPath;
+
+      // 1. Ambil byte gambar (dari hardware kamera atau target uji terpilih)
+      if (_selectedTarget == TargetSampleType.hardwareCamera) {
+        if (!_isCameraInitialized || _cameraController == null) {
+          setState(() {
+            _isProcessingScan = false;
+          });
+          _showErrorDialog(
+            'Lensa kamera fisik belum aktif di perangkat/emulator ini.\n\n'
+            'Silakan pilih salah satu chip mode bidikan di atas:\n'
+            '• "Kupu-kupu (Satwa)" untuk uji identifikasi satwa AI\n'
+            '• "Cangkir Kopi (Non-Satwa)" untuk uji penolakan non-satwa AI\n\n'
+            'Jika di HP fisik, pastikan izin kamera diizinkan di Pengaturan HP.',
+          );
+          return;
+        }
+        final photo = await _cameraController!.takePicture();
+        localPath = photo.path;
+        rawBytes = await photo.readAsBytes();
+      } else {
+        // Mode target uji yang valid
+        rawBytes = _getSampleTargetBytes(_selectedTarget);
+      }
+
+      // 2. Baca GPS & Heading
+      setState(() {
+        _processingStageMessage = 'Membaca GPS & arah kompas...';
+      });
+
+      final locationResult = await SensorLocationService.instance.readCurrentLocation();
+      final currentSensorHeading = SensorLocationService.instance.currentHeading ?? _cameraHeading;
+
+      // 3. Kompresi & buang EXIF di klien (Plan 5.2)
+      setState(() {
+        _processingStageMessage = 'Kompresi & pembersihan metadata EXIF...';
+      });
+
+      final processedImage = await ImageProcessingService.processCameraImage(rawBytes);
+
+      // 4. Kirim ke Edge Function `ai-gateway`
+      setState(() {
+        _processingStageMessage = 'Menganalisis satwa via Gemini AI...';
+      });
+
+      final scanResult = await ScanService.instance.scanAnimal(
+        imageBase64: processedImage.base64String,
+        photoSha256: processedImage.sha256Hash,
+        latitude: locationResult.latitude,
+        longitude: locationResult.longitude,
+        heading: currentSensorHeading,
+        isMock: locationResult.isMock,
+        localPhotoPath: localPath,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isProcessingScan = false;
+        });
+
+        // Buka halaman hasil identifikasi
+        Navigator.of(context).push(
+          MaterialAppPageRoute(
+            builder: (_) => ScanResultPage(scanResult: scanResult),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessingScan = false;
+        });
+
+        _showErrorDialog(e.toString());
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.gading,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: AppColors.merahStatus),
+            SizedBox(width: 8),
+            Text(
+              'Identifikasi Gagal',
+              style: TextStyle(
+                color: AppColors.teksGelap,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: AppColors.teksGelap, fontSize: 13.5),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.emas,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Tutup',
+              style: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kamera Identifikasi AI'),
+      extendBodyBehindAppBar: true,
+      appBar: const GlassAppBar(
+        centerTitle: true,
+        title: Text(
+          'Kamera Identifikasi AI',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16.5,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
       ),
-      body: AppStateView(
-        status: _currentStatus,
-        loadingMessage: 'Menginisialisasi lensa kamera dan sensor arah...',
-        emptyTitle: 'Sensor Kamera Tidak Terdeteksi',
-        emptyMessage: 'Perangkat ini tidak memiliki modul kamera yang kompatibel.',
-        errorMessage: 'Izin kamera ditolak. Berikan izin di Pengaturan HP untuk memotret satwa.',
-        offlineMessage: 'Mode luring. Identifikasi AI memerlukan sambungan internet aktif.',
-        onRetry: () {
-          setState(() {
-            _currentStatus = AppViewStatus.content;
-          });
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
-          children: [
-            _buildStateSwitcherCard(),
-            const SizedBox(height: 14),
+      body: Stack(
+        children: [
+          AppStateView(
+            status: _currentStatus,
+            loadingMessage: 'Menginisialisasi lensa kamera dan sensor arah...',
+            emptyTitle: 'Sensor Kamera Tidak Terdeteksi',
+            emptyMessage: 'Perangkat ini tidak memiliki modul kamera yang kompatibel.',
+            errorMessage: 'Izin kamera ditolak. Berikan izin di Pengaturan HP untuk memotret satwa.',
+            offlineMessage: 'Mode luring. Identifikasi AI memerlukan sambungan internet aktif.',
+            onRetry: () {
+              setState(() {
+                _currentStatus = AppViewStatus.content;
+              });
+            },
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+              children: [
+                _buildTargetSelectorCard(),
+                const SizedBox(height: 12),
 
-            // Tactical Field Viewfinder HUD
+                // Tactical Field Viewfinder HUD
+                Container(
+                  height: 420,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B261A),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.sage.withValues(alpha: 0.5), width: 1.5),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Stack(
+                      children: [
+                        // 1. Kamera Langsung atau Preview Viewfinder
+                        _buildCameraPreviewOrFallback(),
+
+                        // 2. Garis Grid Rule of Thirds
+                        CustomPaint(
+                          size: Size.infinite,
+                          painter: _ViewfinderGridPainter(),
+                        ),
+
+                        // 3. Top HUD: Kompas & Status GPS
+                        Positioned(
+                          top: 14,
+                          left: 14,
+                          right: 14,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _cameraHeading = (_cameraHeading + 45.0) % 360.0;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppColors.sageTua, width: 1),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.explore_rounded, size: 14, color: AppColors.emas),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'HEADING ${CompassHeadingService.formatHud(_cameraHeading)}',
+                                        style: const TextStyle(
+                                          color: AppColors.teksPutih,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _isGpsLocked ? Icons.gps_fixed_rounded : Icons.gps_not_fixed_rounded,
+                                      size: 13,
+                                      color: _isGpsLocked ? const Color(0xFF81C784) : AppColors.emas,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      _gpsStatus,
+                                      style: const TextStyle(
+                                        color: AppColors.teksPutih,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // 4. Optical Crosshair Reticle Tengah (tampil saat lensa aktif atau saat memilih target sampel)
+                        if (_isCameraInitialized || _selectedTarget != TargetSampleType.hardwareCamera)
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 150,
+                                  height: 150,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: AppColors.emas.withValues(alpha: 0.7),
+                                      width: 1.5,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.filter_center_focus_rounded,
+                                        size: 48,
+                                        color: AppColors.emas,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Text(
+                                    _getTargetSubtitle(),
+                                    style: const TextStyle(
+                                      color: AppColors.teksPutih,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // 5. Tombol Flash di Sisi Kanan Atas
+                        if (_isCameraInitialized)
+                          Positioned(
+                            top: 54,
+                            right: 14,
+                            child: GestureDetector(
+                              onTap: _toggleFlash,
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _currentFlashMode == FlashMode.always
+                                      ? Icons.flash_on_rounded
+                                      : _currentFlashMode == FlashMode.off
+                                          ? Icons.flash_off_rounded
+                                          : Icons.flash_auto_rounded,
+                                  color: AppColors.emas,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // 6. Tombol Rana (Shutter Action Bar)
+                        Positioned(
+                          bottom: 20,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: GestureDetector(
+                              onTap: _onShutterPressed,
+                              child: Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.emas,
+                                  border: Border.all(color: AppColors.teksPutih, width: 4),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: AppColors.teksGelap,
+                                  size: 32,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Pipeline Specifications Card
+                _buildValidationContractCard(),
+              ],
+            ),
+          ),
+
+          // Loading Overlay saat proses scan berlangsung
+          if (_isProcessingScan)
             Container(
-              height: 380,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B261A), // Deep jungle dark tone
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.sage.withValues(alpha: 0.5), width: 1.5),
-              ),
-              child: Stack(
-                children: [
-                  // 1. Grid lines overlay
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: _ViewfinderGridPainter(),
+              color: Colors.black.withValues(alpha: 0.75),
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.gading,
+                    borderRadius: BorderRadius.circular(22),
                   ),
-
-                  // 2. Compass & GPS HUD Header
-                  Positioned(
-                    top: 14,
-                    left: 16,
-                    right: 16,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.sageTua, width: 1),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.explore_rounded, size: 14, color: AppColors.emas),
-                              SizedBox(width: 6),
-                              Text(
-                                'HEADING 148° SE',
-                                style: TextStyle(
-                                  color: AppColors.teksPutih,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.gps_fixed_rounded, size: 13, color: Color(0xFF81C784)),
-                              SizedBox(width: 5),
-                              Text(
-                                'GPS SIAP',
-                                style: TextStyle(
-                                  color: AppColors.teksPutih,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 3. Center Optical Crosshair & Warning
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.emas.withValues(alpha: 0.6),
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.filter_center_focus_rounded,
-                                size: 50,
-                                color: AppColors.emas.withValues(alpha: 0.8),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Text(
-                            'Arahkan kamera ke satwa liar',
-                            style: TextStyle(
-                              color: AppColors.teksPutih,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 4. Shutter Action Bar
-                  Positioned(
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Kamera siap diintegrasikan pada Sesi S5'),
-                              backgroundColor: AppColors.sageTua,
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.emas,
-                            border: Border.all(color: AppColors.teksPutih, width: 3.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            color: AppColors.teksGelap,
-                            size: 32,
-                          ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: AppColors.sageTua),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Mengidentifikasi Satwa',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.teksGelap,
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Pipeline Specifications Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.sageMuda,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.verified_user_outlined, size: 18, color: AppColors.sageTua),
-                      SizedBox(width: 8),
+                      const SizedBox(height: 8),
                       Text(
-                        'Kontrak Validasi Lapangan (Plan 5.3)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
+                        _processingStageMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12.5,
                           color: AppColors.teksGelap,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  _buildPipelineStep(
-                    number: '1',
-                    title: 'Hanya Kamera Langsung (Tanpa Galeri)',
-                    description: 'Mencegah manipulasi foto unduhan untuk menjaga orisinalitas koleksi.',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPipelineStep(
-                    number: '2',
-                    title: 'Kompresi & Penghapusan EXIF di Klien',
-                    description: 'Menghemat bandwidth dan membuang metadata gambar sebelum ke server.',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPipelineStep(
-                    number: '3',
-                    title: 'Validasi ai-gateway (Gemini API)',
-                    description: 'Objek bukan hewan (isAnimal: false) ditolak otomatis di sisi server.',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPipelineStep(
-                    number: '4',
-                    title: 'Pencatatan Rantai Hash Kanonis',
-                    description: 'SHA-256 kanonis dihitung dan disimpan di Postgres dengan advisory lock.',
-                  ),
-                ],
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildStateSwitcherCard() {
+  Widget _buildCameraPreviewOrFallback() {
+    if (_selectedTarget == TargetSampleType.hardwareCamera) {
+      if (_isCameraInitialized && _cameraController != null) {
+        return SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _cameraController!.value.previewSize?.height ?? 1,
+              height: _cameraController!.value.previewSize?.width ?? 1,
+              child: CameraPreview(_cameraController!),
+            ),
+          ),
+        );
+      }
+
+      // Kamera fisik belum aktif / di emulator
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: const Color(0xFF1B261A),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.no_photography_outlined,
+                size: 52,
+                color: AppColors.sage.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Lensa Fisik Belum Aktif',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.teksPutih,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Di Emulator, silakan pilih chip sampel di atas:\n"Kupu-kupu (Satwa)" atau "Cangkir Kopi (Non-Satwa)"',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.teksPutih.withValues(alpha: 0.75),
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Tampilan sampel optik nyata
+    if (_selectedTarget == TargetSampleType.coffeeNonAnimal) {
+      return SizedBox.expand(
+        child: Image.memory(
+          SampleImages.chessboardBytes,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else {
+      return SizedBox.expand(
+        child: Image.memory(
+          SampleImages.butterflyBytes,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+  }
+
+  String _getTargetSubtitle() {
+    switch (_selectedTarget) {
+      case TargetSampleType.hardwareCamera:
+        return _isCameraInitialized
+            ? 'Lensa Lapangan Aktif'
+            : 'Arahkan kamera ke satwa liar';
+      case TargetSampleType.butterflyAnimal:
+        return 'Sampel Uji: Kupu-kupu (Satwa)';
+      case TargetSampleType.komodoAnimal:
+        return 'Sampel Uji: Komodo (Satwa)';
+      case TargetSampleType.coffeeNonAnimal:
+        return 'Sampel Uji: Kopi (Non-Satwa)';
+    }
+  }
+
+  Widget _buildTargetSelectorCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
-              SizedBox(width: 8),
-              Text(
-                'Simulasi State (AGENTS.md)',
+              const Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
+              const SizedBox(width: 8),
+              const Text(
+                'Mode Bidikan Kamera (Sesi S5)',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                   color: AppColors.teksGelap,
                 ),
               ),
+              const Spacer(),
+              if (_isCameraInitialized)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.sageTua,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'LENSA AKTIF',
+                    style: TextStyle(fontSize: 9, color: AppColors.teksPutih, fontWeight: FontWeight.bold),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -288,11 +703,10 @@ class _CameraPageState extends State<CameraPage> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              _buildStateChip('Normal', AppViewStatus.content),
-              _buildStateChip('Memuat', AppViewStatus.loading),
-              _buildStateChip('Kosong', AppViewStatus.empty),
-              _buildStateChip('Galat', AppViewStatus.error),
-              _buildStateChip('Luring', AppViewStatus.offline),
+              _buildTargetChip('Kamera Fisik', TargetSampleType.hardwareCamera),
+              _buildTargetChip('Kupu-kupu (Satwa)', TargetSampleType.butterflyAnimal),
+              _buildTargetChip('Komodo (Satwa)', TargetSampleType.komodoAnimal),
+              _buildTargetChip('Cangkir Kopi (Non-Satwa)', TargetSampleType.coffeeNonAnimal),
             ],
           ),
         ],
@@ -300,14 +714,14 @@ class _CameraPageState extends State<CameraPage> {
     );
   }
 
-  Widget _buildStateChip(String label, AppViewStatus status) {
-    final isSelected = _currentStatus == status;
+  Widget _buildTargetChip(String label, TargetSampleType type) {
+    final isSelected = _selectedTarget == type;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) {
         setState(() {
-          _currentStatus = status;
+          _selectedTarget = type;
         });
       },
       selectedColor: AppColors.sageTua,
@@ -319,6 +733,60 @@ class _CameraPageState extends State<CameraPage> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _buildValidationContractCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.sageMuda,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.verified_user_outlined, size: 18, color: AppColors.sageTua),
+              SizedBox(width: 8),
+              Text(
+                'Kontrak Validasi Lapangan (Plan 5.3)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: AppColors.teksGelap,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildPipelineStep(
+            number: '1',
+            title: 'Hanya Kamera Langsung (Tanpa Galeri)',
+            description: 'Mencegah manipulasi foto unduhan untuk menjaga orisinalitas koleksi.',
+          ),
+          const SizedBox(height: 8),
+          _buildPipelineStep(
+            number: '2',
+            title: 'Kompresi & Penghapusan EXIF di Klien',
+            description: 'Menghemat bandwidth dan membuang metadata gambar sebelum ke server.',
+          ),
+          const SizedBox(height: 8),
+          _buildPipelineStep(
+            number: '3',
+            title: 'Validasi ai-gateway (Gemini API)',
+            description: 'Objek bukan hewan (isAnimal: false) ditolak otomatis di sisi server.',
+          ),
+          const SizedBox(height: 8),
+          _buildPipelineStep(
+            number: '4',
+            title: 'Pencatatan Rantai Hash Kanonis',
+            description: 'SHA-256 kanonis dihitung dan disimpan di Postgres dengan advisory lock.',
+          ),
+        ],
+      ),
     );
   }
 
@@ -357,6 +825,21 @@ class _CameraPageState extends State<CameraPage> {
       ],
     );
   }
+
+  Uint8List _getSampleTargetBytes(TargetSampleType sample) {
+    switch (sample) {
+      case TargetSampleType.coffeeNonAnimal:
+        return SampleImages.chessboardBytes;
+      case TargetSampleType.komodoAnimal:
+      case TargetSampleType.butterflyAnimal:
+      default:
+        return SampleImages.butterflyBytes;
+    }
+  }
+}
+
+class MaterialAppPageRoute<T> extends MaterialPageRoute<T> {
+  MaterialAppPageRoute({required super.builder});
 }
 
 class _ViewfinderGridPainter extends CustomPainter {
@@ -366,7 +849,6 @@ class _ViewfinderGridPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.12)
       ..strokeWidth = 1.0;
 
-    // Rule of thirds
     final thirdW = size.width / 3;
     final thirdH = size.height / 3;
 

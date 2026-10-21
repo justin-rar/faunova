@@ -22,9 +22,10 @@ class GlassBottomBar extends StatelessWidget {
     const topPadding = 8.0;
     final bottomInset = bottomPadding > 0 ? bottomPadding : 10.0;
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+    return RepaintBoundary(
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -125,6 +126,7 @@ class GlassBottomBar extends StatelessWidget {
                 ),
               );
             },
+          ),
           ),
         ),
       ),

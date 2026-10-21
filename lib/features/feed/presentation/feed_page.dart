@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/glass_app_bar.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -16,7 +17,8 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // Default aktif di tab 'Untuk Kamu' (index 1), persis seperti referensi
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
   }
 
   @override
@@ -28,107 +30,201 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        automaticallyImplyLeading: false,
+        centerTitle: true,
         title: TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.emas,
-          indicatorWeight: 3,
+          isScrollable: true,
+          tabAlignment: TabAlignment.center,
+          dividerColor: Colors.transparent,
           indicatorSize: TabBarIndicatorSize.label,
-          labelColor: AppColors.teksPutih,
-          unselectedLabelColor: AppColors.sageMuda,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          indicator: const UnderlineTabIndicator(
+            borderSide: BorderSide(width: 3.0, color: Colors.white),
+            insets: EdgeInsets.symmetric(horizontal: 10),
+            borderRadius: BorderRadius.all(Radius.circular(3)),
+          ),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withValues(alpha: 0.60),
+          labelStyle: const TextStyle(
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
           tabs: const [
-            Tab(text: 'Untuk Kamu'),
-            Tab(text: 'Mengikuti'),
+            Tab(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('Mengikuti'),
+              ),
+            ),
+            Tab(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('Untuk Kamu'),
+              ),
+            ),
           ],
         ),
       ),
-      body: AppStateView(
-        status: _currentStatus,
-        loadingMessage: 'Sinkronisasi feed observasi satwa...',
-        emptyTitle: 'Belum Ada Observasi',
-        emptyMessage: 'Ikuti penjelajah lain atau potret satwa liar pertamamu untuk memulai rantai!',
-        errorMessage: 'Gagal memuat feed lapangan. Periksa sambungan data Anda.',
-        offlineMessage: 'Mode luring. Menampilkan postingan tersimpan dari cache terenkripsi.',
-        onRetry: () {
-          setState(() {
-            _currentStatus = AppViewStatus.content;
-          });
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
-          children: [
-            _buildStateSwitcherCard(),
-            const SizedBox(height: 16),
-            _buildJournalFeedItem(
-              authorName: 'Budi Satria Wibowo',
-              authorUsername: 'budi_satria',
-              isVerified: true,
-              commonName: 'Jalak Bali',
-              scientificName: 'Leucopsar rothschildi',
-              taxonomyClass: 'Aves • Passeriformes',
-              conservationStatus: 'Kritis (CR)',
-              locationArea: 'Taman Nasional Bali Barat (Grid Snapped)',
-              timeAgo: '20 menit lalu',
-              likesCount: 38,
-              blockSeq: 14,
-              fieldNotes: 'Teramati sepasang Jalak Bali bertengger di dahan pohon beringin pesisir Teluk Brumbun. Bulu jambul tegak sempurna.',
-              imageAccent: const Color(0xFF4A6572),
-              animalIcon: Icons.flutter_dash_rounded,
-            ),
-            const SizedBox(height: 18),
-            _buildJournalFeedItem(
-              authorName: 'Siti Rahmawati',
-              authorUsername: 'siti_flora_fauna',
-              isVerified: true,
-              commonName: 'Kucing Kuwuk (Kucing Hutan)',
-              scientificName: 'Prionailurus bengalensis',
-              taxonomyClass: 'Mammalia • Carnivora',
-              conservationStatus: 'Risiko Rendah (LC)',
-              locationArea: 'Lereng Gunung Ciremai, Kuningan',
-              timeAgo: '2 jam lalu',
-              likesCount: 114,
-              blockSeq: 9,
-              fieldNotes: 'Tertangkap kamera di semak belukar dekat aliran sungai berbatu saat senja. Gerakan sangat lincah dan waspada.',
-              imageAccent: const Color(0xFF6B5841),
-              animalIcon: Icons.pets_rounded,
-            ),
-            const SizedBox(height: 18),
-            _buildJournalFeedItem(
-              authorName: 'drh. Indra Perkasa',
-              authorUsername: 'indra_vet',
-              isVerified: false,
-              commonName: 'Cenderawasih Kuning-Kecil',
-              scientificName: 'Paradisaea minor',
-              taxonomyClass: 'Aves • Paradisaeidae',
-              conservationStatus: 'Risiko Rendah (LC)',
-              locationArea: 'Cagar Alam Pegunungan Cycloop, Papua',
-              timeAgo: '5 jam lalu',
-              likesCount: 205,
-              blockSeq: 27,
-              fieldNotes: 'Suara panggilan jantan terdengar menggema sebelum tampak melakukan display bulu hiasan di kanopi hutan primer.',
-              imageAccent: const Color(0xFF8B6B38),
-              animalIcon: Icons.wb_sunny_rounded,
-            ),
-            const SizedBox(height: 18),
-            _buildJournalFeedItem(
-              authorName: 'Alam Lestari Nusantara',
-              authorUsername: 'alam_lestari',
-              isVerified: true,
-              commonName: 'Rusa Bawean',
-              scientificName: 'Axis kuhlian',
-              taxonomyClass: 'Mammalia • Artiodactyla',
-              conservationStatus: 'Kritis (CR)',
-              locationArea: 'Pulau Bawean, Laut Jawa (Area Kasar)',
-              timeAgo: '1 hari lalu',
-              likesCount: 89,
-              blockSeq: 3,
-              fieldNotes: 'Spesimen endemik langka terekam sedang merumput di batas hutan sekunder pada pagi berkabut.',
-              imageAccent: const Color(0xFF475844),
-              animalIcon: Icons.eco_rounded,
-            ),
-          ],
-        ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildFollowingFeed(),
+          _buildForYouFeed(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFollowingFeed() {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
+    return AppStateView(
+      status: _currentStatus,
+      loadingMessage: 'Sinkronisasi feed akun yang diikuti...',
+      emptyTitle: 'Belum Mengikuti Penjelajah',
+      emptyMessage: 'Cari kolektor satwa dan ikuti jurnal observasi lapangan mereka!',
+      errorMessage: 'Gagal memuat feed mengikuti. Periksa sambungan data Anda.',
+      offlineMessage: 'Mode luring. Menampilkan postingan tersimpan dari cache terenkripsi.',
+      onRetry: () {
+        setState(() {
+          _currentStatus = AppViewStatus.content;
+        });
+      },
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+        children: [
+          _buildJournalFeedItem(
+            authorName: 'Budi Satria Wibowo',
+            authorUsername: 'budi_satria',
+            isVerified: true,
+            commonName: 'Jalak Bali',
+            scientificName: 'Leucopsar rothschildi',
+            taxonomyClass: 'Aves • Passeriformes',
+            conservationStatus: 'Kritis (CR)',
+            locationArea: 'Taman Nasional Bali Barat (Grid Snapped)',
+            timeAgo: '20 menit lalu',
+            likesCount: 38,
+            blockSeq: 14,
+            fieldNotes: 'Teramati sepasang Jalak Bali bertengger di dahan pohon beringin pesisir Teluk Brumbun. Bulu jambul tegak sempurna.',
+            imageAccent: const Color(0xFF4A6572),
+            animalIcon: Icons.flutter_dash_rounded,
+          ),
+          const SizedBox(height: 18),
+          _buildJournalFeedItem(
+            authorName: 'Siti Rahmawati',
+            authorUsername: 'siti_flora_fauna',
+            isVerified: true,
+            commonName: 'Kucing Kuwuk (Kucing Hutan)',
+            scientificName: 'Prionailurus bengalensis',
+            taxonomyClass: 'Mammalia • Carnivora',
+            conservationStatus: 'Risiko Rendah (LC)',
+            locationArea: 'Lereng Gunung Ciremai, Kuningan',
+            timeAgo: '2 jam lalu',
+            likesCount: 114,
+            blockSeq: 9,
+            fieldNotes: 'Tertangkap kamera di semak belukar dekat aliran sungai berbatu saat senja. Gerakan sangat lincah dan waspada.',
+            imageAccent: const Color(0xFF6B5841),
+            animalIcon: Icons.pets_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForYouFeed() {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
+    return AppStateView(
+      status: _currentStatus,
+      loadingMessage: 'Sinkronisasi feed observasi satwa...',
+      emptyTitle: 'Belum Ada Observasi',
+      emptyMessage: 'Ikuti penjelajah lain atau potret satwa liar pertamamu untuk memulai rantai!',
+      errorMessage: 'Gagal memuat feed lapangan. Periksa sambungan data Anda.',
+      offlineMessage: 'Mode luring. Menampilkan postingan tersimpan dari cache terenkripsi.',
+      onRetry: () {
+        setState(() {
+          _currentStatus = AppViewStatus.content;
+        });
+      },
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+        children: [
+          _buildStateSwitcherCard(),
+          const SizedBox(height: 16),
+          _buildJournalFeedItem(
+            authorName: 'Budi Satria Wibowo',
+            authorUsername: 'budi_satria',
+            isVerified: true,
+            commonName: 'Jalak Bali',
+            scientificName: 'Leucopsar rothschildi',
+            taxonomyClass: 'Aves • Passeriformes',
+            conservationStatus: 'Kritis (CR)',
+            locationArea: 'Taman Nasional Bali Barat (Grid Snapped)',
+            timeAgo: '20 menit lalu',
+            likesCount: 38,
+            blockSeq: 14,
+            fieldNotes: 'Teramati sepasang Jalak Bali bertengger di dahan pohon beringin pesisir Teluk Brumbun. Bulu jambul tegak sempurna.',
+            imageAccent: const Color(0xFF4A6572),
+            animalIcon: Icons.flutter_dash_rounded,
+          ),
+          const SizedBox(height: 18),
+          _buildJournalFeedItem(
+            authorName: 'Siti Rahmawati',
+            authorUsername: 'siti_flora_fauna',
+            isVerified: true,
+            commonName: 'Kucing Kuwuk (Kucing Hutan)',
+            scientificName: 'Prionailurus bengalensis',
+            taxonomyClass: 'Mammalia • Carnivora',
+            conservationStatus: 'Risiko Rendah (LC)',
+            locationArea: 'Lereng Gunung Ciremai, Kuningan',
+            timeAgo: '2 jam lalu',
+            likesCount: 114,
+            blockSeq: 9,
+            fieldNotes: 'Tertangkap kamera di semak belukar dekat aliran sungai berbatu saat senja. Gerakan sangat lincah dan waspada.',
+            imageAccent: const Color(0xFF6B5841),
+            animalIcon: Icons.pets_rounded,
+          ),
+          const SizedBox(height: 18),
+          _buildJournalFeedItem(
+            authorName: 'drh. Indra Perkasa',
+            authorUsername: 'indra_vet',
+            isVerified: false,
+            commonName: 'Cenderawasih Kuning-Kecil',
+            scientificName: 'Paradisaea minor',
+            taxonomyClass: 'Aves • Paradisaeidae',
+            conservationStatus: 'Risiko Rendah (LC)',
+            locationArea: 'Cagar Alam Pegunungan Cycloop, Papua',
+            timeAgo: '5 jam lalu',
+            likesCount: 205,
+            blockSeq: 27,
+            fieldNotes: 'Suara panggilan jantan terdengar menggema sebelum tampak melakukan display bulu hiasan di kanopi hutan primer.',
+            imageAccent: const Color(0xFF8B6B38),
+            animalIcon: Icons.wb_sunny_rounded,
+          ),
+          const SizedBox(height: 18),
+          _buildJournalFeedItem(
+            authorName: 'Alam Lestari Nusantara',
+            authorUsername: 'alam_lestari',
+            isVerified: true,
+            commonName: 'Rusa Bawean',
+            scientificName: 'Axis kuhlian',
+            taxonomyClass: 'Mammalia • Artiodactyla',
+            conservationStatus: 'Kritis (CR)',
+            locationArea: 'Pulau Bawean, Laut Jawa (Area Kasar)',
+            timeAgo: '1 hari lalu',
+            likesCount: 89,
+            blockSeq: 3,
+            fieldNotes: 'Spesimen endemik langka terekam sedang merumput di batas hutan sekunder pada pagi berkabut.',
+            imageAccent: const Color(0xFF475844),
+            animalIcon: Icons.eco_rounded,
+          ),
+        ],
       ),
     );
   }
@@ -213,16 +309,17 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     required Color imageAccent,
     required IconData animalIcon,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.sage.withValues(alpha: 0.35),
-          width: 1,
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.sageMuda,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.sage.withValues(alpha: 0.35),
+            width: 1,
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
+        clipBehavior: Clip.hardEdge,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -482,6 +579,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
           ),
         ],
       ),
+    ),
     );
   }
 }

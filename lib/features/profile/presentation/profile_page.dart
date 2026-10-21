@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/glass_app_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -63,75 +64,104 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profil Kolektor'),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        centerTitle: true,
+        title: const Text(
+          'Profil Kolektor',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16.5,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, color: AppColors.teksPutih),
-            color: AppColors.gading,
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            onSelected: (value) {
-              if (value == 'logout') {
-                _showLogoutDialog(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Menu dipilih: $value'),
-                    backgroundColor: AppColors.sageTua,
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Center(
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    width: 0.8,
                   ),
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'saran_kesan',
-                child: Row(
-                  children: [
-                    Icon(Icons.rate_review_outlined, size: 18, color: AppColors.teksGelap),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Saran & Kesan Kuliah PAM',
-                        style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                ),
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                  padding: EdgeInsets.zero,
+                  color: AppColors.gading,
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  onSelected: (value) {
+                    if (value == 'logout') {
+                      _showLogoutDialog(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Menu dipilih: $value'),
+                          backgroundColor: AppColors.sageTua,
+                        ),
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'saran_kesan',
+                      child: Row(
+                        children: [
+                          Icon(Icons.rate_review_outlined, size: 18, color: AppColors.teksGelap),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Saran & Kesan Kuliah PAM',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'setting_biometrik',
+                      child: Row(
+                        children: [
+                          Icon(Icons.fingerprint_rounded, size: 18, color: AppColors.teksGelap),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Pengaturan & Sidik Jari',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout_rounded, size: 18, color: AppColors.merahStatus),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Keluar Akun',
+                              style: TextStyle(color: AppColors.merahStatus, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const PopupMenuItem(
-                value: 'setting_biometrik',
-                child: Row(
-                  children: [
-                    Icon(Icons.fingerprint_rounded, size: 18, color: AppColors.teksGelap),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Pengaturan & Sidik Jari',
-                        style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout_rounded, size: 18, color: AppColors.merahStatus),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Keluar Akun',
-                        style: TextStyle(color: AppColors.merahStatus, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -148,7 +178,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           });
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
             _buildStateSwitcherCard(),
             const SizedBox(height: 14),
