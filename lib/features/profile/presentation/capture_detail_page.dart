@@ -14,6 +14,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
+import '../../feed/presentation/widgets/create_post_sheet.dart';
 
 class CaptureDetailPage extends StatefulWidget {
   final CaptureModel capture;
@@ -608,6 +609,32 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
   Widget _buildActionButtons() {
     return Column(
       children: [
+        // Tombol Bagikan ke Linimasa Komunitas
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              CreatePostSheet.show(context, capture: capture);
+            },
+            icon: const Icon(Icons.share_rounded, color: AppColors.teksPutih),
+            label: const Text(
+              'Bagikan ke Linimasa (create_post)',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.teksPutih,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.sageTua,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
         // Tombol Buka di Google Maps
         SizedBox(
           width: double.infinity,

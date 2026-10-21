@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/post_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import '../models/post_model.dart';
+import 'widgets/post_card.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -14,11 +17,75 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   late TabController _tabController;
   AppViewStatus _currentStatus = AppViewStatus.content;
 
+  List<PostModel> _forYouPosts = [];
+  bool _isLoadingFeed = false;
+  String? _feedError;
+
   @override
   void initState() {
     super.initState();
     // Default aktif di tab 'Untuk Kamu' (index 1), persis seperti referensi
     _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    _loadFeed();
+  }
+
+  Future<void> _loadFeed() async {
+    setState(() {
+      _isLoadingFeed = true;
+      _feedError = null;
+    });
+
+    try {
+      final posts = await PostService.instance.fetchForYouFeed();
+      if (mounted) {
+        setState(() {
+          _forYouPosts = posts;
+          _isLoadingFeed = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _feedError = e.toString();
+          _isLoadingFeed = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleLike(PostModel post) async {
+    final idx = _forYouPosts.indexWhere((p) => p.id == post.id);
+    if (idx == -1) return;
+
+    final current = _forYouPosts[idx];
+    final newLiked = !current.isLikedByMe;
+    final newCount = newLiked ? current.likesCount + 1 : (current.likesCount > 0 ? current.likesCount - 1 : 0);
+
+    setState(() {
+      _forYouPosts[idx] = current.copyWith(
+        isLikedByMe: newLiked,
+        likesCount: newCount,
+      );
+    });
+
+    try {
+      final result = await PostService.instance.togglePostLike(post.id);
+      if (mounted && result['likes_count'] != null) {
+        setState(() {
+          _forYouPosts[idx] = _forYouPosts[idx].copyWith(
+            isLikedByMe: result['is_liked'] == true,
+            likesCount: (result['likes_count'] as num).toInt(),
+          );
+        });
+      }
+    } catch (_) {
+      // Rollback jika gagal
+      if (mounted) {
+        setState(() {
+          _forYouPosts[idx] = current;
+        });
+      }
+    }
   }
 
   @override
@@ -147,84 +214,88 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
       emptyMessage: 'Ikuti penjelajah lain atau potret satwa liar pertamamu untuk memulai rantai!',
       errorMessage: 'Gagal memuat feed lapangan. Periksa sambungan data Anda.',
       offlineMessage: 'Mode luring. Menampilkan postingan tersimpan dari cache terenkripsi.',
-      onRetry: () {
-        setState(() {
-          _currentStatus = AppViewStatus.content;
-        });
-      },
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
-        children: [
-          _buildStateSwitcherCard(),
-          const SizedBox(height: 16),
-          _buildJournalFeedItem(
-            authorName: 'Budi Satria Wibowo',
-            authorUsername: 'budi_satria',
-            isVerified: true,
-            commonName: 'Jalak Bali',
-            scientificName: 'Leucopsar rothschildi',
-            taxonomyClass: 'Aves • Passeriformes',
-            conservationStatus: 'Kritis (CR)',
-            locationArea: 'Taman Nasional Bali Barat (Grid Snapped)',
-            timeAgo: '20 menit lalu',
-            likesCount: 38,
-            blockSeq: 14,
-            fieldNotes: 'Teramati sepasang Jalak Bali bertengger di dahan pohon beringin pesisir Teluk Brumbun. Bulu jambul tegak sempurna.',
-            imageAccent: const Color(0xFF4A6572),
-            animalIcon: Icons.flutter_dash_rounded,
-          ),
-          const SizedBox(height: 18),
-          _buildJournalFeedItem(
-            authorName: 'Siti Rahmawati',
-            authorUsername: 'siti_flora_fauna',
-            isVerified: true,
-            commonName: 'Kucing Kuwuk (Kucing Hutan)',
-            scientificName: 'Prionailurus bengalensis',
-            taxonomyClass: 'Mammalia • Carnivora',
-            conservationStatus: 'Risiko Rendah (LC)',
-            locationArea: 'Lereng Gunung Ciremai, Kuningan',
-            timeAgo: '2 jam lalu',
-            likesCount: 114,
-            blockSeq: 9,
-            fieldNotes: 'Tertangkap kamera di semak belukar dekat aliran sungai berbatu saat senja. Gerakan sangat lincah dan waspada.',
-            imageAccent: const Color(0xFF6B5841),
-            animalIcon: Icons.pets_rounded,
-          ),
-          const SizedBox(height: 18),
-          _buildJournalFeedItem(
-            authorName: 'drh. Indra Perkasa',
-            authorUsername: 'indra_vet',
-            isVerified: false,
-            commonName: 'Cenderawasih Kuning-Kecil',
-            scientificName: 'Paradisaea minor',
-            taxonomyClass: 'Aves • Paradisaeidae',
-            conservationStatus: 'Risiko Rendah (LC)',
-            locationArea: 'Cagar Alam Pegunungan Cycloop, Papua',
-            timeAgo: '5 jam lalu',
-            likesCount: 205,
-            blockSeq: 27,
-            fieldNotes: 'Suara panggilan jantan terdengar menggema sebelum tampak melakukan display bulu hiasan di kanopi hutan primer.',
-            imageAccent: const Color(0xFF8B6B38),
-            animalIcon: Icons.wb_sunny_rounded,
-          ),
-          const SizedBox(height: 18),
-          _buildJournalFeedItem(
-            authorName: 'Alam Lestari Nusantara',
-            authorUsername: 'alam_lestari',
-            isVerified: true,
-            commonName: 'Rusa Bawean',
-            scientificName: 'Axis kuhlian',
-            taxonomyClass: 'Mammalia • Artiodactyla',
-            conservationStatus: 'Kritis (CR)',
-            locationArea: 'Pulau Bawean, Laut Jawa (Area Kasar)',
-            timeAgo: '1 hari lalu',
-            likesCount: 89,
-            blockSeq: 3,
-            fieldNotes: 'Spesimen endemik langka terekam sedang merumput di batas hutan sekunder pada pagi berkabut.',
-            imageAccent: const Color(0xFF475844),
-            animalIcon: Icons.eco_rounded,
-          ),
-        ],
+      onRetry: _loadFeed,
+      child: RefreshIndicator(
+        onRefresh: _loadFeed,
+        color: AppColors.sageTua,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+          children: [
+            _buildStateSwitcherCard(),
+            const SizedBox(height: 16),
+            if (_isLoadingFeed && _forYouPosts.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(color: AppColors.sageTua),
+              )
+            else if (_feedError != null && _forYouPosts.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.merahStatus.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.merahStatus, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      _feedError!,
+                      style: const TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: _loadFeed,
+                      child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              )
+            else if (_forYouPosts.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.sageMuda.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.dynamic_feed_rounded, size: 36, color: AppColors.sageTua),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Belum Ada Postingan Publik',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Jadilah yang pertama membagikan observasi satwa ke linimasa komunitas Faunova!',
+                      style: TextStyle(fontSize: 12, color: AppColors.teksGelap.withValues(alpha: 0.7)),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else
+              for (int i = 0; i < _forYouPosts.length; i++) ...[
+                PostCard(
+                  post: _forYouPosts[i],
+                  onLike: () => _toggleLike(_forYouPosts[i]),
+                ),
+                if (i < _forYouPosts.length - 1) const SizedBox(height: 18),
+              ],
+          ],
+        ),
       ),
     );
   }

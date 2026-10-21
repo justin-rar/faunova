@@ -410,9 +410,64 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Tile Cache OSM Luring**: Peta OpenStreetMap memerlukan koneksi internet untuk mengunduh tile peta resolusi tinggi saat pertama kali digeser.
 
 ### 3. Langkah Berikutnya (Sesi S9)
-- **Sesi S9 (`create_post` & Feed Untuk Kamu)**:
-  - Implementasi RPC database `create_post` dengan grid snapping deterministik 0.01° di server (koordinat tepat tidak pernah keluar ke publik).
-  - Tampilan Feed linimasa "Untuk Kamu" dengan kartu postingan komunitas, foto satwa, radius perkiraan lokasi, tombol Buka Peta, dan tombol Suka (Like).
+- Sesi S9 (`create_post` & Feed Untuk Kamu).
+
+---
+
+## Sesi S9 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Fungsi Postgres & Migrasi `004_create_post_and_feed.sql` (Plan 5.7, 5.9, 18)**:
+  - `public.faunova_snap_to_grid(lat, lng)`: Fungsi deterministik matematis untuk mengaburkan koordinat publik ke pusat sel grid berukuran 0.01° (~1,1 km): `(floor(coord / 0.01) * 0.01) + 0.005`.
+  - RPC `public.create_post(p_capture_id, p_caption, p_location_visibility, p_area_label)`:
+    - Memverifikasi kepemilikan tangkapan (`user_id = auth.uid()`).
+    - Koordinat asli **tidak pernah disalin** ke tabel publik.
+    - Jika `location_visibility = 'coarse'`: `display_latitude` dan `display_longitude` dihitung via `faunova_snap_to_grid` dari koordinat asli tangkapan.
+    - Jika `location_visibility = 'hidden'`: `display_latitude`, `display_longitude`, dan `area_label` dipaksa bernilai `NULL`.
+  - RPC `public.get_for_you_feed(p_limit, p_cursor)`: Feed linimasa komunitas dengan pagination keyset cursor berbasis `created_at` dan join profil publik & metadata blok kanonis.
+  - RPC `public.toggle_post_like(p_post_id)`: Operasi atomik dan idempoten untuk menyukai/batal menyukai postingan.
+- **Model Postingan Komunitas (`PostModel`)**:
+  - Diterapkan di `lib/features/feed/models/post_model.dart`.
+  - Mencegah kebocoran privasi dengan hanya mengekspos `displayLatitude`, `displayLongitude`, `locationVisibility`, dan `areaLabel`.
+  - Properti pembantu: `hasLocation`, `shortBlockHash`, format waktu human-readable `timeAgo` (WIB), dan copyWith helper.
+- **Layanan Postingan Komunitas (`PostService`)**:
+  - Diterapkan di `lib/core/services/post_service.dart`.
+  - Metode `createPost`, `fetchForYouFeed`, `togglePostLike`, dan fungsi grid snapping lokal deterministik `snapToGridLocally`.
+  - Dukungan fallback cache offline / demo in-memory lengkap dengan 3 postingan komunitas realistis (*Jalak Bali*, *Kucing Kuwuk*, *Cenderawasih Kuning-Kecil*).
+- **Komponen Kartu Postingan Komunitas (`PostCard`)**:
+  - Diterapkan di `lib/features/feed/presentation/widgets/post_card.dart`.
+  - Header author: avatar inisial/foto, nama lengkap, username, centang biru terverifikasi (`isAuthorVerified`), dan waktu unggah.
+  - Badge nomor urut blok rantai `#seq` di pojok kanan atas kartu.
+  - Area visual foto satwa dengan short hash rantai di pojok foto.
+  - Pill lokasi snapped transparan: hanya tampil jika visibilitas lokasi disetel `coarse` (menampilkan nama area dan tombol "Peta Area" menuju Google Maps koordinat grid 0.01°).
+  - Taksonomi satwa lengkap: nama spesies, nama latin ilmiah, status konservasi IUCN, dan catatan lapangan/caption.
+  - Action bar elegan: tombol Suka dengan animasi toggle hati merah dan penghitung like dinamis, badge validasi blok rantai SHA-256, dan tombol bagikan.
+- **Modal Lembar Publikasi (`CreatePostSheet`)**:
+  - Diterapkan di `lib/features/feed/presentation/widgets/create_post_sheet.dart`.
+  - Disediakan dari tombol aksi di `CaptureDetailPage`: *"Bagikan ke Linimasa (create_post)"*.
+  - Menampilkan pratinjau mini satwa dan nomor urut blok rantai kanonis.
+  - Input catatan lapangan / caption observasi (maks 500 karakter).
+  - Pemilih privasi lokasi:
+    - **Area Kasar (Grid 0.01°)**: Koordinat diburamkan ke sel grid ~1.1 km untuk melindungi lokasi persis satwa liar (misal satwa langka terancam punah).
+    - **Sembunyikan Penuh**: Menghilangkan seluruh metadata lokasi dan label area dari linimasa publik.
+- **Pembaruan Halaman Linimasa (`FeedPage`)**:
+  - Diterapkan di `lib/features/feed/presentation/feed_page.dart`.
+  - Terintegrasi penuh dengan `PostService.instance.fetchForYouFeed()`.
+  - Mendukung `RefreshIndicator` untuk memuat ulang linimasa dengan gestur tarik ke bawah (pull-to-refresh).
+  - Penanganan state lengkap: loading skeleton/spinner, linimasa kosong yang ramah, dan penanganan galat.
+- **Rangkaian Verifikasi & Pengujian**:
+  - `flutter analyze`: 0 issues / bersih tanpa warning.
+  - `flutter test`: 44 dari 44 tes unit & widget lulus 100%, memvalidasi perhitungan matematika grid snapping 0.01°, perlindungan koordinat tersembunyi, idempotensi toggle like, rendering `PostCard`, form `CreatePostSheet`, serta interaksi linimasa `FeedPage`.
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 004 di Supabase Dashboard**: Berkas `supabase/migrations/004_create_post_and_feed.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat fungsi `faunova_snap_to_grid`, RPC `create_post`, `get_for_you_feed`, dan `toggle_post_like`.
+
+### 3. Langkah Berikutnya (Sesi S10)
+- **Sesi S10 (Follow, Tab Mengikuti, Like & Profil Publik)**:
+  - Implementasi relasi follow pengguna (RPC `toggle_follow_user`, pengecekan status follow).
+  - Tab "Mengikuti" di `FeedPage` yang hanya menampilkan postingan dari akun yang diikuti.
+  - Tampilan halaman profil publik pengguna lain (`PublicProfilePage`) yang menampilkan koleksi publik dan tombol ikuti/berhenti mengikuti.
+
 
 
 

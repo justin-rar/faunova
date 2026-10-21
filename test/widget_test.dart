@@ -29,6 +29,11 @@ import 'package:faunova/features/profile/presentation/profile_page.dart';
 import 'package:faunova/features/profile/presentation/capture_detail_page.dart';
 import 'package:faunova/features/profile/presentation/widgets/collection_grid_view.dart';
 import 'package:faunova/features/profile/presentation/widgets/collection_map_view.dart';
+import 'package:faunova/features/feed/models/post_model.dart';
+import 'package:faunova/core/services/post_service.dart';
+import 'package:faunova/features/feed/presentation/feed_page.dart';
+import 'package:faunova/features/feed/presentation/widgets/post_card.dart';
+import 'package:faunova/features/feed/presentation/widgets/create_post_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -1143,6 +1148,204 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Lokasi Terpetakan'), findsOneWidget);
+    });
+  });
+
+  group('S9 - create_post, Grid Snapping 0.01°, dan Feed Untuk Kamu (Plan 5.7, 5.9, 18)', () {
+    setUp(() {
+      PostService.instance.initMockDemoPosts();
+    });
+
+    test('PostService: snapToGridLocally mengaburkan koordinat ke pusat sel 0.01° secara deterministik', () {
+      // Titik 1: Jakarta (-6.208800, 106.845600)
+      final r1 = PostService.snapToGridLocally(-6.208800, 106.845600);
+      expect(r1['lat'], equals(-6.205000));
+      expect(r1['lng'], equals(106.845000));
+
+      // Titik 2: Bali Barat (-8.115600, 114.527800)
+      final r2 = PostService.snapToGridLocally(-8.115600, 114.527800);
+      expect(r2['lat'], equals(-8.115000));
+      expect(r2['lng'], equals(114.525000));
+
+      // Titik NULL
+      final rNull = PostService.snapToGridLocally(null, null);
+      expect(rNull['lat'], isNull);
+      expect(rNull['lng'], isNull);
+    });
+
+    test('PostService: createPost opsi coarse dan hidden melindungi koordinat privat', () async {
+      // 1. Opsi Coarse: Menyimpan koordinat snapped
+      final postCoarse = await PostService.instance.createPost(
+        captureId: 'cap-coarse-test',
+        caption: 'Melihat elang laut beterbangan di tepi pantai.',
+        visibility: 'coarse',
+        areaLabel: 'Taman Nasional Bali Barat (Area Perkiraan)',
+        demoRawLat: -8.115600,
+        demoRawLng: 114.527800,
+      );
+      expect(postCoarse.locationVisibility, equals('coarse'));
+      expect(postCoarse.displayLatitude, equals(-8.115000));
+      expect(postCoarse.displayLongitude, equals(114.525000));
+      expect(postCoarse.hasLocation, isTrue);
+
+      // 2. Opsi Hidden: Lokasi benar-benar dihilangkan (display_lat dan display_lng NULL)
+      final postHidden = await PostService.instance.createPost(
+        captureId: 'cap-hidden-test',
+        caption: 'Observasi satwa langka yang lokasinya dirahasiakan.',
+        visibility: 'hidden',
+        demoRawLat: -8.115600,
+        demoRawLng: 114.527800,
+      );
+      expect(postHidden.locationVisibility, equals('hidden'));
+      expect(postHidden.displayLatitude, isNull);
+      expect(postHidden.displayLongitude, isNull);
+      expect(postHidden.areaLabel, isNull);
+      expect(postHidden.hasLocation, isFalse);
+    });
+
+    test('PostService: fetchForYouFeed dan togglePostLike idempoten', () async {
+      final feed = await PostService.instance.fetchForYouFeed();
+      expect(feed.isNotEmpty, isTrue);
+      expect(feed.length, greaterThanOrEqualTo(3));
+
+      final targetPost = feed.first;
+      final initialLikes = targetPost.likesCount;
+      final initialLiked = targetPost.isLikedByMe;
+
+      // Like
+      final likeResult = await PostService.instance.togglePostLike(targetPost.id);
+      expect(likeResult['is_liked'], equals(!initialLiked));
+
+      // Unlike kembali
+      final unlikeResult = await PostService.instance.togglePostLike(targetPost.id);
+      expect(unlikeResult['is_liked'], equals(initialLiked));
+      expect(unlikeResult['likes_count'], equals(initialLikes));
+    });
+
+    testWidgets('PostCard: Menampilkan detail satwa dan lokasi snapped hanya bila coarse', (tester) async {
+      final coarsePost = PostModel(
+        id: 'post-coarse',
+        captureId: 'cap-1',
+        caption: 'Catatan observasi satwa liar.',
+        locationVisibility: 'coarse',
+        displayLatitude: -8.115000,
+        displayLongitude: 114.525000,
+        areaLabel: 'Bali Barat (Area Perkiraan)',
+        createdAt: DateTime.now(),
+        speciesName: 'Jalak Bali',
+        category: 'Leucopsar rothschildi',
+        photoUrl: 'assets/images/jalak_bali.jpg',
+        blockSeq: 14,
+        blockHash: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
+        photoSha256: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
+        authorId: 'user-budi',
+        authorName: 'Budi Satria Wibowo',
+        authorUsername: 'budi_satria',
+        likesCount: 15,
+        isLikedByMe: false,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(child: PostCard(post: coarsePost)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jalak Bali'), findsOneWidget);
+      expect(find.text('#14'), findsOneWidget);
+      expect(find.text('Bali Barat (Area Perkiraan)'), findsOneWidget);
+      expect(find.text('Peta Area'), findsOneWidget);
+
+      // Post dengan hidden location
+      final hiddenPost = coarsePost.copyWith(
+        id: 'post-hidden',
+        locationVisibility: 'hidden',
+        displayLatitude: null,
+        displayLongitude: null,
+        areaLabel: null,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(child: PostCard(post: hiddenPost)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Peta Area'), findsNothing);
+      expect(find.text('Bali Barat (Area Perkiraan)'), findsNothing);
+    });
+
+    testWidgets('CreatePostSheet: Menampilkan formulir publikasi dan pengatur privasi lokasi', (tester) async {
+      final capture = CaptureModel(
+        id: 'cap-test',
+        scanId: 'scan-test',
+        userId: 'user-1',
+        photoObjectPath: 'assets/images/jalak_bali.jpg',
+        speciesName: 'Jalak Bali',
+        category: 'Leucopsar rothschildi',
+        description: 'Burung endemik langka.',
+        latitude: -8.115600,
+        longitude: 114.527800,
+        receivedAt: DateTime.now(),
+        seq: 1,
+        previousHash: 'prev-hash',
+        blockHash: 'block-hash-1234567890',
+        photoSha256: 'photo-hash-1234567890',
+        createdAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: CreatePostSheet(capture: capture),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Publikasikan Observasi ke Linimasa'), findsOneWidget);
+      expect(find.text('Area Kasar (Grid)'), findsOneWidget);
+      expect(find.text('Sembunyikan'), findsOneWidget);
+      expect(find.text('Bagikan ke Linimasa Komunitas'), findsOneWidget);
+    });
+
+    testWidgets('FeedPage: Linimasa Untuk Kamu memuat PostCard dan mendukung interaksi like', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const FeedPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Memastikan tab 'Untuk Kamu' menampilkan postingan
+      expect(find.text('Untuk Kamu'), findsOneWidget);
+      expect(find.text('Jalak Bali'), findsOneWidget);
+      expect(find.text('Kucing Kuwuk'), findsOneWidget);
+
+      // Verifikasi tombol like berfungsi
+      final likeIcon = find.byIcon(Icons.favorite_border_rounded).first;
+      await tester.tap(likeIcon);
+      await tester.pumpAndSettle();
+
+      // Sekarang status like aktif
+      expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
     });
   });
 }
