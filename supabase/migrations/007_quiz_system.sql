@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.quiz_questions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_active ON public.quiz_questions(is_active) WHERE is_active = true;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_questions_question ON public.quiz_questions(question);
 
 ALTER TABLE public.quiz_questions ENABLE ROW LEVEL SECURITY;
 
@@ -78,7 +79,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
 AS $$
-DECLARATION
+DECLARE
     v_user_id UUID;
     v_session_id UUID;
     v_q_ids UUID[];
@@ -377,4 +378,4 @@ INSERT INTO public.quiz_questions (category, question, options, correct_option, 
     0,
     'Nyctixalus margaritifer memiliki bintik putih menonjol seperti taburan mutiara pada kulitnya yang cokelat kemerahan.'
 )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (question) DO NOTHING;
