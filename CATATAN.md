@@ -783,10 +783,67 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Sensor Akselerometer di HP Fisik**: Goyangan fisik nyata pada perangkat mobile asli (diuji pada tahapan integrasi akhir S23).
 
 ### 3. Langkah Berikutnya (Sesi S16)
-- **Sesi S16 (Sistem Badge Gelar & Pop-up Pencapaian)**:
-  - Tabel `badges` dan `user_badges` di database.
-  - Pengecekan syarat badge (Pemula, Kolektor, Rajin, Si Pintar, Juara Kuis, Sosialita, Rutin Menantang, Si Goyang) di server.
-  - Grid badge di Profil (terbuka berwarna, terkunci abu-abu dengan progress bar) dan dialog pop-up lokal saat badge baru terbuka.
+- Dilanjutkan dan diselesaikan pada Sesi S16 di bawah.
+
+---
+
+## Sesi S16 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Database & Server-side Badge Evaluation (`supabase/migrations/010_badge_system.sql`) (Plan 5.8: 202-217, Aturan Keras 2 & 3)**:
+  - **Tabel `badges`**: Berisi metadata resmi (id, name, description, target_count, icon_name, category) dengan RLS aktif (`FOR SELECT TO authenticated USING (true)`).
+  - **Tabel `user_badges`**: Mencatat pencapaian pengguna (user_id, badge_id, is_unlocked, current_progress, unlocked_at, notified) dengan RLS aktif (`FOR SELECT TO authenticated USING (auth.uid() = user_id)`).
+  - **Seed 8 Lencana Gelar MVP (Plan 207-217)**:
+    1. *Pemula*: 1 tangkapan pertama disimpan ke koleksi kanonis (`target_count: 1`).
+    2. *Kolektor*: Simpan 10 tangkapan hewan ke dalam koleksi (`target_count: 10`).
+    3. *Rajin*: Lakukan check-in streak observasi 7 hari berturut-turut (`target_count: 7`).
+    4. *Si Pintar*: Selesaikan 5 sesi kuis biologi di Arena Kuis (`target_count: 5`).
+    5. *Juara Kuis*: Raih skor minimal 1000 dalam satu sesi kuis (`target_count: 1000`).
+    6. *Sosialita*: Dapatkan akumulasi minimal 5 pengikut atau 10 suka pada postingan (`target_count: 5`).
+    7. *Rutin Menantang*: Jawab dengan benar Tantangan Hari Ini sebanyak 5 kali (`target_count: 5`).
+    8. *Si Goyang*: Jawab dengan benar 10 soal kuis goyang HP (Shake-to-Quiz) (`target_count: 10`).
+  - **RPC `get_user_badges()` (`SECURITY DEFINER`, Aturan Keras 2)**:
+    - Menetapkan `search_path = public, auth` dan memvalidasi `auth.uid()`.
+    - Mengagregasi metrik pengguna langsung dari sumber kebenaran server:
+      - `captures` (jumlah tangkapan terverifikasi).
+      - `profiles.streak_count` & `profiles.best_quiz_score`.
+      - `quiz_sessions` (sesi berstatus 'completed').
+      - `follows` (pengikut) & `likes` (suka diterima).
+      - `daily_challenge_log` (jawaban benar tantangan harian).
+      - `shake_log` (jawaban benar kuis goyang HP).
+    - Menguji kualifikasi pembukaan lencana secara otomatis di database, menyimpan tanggal buka (`unlocked_at`), menandai `is_newly_unlocked`, dan mengembalikan daftar lengkap 8 badge.
+    - **Aturan Keras 2 Ditaati Penuh**: Klien Flutter tidak pernah menulis status atau tanggal pembukaan badge langsung ke database.
+- **Model & Layanan Lencana (`lib/features/profile/models/badge_model.dart` & `lib/core/services/badge_service.dart`)**:
+  - `BadgeModel`: Serialisasi/deserialisasi aman untuk id, name, description, targetCount, currentProgress, actualProgress, isUnlocked, unlockedAt, iconName, category, dan isNewlyUnlocked.
+  - `BadgeService`:
+    - Singleton terintegrasi dengan RPC Supabase `get_user_badges()`.
+    - Pelacak sesi perayaan lokal `_celebratedBadges` untuk mencegah pop-up berulang kali.
+    - Mode cadangan offline/demo yang deterministik dan konsisten.
+    - Helper pemetaan ikon Material `getBadgeIcon(String iconName)`.
+- **UI Pop-up Perayaan & Lembar Detail (`BadgeCelebrationDialog` & `BadgeDetailSheet`)**:
+  - Diterapkan di `lib/features/profile/presentation/widgets/badge_celebration_dialog.dart`.
+  - Mengikuti palet resmi Faunova (latar gading `#F7F4ED`, kartu sage muda `#C7D3C0`, teks gelap `#1F2A1E`, aksen emas `#C8A96B`).
+  - `BadgeCelebrationDialog`: Pop-up modal perayaan saat lencana baru terbuka, menampilkan emblem emas berkilau, gelar, deskripsi pencapaian, dan tombol "Klaim & Lanjutkan".
+  - `BadgeDetailSheet`: Modal bottom sheet yang menampilkan detail lencana, tanggal terbuka, kategori taksonomi, serta bilah progres (`currentProgress / targetCount`).
+- **Integrasi Grid Profil (`lib/features/profile/presentation/profile_page.dart`)**:
+  - Menggantikan rak lencana statis dengan grid 8 lencana dinamis yang interaktif.
+  - Lencana terbuka ditampilkan berwarna penuh dengan aksen sage tua dan ikon emas.
+  - Lencana terkunci ditampilkan redup dengan indikator abu-abu dan label progres (misal `4/10`).
+  - Ketukan pada kartu lencana membuka `BadgeDetailSheet`.
+  - Pemicu otomatis: Jika terdeteksi lencana yang baru terbuka (`isNewlyUnlocked`), dialog perayaan otomatis muncul begitu halaman dimuat.
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error maupun peringatan lint.
+  - `flutter test`: **76 dari 76 pengujian unit & widget lulus 100%** (termasuk 4 pengujian baru untuk S16: evaluasi 8 badge, dialog perayaan, sheet rincian, dan interaksi grid profil).
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 010 di Supabase Dashboard**: Berkas `supabase/migrations/010_badge_system.sql` telah dibuat dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat tabel `badges`, `user_badges`, seed 8 lencana resmi, dan RPC `get_user_badges()`.
+
+### 3. Langkah Berikutnya (Sesi S17)
+- **Sesi S17 (Biometrik: toggle, sesi tersimpan, 5x gagal)**:
+  - Pengaturan autentikasi biometrik (Fingerprint / Face ID) menggunakan `local_auth`.
+  - Penyimpanan sesi terenkripsi aman (`flutter_secure_storage`).
+  - Logika fallback PIN/password dan penguncian sementara setelah 5 kali gagal verifikasi biometrik sesuai Plan 5.1.
+
 
 
 

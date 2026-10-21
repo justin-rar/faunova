@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/badge_service.dart';
 import '../../../core/services/capture_service.dart';
 import '../../../core/services/profile_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -7,7 +8,9 @@ import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
+import '../models/badge_model.dart';
 import '../models/public_profile_model.dart';
+import 'widgets/badge_celebration_dialog.dart';
 import 'widgets/collection_grid_view.dart';
 import 'widgets/collection_map_view.dart';
 import 'widgets/edit_profile_sheet.dart';
@@ -27,7 +30,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   List<CaptureModel> _captures = [];
   PublicProfileModel? _myProfile;
+  List<BadgeModel> _badges = [];
   bool _isLoadingCaptures = false;
+  bool _isLoadingBadges = false;
   String? _capturesError;
   int _collectionMode = 0; // 0: Grid Koleksi, 1: Peta Persebaran
   bool _isVerifyingChain = false;
@@ -43,6 +48,32 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     });
     _loadCaptures();
     _loadProfile();
+    _loadBadges();
+  }
+
+  Future<void> _loadBadges() async {
+    setState(() => _isLoadingBadges = true);
+    try {
+      final list = await BadgeService.instance.getUserBadges();
+      if (mounted) {
+        setState(() {
+          _badges = list;
+          _isLoadingBadges = false;
+        });
+
+        // Pop-up lokal saat badge baru terbuka (Plan 204)
+        final newlyUnlocked = list.where((b) => b.isNewlyUnlocked).toList();
+        if (newlyUnlocked.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              BadgeCelebrationDialog.show(context, badge: newlyUnlocked.first);
+            }
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingBadges = false);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -546,6 +577,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   Widget _buildBadgeShelfCard() {
+    final unlockedCount = _badges.where((b) => b.isUnlocked).length;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.sageMuda,
@@ -556,10 +589,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
+              const Expanded(
                 child: Text(
                   'Lencana Gelar Pencapaian (MVP)',
                   style: TextStyle(
@@ -569,65 +602,128 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   ),
                 ),
               ),
-              Text(
-                '4 Terbuka',
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.emasTua,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.gading,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.emas.withValues(alpha: 0.5), width: 1),
+                ),
+                child: Text(
+                  '$unlockedCount / ${_badges.length} Terbuka',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.emasTua,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildBadgeItem(Icons.forest_rounded, 'Penjelajah', true)),
-              Expanded(child: _buildBadgeItem(Icons.visibility_rounded, 'Mata Elang', true)),
-              Expanded(child: _buildBadgeItem(Icons.auto_stories_rounded, 'Taksonomis', true)),
-              Expanded(child: _buildBadgeItem(Icons.link_rounded, 'Penjaga Rantai', true)),
-              Expanded(child: _buildBadgeItem(Icons.lock_outline_rounded, 'Terkunci', false)),
-            ],
-          ),
+          const SizedBox(height: 14),
+
+          if (_badges.isEmpty && _isLoadingBadges)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+              ),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.78,
+              ),
+              itemCount: _badges.length,
+              itemBuilder: (context, index) {
+                final badge = _badges[index];
+                return _buildBadgeItem(badge);
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBadgeItem(IconData icon, String label, bool isUnlocked) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: isUnlocked ? AppColors.sageTua : AppColors.gading,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isUnlocked ? AppColors.emas : AppColors.sage.withValues(alpha: 0.4),
-              width: 1.5,
+  Widget _buildBadgeItem(BadgeModel badge) {
+    final iconData = BadgeService.getBadgeIcon(badge.iconName);
+
+    return InkWell(
+      onTap: () => BadgeDetailSheet.show(context, badge: badge),
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: badge.isUnlocked ? AppColors.sageTua : AppColors.gading,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: badge.isUnlocked ? AppColors.emas : AppColors.sage.withValues(alpha: 0.35),
+                    width: 1.8,
+                  ),
+                  boxShadow: badge.isUnlocked
+                      ? [
+                          BoxShadow(
+                            color: AppColors.emas.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Icon(
+                  badge.isUnlocked ? iconData : Icons.lock_outline_rounded,
+                  size: 22,
+                  color: badge.isUnlocked ? AppColors.emas : AppColors.sage,
+                ),
+              ),
+              if (!badge.isUnlocked)
+                Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.teksGelap,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${badge.currentProgress}/${badge.targetCount}',
+                      style: const TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            badge.name,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: badge.isUnlocked ? FontWeight.w700 : FontWeight.w500,
+              color: badge.isUnlocked ? AppColors.teksGelap : AppColors.sage,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          child: Icon(
-            icon,
-            size: 22,
-            color: isUnlocked ? AppColors.teksPutih : AppColors.sage,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: isUnlocked ? FontWeight.w700 : FontWeight.w500,
-            color: isUnlocked ? AppColors.teksGelap : AppColors.sage,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-      ],
+        ],
+      ),
     );
   }
 

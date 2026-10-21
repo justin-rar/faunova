@@ -53,6 +53,9 @@ import 'package:faunova/features/game/presentation/game_page.dart';
 import 'package:faunova/core/services/streak_service.dart';
 import 'package:faunova/core/services/shake_service.dart';
 import 'package:faunova/features/game/presentation/widgets/shake_quiz_sheet.dart';
+import 'package:faunova/core/services/badge_service.dart';
+import 'package:faunova/features/profile/models/badge_model.dart';
+import 'package:faunova/features/profile/presentation/widgets/badge_celebration_dialog.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -2149,6 +2152,169 @@ void main() {
 
       // Sheet tertutup, kembali ke GamePage
       expect(find.text('Ekspedisi & Kuis Fauna'), findsOneWidget);
+    });
+  });
+
+  group('S16 - Sistem Badge Gelar & Pop-up Pencapaian (Plan 5.8: 202-217)', () {
+    setUp(() async {
+      await EncryptedStorageService.instance.init();
+      BadgeService.instance.resetCelebrated();
+    });
+
+    test('BadgeService: getUserBadges memuat 8 lencana MVP dengan target dan progres yang tepat', () async {
+      final badges = await BadgeService.instance.getUserBadges();
+
+      expect(badges.length, equals(8));
+
+      // Verifikasi 8 lencana MVP sesuai Plan 207-217
+      final ids = badges.map((b) => b.id).toList();
+      expect(ids, containsAll([
+        'pemula',
+        'kolektor',
+        'rajin',
+        'si_pintar',
+        'juara_kuis',
+        'sosialita',
+        'rutin_menantang',
+        'si_goyang',
+      ]));
+
+      // Verifikasi target lencana
+      final pemula = badges.firstWhere((b) => b.id == 'pemula');
+      expect(pemula.targetCount, equals(1));
+      expect(pemula.isUnlocked, isTrue); // demo has 4 captures
+
+      final kolektor = badges.firstWhere((b) => b.id == 'kolektor');
+      expect(kolektor.targetCount, equals(10));
+      expect(kolektor.isUnlocked, isFalse); // 4/10
+    });
+
+    testWidgets('BadgeCelebrationDialog: Menampilkan modal perayaan saat lencana baru terbuka', (tester) async {
+      final badge = const BadgeModel(
+        id: 'pemula',
+        name: 'Pemula',
+        description: '1 tangkapan pertama disimpan ke koleksi kanonis.',
+        targetCount: 1,
+        currentProgress: 1,
+        actualProgress: 1,
+        isUnlocked: true,
+        iconName: 'eco',
+        category: 'Koleksi',
+        isNewlyUnlocked: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => BadgeCelebrationDialog.show(context, badge: badge),
+                  child: const Text('Buka Dialog'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Buka Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lencana Baru Terbuka! 🎉'), findsOneWidget);
+      expect(find.text('Pemula'), findsOneWidget);
+      expect(find.text('Klaim & Lanjutkan'), findsOneWidget);
+
+      await tester.tap(find.text('Klaim & Lanjutkan'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lencana Baru Terbuka! 🎉'), findsNothing);
+    });
+
+    testWidgets('BadgeDetailSheet: Menampilkan rincian progres dan status lencana', (tester) async {
+      final badge = const BadgeModel(
+        id: 'kolektor',
+        name: 'Kolektor',
+        description: 'Simpan 10 tangkapan hewan ke dalam koleksi.',
+        targetCount: 10,
+        currentProgress: 4,
+        actualProgress: 4,
+        isUnlocked: false,
+        iconName: 'auto_stories',
+        category: 'Koleksi',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => BadgeDetailSheet.show(context, badge: badge),
+                  child: const Text('Buka Sheet'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Buka Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kolektor'), findsOneWidget);
+      expect(find.text('Terkunci'), findsOneWidget);
+      expect(find.text('4 / 10'), findsOneWidget);
+      expect(find.text('Tutup'), findsOneWidget);
+
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
+      expect(find.text('4 / 10'), findsNothing);
+    });
+
+    testWidgets('ProfilePage: Menampilkan grid lencana dan membuka detail sheet saat diketuk', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const ProfilePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Jika ada dialog perayaan badge terbuka otomatis (Plan 204), klaim & tutup
+      final celebrationBtn = find.text('Klaim & Lanjutkan');
+      if (celebrationBtn.evaluate().isNotEmpty) {
+        await tester.tap(celebrationBtn);
+        await tester.pumpAndSettle();
+      }
+
+      // Cari section lencana
+      final badgeShelf = find.text('Lencana Gelar Pencapaian (MVP)');
+      await tester.scrollUntilVisible(badgeShelf, 300, scrollable: find.byType(Scrollable).first);
+      expect(badgeShelf, findsOneWidget);
+
+      // Cari lencana Pemula dalam grid
+      final pemulaItem = find.text('Pemula');
+      await tester.ensureVisible(pemulaItem);
+      await tester.pumpAndSettle();
+      expect(pemulaItem, findsOneWidget);
+
+      // Ketuk lencana Pemula
+      await tester.tap(pemulaItem);
+      await tester.pumpAndSettle();
+
+      // BadgeDetailSheet terbuka
+      expect(find.text('Syarat Pembukaan:'), findsOneWidget);
+      expect(find.text('Terbuka'), findsWidgets);
     });
   });
 }
