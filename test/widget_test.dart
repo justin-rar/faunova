@@ -60,6 +60,10 @@ import 'package:faunova/features/profile/presentation/widgets/badge_celebration_
 import 'package:faunova/features/profile/presentation/widgets/biometric_setting_sheet.dart';
 import 'package:faunova/core/services/notification_service.dart';
 import 'package:faunova/features/profile/presentation/widgets/notification_setting_sheet.dart';
+import 'package:faunova/features/profile/models/payment_transaction_model.dart';
+import 'package:faunova/core/services/payment_service.dart';
+import 'package:faunova/features/profile/presentation/midtrans_snap_webview_page.dart';
+import 'package:faunova/features/profile/presentation/widgets/upgrade_blue_check_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -2616,6 +2620,189 @@ void main() {
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
+    });
+  });
+
+  group('S19 - Midtrans Sandbox: create-payment, Snap WebView, dan Webhook Signature (Plan 5.4)', () {
+    test('PaymentTransactionModel: Parsing JSON, format nominal, dan status badge', () {
+      final json = {
+        'id': 'tx-12345',
+        'order_id': 'FAUNOVA-CB-USER123-1729500000',
+        'user_id': 'user-123',
+        'amount_idr': 15000,
+        'currency': 'IDR',
+        'status': 'settlement',
+        'provider_tx_id': 'midtrans-sandbox-999',
+        'payment_type': 'qris',
+        'entitlement_days': 30,
+        'created_at': '2026-10-22T10:00:00Z',
+        'settled_at': '2026-10-22T10:02:00Z',
+      };
+
+      final tx = PaymentTransactionModel.fromJson(json);
+      expect(tx.id, 'tx-12345');
+      expect(tx.orderId, 'FAUNOVA-CB-USER123-1729500000');
+      expect(tx.amountIdr, 15000);
+      expect(tx.currency, 'IDR');
+      expect(tx.status, 'settlement');
+      expect(tx.isSettled, isTrue);
+      expect(tx.isPending, isFalse);
+      expect(tx.statusLabel, 'Berhasil');
+      expect(tx.formattedAmount, 'Rp 15.000');
+      expect(tx.entitlementDays, 30);
+    });
+
+    test('PaymentService: createBlueCheckPayment menghasilkan orderId dan snap token valid', () async {
+      final service = PaymentService.instance;
+      final result = await service.createBlueCheckPayment();
+
+      expect(result.success, isTrue);
+      expect(result.orderId, isNotNull);
+      expect(result.orderId, startsWith('FAUNOVA-CB-'));
+      expect(result.amountIdr, 15000);
+      expect(result.snapToken, isNotNull);
+      expect(result.redirectUrl, isNotNull);
+      expect(result.redirectUrl, contains('snap'));
+    });
+
+    test('PaymentService: getMyTransactions memuat riwayat pembayaran berstatus valid', () async {
+      final service = PaymentService.instance;
+      final history = await service.getMyTransactions();
+
+      expect(history, isNotEmpty);
+      final firstTx = history.first;
+      expect(firstTx.amountIdr, 15000);
+      expect(firstTx.currency, 'IDR');
+      expect(['settlement', 'pending', 'expire', 'cancel'], contains(firstTx.status));
+    });
+
+    test('PaymentService: simulateWebhookSettlement idempoten dan memperbarui status lokal', () async {
+      final service = PaymentService.instance;
+
+      // Buat transaksi baru
+      final paymentResult = await service.createBlueCheckPayment();
+      expect(paymentResult.success, isTrue);
+      final orderId = paymentResult.orderId!;
+
+      // Simulasi webhook settlement pertama
+      final firstSuccess = await service.simulateWebhookSettlement(orderId);
+      expect(firstSuccess, isTrue);
+
+      // Verifikasi status transaksi lokal menjadi settlement
+      final statusAfterFirst = await service.checkTransactionStatus(orderId);
+      expect(statusAfterFirst?.status, 'settlement');
+      expect(statusAfterFirst?.isSettled, isTrue);
+
+      // Simulasi webhook settlement kedua (uji idempotensi)
+      final secondSuccess = await service.simulateWebhookSettlement(orderId);
+      expect(secondSuccess, isTrue);
+
+      final statusAfterSecond = await service.checkTransactionStatus(orderId);
+      expect(statusAfterSecond?.status, 'settlement');
+      expect(statusAfterSecond?.isSettled, isTrue);
+    });
+
+    testWidgets('UpgradeBlueCheckSheet: Menampilkan harga 3 mata uang, keunggulan, dan riwayat transaksi', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: UpgradeBlueCheckSheet(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verifikasi judul dan banner
+      expect(find.text('Kolektor Terverifikasi'), findsOneWidget);
+      expect(find.text('Langganan Bulanan (Midtrans Sandbox)'), findsOneWidget);
+      expect(find.text('Rp15.000'), findsOneWidget);
+
+      // Verifikasi benefit
+      expect(find.text('Lencana Centang Biru Resmi'), findsOneWidget);
+      expect(find.text('Kuota Chat AI 10 Pertanyaan (Plan 124)'), findsOneWidget);
+      expect(find.text('Prioritas Pencarian Kolektor Teratas'), findsOneWidget);
+
+      // Verifikasi tombol pembayaran
+      expect(find.text('Bayar Rp 15.000 (Midtrans Sandbox)'), findsOneWidget);
+
+      // Berpindah ke tab Riwayat Pembayaran
+      final historyTab = find.text('Riwayat Pembayaran');
+      expect(historyTab, findsOneWidget);
+      await tester.tap(historyTab);
+      await tester.pumpAndSettle();
+
+      // Verifikasi konten riwayat pembayaran
+      expect(find.textContaining('FAUNOVA-CB-'), findsWidgets);
+      expect(find.text('Rp 15.000'), findsWidgets);
+    });
+
+    testWidgets('MidtransSnapWebViewPage: Menampilkan simulator sandbox dan memproses simulasi bayar berhasil', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      bool? returnedResult;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                returnedResult = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const MidtransSnapWebViewPage(
+                      orderId: 'FAUNOVA-CB-TEST-12345',
+                      redirectUrl: 'https://app.sandbox.midtrans.com/snap/v2/vtweb/mock',
+                      amountIdr: 15000,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Buka WebView Snap'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Buka halaman MidtransSnapWebViewPage
+      await tester.tap(find.text('Buka WebView Snap'));
+      await tester.pumpAndSettle();
+
+      // Verifikasi tampilan simulator sandbox
+      expect(find.text('Simulator Midtrans Snap Sandbox'), findsOneWidget);
+      expect(find.text('Order ID: FAUNOVA-CB-TEST-12345'), findsOneWidget);
+      expect(find.text('Rp 15.000'), findsOneWidget);
+
+      // Ketuk tombol simulasi bayar berhasil
+      final payButton = find.text('Simulasi Bayar Berhasil (Sandbox)');
+      expect(payButton, findsOneWidget);
+      await tester.tap(payButton);
+      await tester.pumpAndSettle();
+
+      // Dialog konfirmasi server muncul (Hard Rule 6: redirect tidak ubah status langsung)
+      expect(find.text('Pembayaran Terkirim'), findsOneWidget);
+      final returnButton = find.text('Kembali ke Profil');
+      expect(returnButton, findsOneWidget);
+      await tester.tap(returnButton);
+      await tester.pumpAndSettle();
+
+      // Verifikasi navigasi kembali dan returnedResult == true
+      expect(returnedResult, isTrue);
+      expect(find.text('Buka WebView Snap'), findsOneWidget);
     });
   });
 }

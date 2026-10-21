@@ -119,43 +119,40 @@ serve(async (req: Request) => {
       transaction_status === "settlement" ||
       (transaction_status === "capture" && fraud_status === "accept");
 
-    if (isSuccess && userPrefix) {
-      // Cari pengguna yang ID-nya diawali prefix tersebut
-      const { data: users, error: userFindErr } = await adminClient
-        .from("profiles")
-        .select("id, verified_until")
-        .ilike("id", `${userPrefix}%`)
-        .limit(1);
+    const numericGrossAmount = Math.round(parseFloat(gross_amount));
 
-      if (!userFindErr && users && users.length > 0) {
-        const targetUser = users[0];
-        const now = new Date();
-        const currentVerifiedUntil = targetUser.verified_until
-          ? new Date(targetUser.verified_until)
-          : null;
+    if (isSuccess) {
+      const { data: rpcResult, error: rpcError } = await adminClient.rpc(
+        "process_midtrans_settlement",
+        {
+          p_order_id: order_id,
+          p_provider_tx_id: body.transaction_id || null,
+          p_provider_status: transaction_status,
+          p_gross_amount: numericGrossAmount,
+        }
+      );
 
-        // Perpanjang 30 hari dari batas aktif sekarang, atau 30 hari dari sekarang jika sudah expired
-        const baseDate =
-          currentVerifiedUntil && currentVerifiedUntil > now
-            ? currentVerifiedUntil
-            : now;
-
-        const newVerifiedUntil = new Date(
-          baseDate.getTime() + 30 * 24 * 60 * 60 * 1000
-        );
-
-        await adminClient
-          .from("profiles")
-          .update({
-            verified_until: newVerifiedUntil.toISOString(),
-            updated_at: now.toISOString(),
-          })
-          .eq("id", targetUser.id);
-
-        console.log(
-          `User ${targetUser.id} verified_until extended to ${newVerifiedUntil.toISOString()}`
-        );
+      if (rpcError) {
+        console.error("process_midtrans_settlement RPC error:", rpcError);
+      } else {
+        console.log("process_midtrans_settlement RPC success:", rpcResult);
       }
+    } else {
+      // Perbarui status non-settlement (pending, expire, cancel, deny)
+      await adminClient
+        .from("transactions")
+        .update({
+          status:
+            transaction_status === "expire"
+              ? "expire"
+              : transaction_status === "cancel"
+              ? "cancel"
+              : "deny",
+          provider_transaction_id: body.transaction_id || null,
+          provider_status: transaction_status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("order_id", order_id);
     }
 
     return new Response(

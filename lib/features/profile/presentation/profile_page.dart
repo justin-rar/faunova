@@ -16,6 +16,7 @@ import 'widgets/collection_grid_view.dart';
 import 'widgets/collection_map_view.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/notification_setting_sheet.dart';
+import 'widgets/upgrade_blue_check_sheet.dart';
 import 'widgets/currency_converter_card.dart';
 import 'widgets/multi_timezone_card.dart';
 
@@ -187,6 +188,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   onSelected: (value) {
                     if (value == 'edit_profile') {
                       _showEditProfileSheet();
+                    } else if (value == 'upgrade_blue_check') {
+                      UpgradeBlueCheckSheet.show(
+                        context,
+                        onSubscriptionUpdated: () => _loadProfile(),
+                      );
                     } else if (value == 'setting_biometrik') {
                       BiometricSettingSheet.show(context);
                     } else if (value == 'setting_notifikasi') {
@@ -212,6 +218,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           Expanded(
                             child: Text(
                               'Edit Profil Kolektor',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'upgrade_blue_check',
+                      child: Row(
+                        children: [
+                          Icon(Icons.verified_rounded, size: 18, color: Color(0xFF1E88E5)),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Langganan Centang Biru',
                               style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
                             ),
                           ),
@@ -511,88 +532,89 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
+  String _formatVerifiedDate(DateTime? dt) {
+    if (dt == null) return '30 hari';
+    final months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${dt.day} ${months[dt.month]} ${dt.year}';
+  }
+
   Widget _buildVerifiedSubscriptionCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E88E5).withValues(alpha: 0.15),
-              shape: BoxShape.circle,
+    final isVerified = _myProfile?.isVerified ?? false;
+    final verifiedUntil = _myProfile?.verifiedUntil;
+
+    return InkWell(
+      onTap: () {
+        UpgradeBlueCheckSheet.show(
+          context,
+          onSubscriptionUpdated: () => _loadProfile(),
+        );
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.sageMuda,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isVerified
+                    ? const Color(0xFF1E88E5).withValues(alpha: 0.15)
+                    : AppColors.emas.withValues(alpha: 0.20),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isVerified ? Icons.verified_rounded : Icons.verified_outlined,
+                color: isVerified ? const Color(0xFF1E88E5) : AppColors.emasTua,
+                size: 26,
+              ),
             ),
-            child: const Icon(Icons.verified_rounded, color: Color(0xFF1E88E5), size: 26),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Centang Biru Aktif',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                    color: AppColors.teksGelap,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isVerified ? 'Centang Biru Aktif' : 'Tingkatkan ke Centang Biru',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                      color: AppColors.teksGelap,
+                    ),
                   ),
-                ),
-                Text(
-                  'Aktif s/d 30 Nov 2026 • Midtrans Sandbox',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: AppColors.gading,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                builder: (ctx) => Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Langganan Centang Biru',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.teksGelap,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const CurrencyConverterCard(),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    isVerified
+                        ? 'Aktif s/d ${_formatVerifiedDate(verifiedUntil)} • Midtrans'
+                        : 'Rp 15.000 / bulan • Midtrans Sandbox',
+                    style: const TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
                   ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: const Size(80, 36),
+                ],
+              ),
             ),
-            child: const Text('Perpanjang', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: () {
+                UpgradeBlueCheckSheet.show(
+                  context,
+                  onSubscriptionUpdated: () => _loadProfile(),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                minimumSize: const Size(80, 36),
+              ),
+              child: Text(
+                isVerified ? 'Perpanjang' : 'Langganan',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

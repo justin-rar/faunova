@@ -932,10 +932,79 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Catatan Konfigurasi Database Supabase**: **TIDAK ADA migrasi SQL Supabase untuk Sesi S18**. Sesuai ketentuan Plan 223, seluruh notifikasi dijalankan secara lokal di sistem operasi perangkat melalui `flutter_local_notifications`.
 
 ### 3. Langkah Berikutnya (Sesi S19)
-- **Sesi S19 (Midtrans Sandbox: create-payment, Snap di WebView, Webhook dengan Verifikasi Signature)**:
-  - Edge Function Supabase untuk membuat order dan mendapatkan Snap token Midtrans Sandbox.
-  - Halaman WebView pembayaran Midtrans di Flutter.
-  - Edge Function webhook dengan verifikasi signature key SHA-512 Midtrans, pencocokan order_id, user_id, dan idempotensi status transaksi.
+- Dilanjutkan dan diselesaikan pada Sesi S19 di bawah.
+
+---
+
+## Sesi S19 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Migrasi Database Transaksi & RPC Settlement (`supabase/migrations/011_midtrans_payment.sql`)**:
+  - Dibuat tabel `public.transactions` untuk mencatat pesanan pembayaran Midtrans:
+    - Kolom: `id`, `order_id` (UNIQUE), `user_id`, `amount_idr` (CHECK > 0), `currency` (CHECK 'IDR'), `status` ('pending', 'settlement', 'capture', 'deny', 'expire', 'cancel'), `snap_token`, `redirect_url`, `provider_tx_id`, `payment_type`, `entitlement_days` (30), `created_at`, `settled_at`, `raw_webhook_payload`.
+    - **RLS Aktif (Aturan Keras 3)**: Pengguna hanya dapat membaca transaksi milik sendiri (`auth.uid() = user_id` untuk SELECT). Klien Flutter dilarang keras melakukan INSERT maupun UPDATE secara langsung.
+  - **Fungsi RPC `process_midtrans_settlement` (`SECURITY DEFINER`, Aturan Keras 2 & 6)**:
+    - Menetapkan `search_path = public, auth`.
+    - Mengunci baris transaksi dengan row-level lock `FOR UPDATE` untuk mencegah race condition.
+    - **Pemeriksaan Idempotensi**: Jika status pesanan sudah `'settlement'`, fungsi mengembalikan `{ "success": true, "already_processed": true }` tanpa memperpanjang hari berulang kali.
+    - **Validasi Nominal**: Memverifikasi kecocokan nominal `p_gross_amount` dengan tagihan asli `amount_idr`.
+    - **Perpanjangan Atomik di Server**: Memperbarui `profiles.verified_until` (+30 hari) secara otomatis di database.
+  - **Fungsi RPC `get_my_transactions()` (`SECURITY DEFINER`)**:
+    - Mengambil riwayat transaksi kolektor yang sedang masuk secara aman dan terurut.
+- **Edge Functions Supabase Midtrans (`supabase/functions/`)**:
+  - **`create-payment` (`supabase/functions/create-payment/index.ts`)**:
+    - Memverifikasi otentikasi JWT Supabase Auth.
+    - Menghasilkan `order_id` terstandarisasi format kanonis: `FAUNOVA-CB-{userPrefix}-{timestamp}`.
+    - Menghubungi Midtrans Sandbox Snap API (`https://app.sandbox.midtrans.com/snap/v1/transactions`) menggunakan `MIDTRANS_SERVER_KEY` rahasia via Basic Auth.
+    - Memasukkan data transaksi berstatus `'pending'` ke dalam tabel `transactions` menggunakan Service Role Admin.
+    - **Aturan Keras 1 Ditaati**: Kunci rahasia server Midtrans hanya tersimpan di secrets Edge Function, tidak pernah dikirim ke klien atau diekspos ke repo.
+  - **`midtrans-webhook` (`supabase/functions/midtrans-webhook/index.ts`)**:
+    - Menerima payload HTTP POST notifikasi callback dari Midtrans.
+    - **Verifikasi Signature SHA-512 Keras (Aturan Keras 6)**:
+      - Menghitung `SHA-512(order_id + status_code + gross_amount + MIDTRANS_SERVER_KEY)`.
+      - Memastikan signature cocok 100% sebelum memproses status apa pun.
+    - Menangani status `settlement` & `capture` dengan memanggil RPC `process_midtrans_settlement`.
+    - Menangani status `expire`, `cancel`, dan `deny` dengan memperbarui status transaksi secara aman.
+- **Model & Layanan Pembayaran Flutter**:
+  - `PaymentTransactionModel` di `lib/features/profile/models/payment_transaction_model.dart`:
+    - Serialisasi/deserialisasi aman, properti status helper (`isSuccess`, `isSettled`, `isPending`, `isFailed`), dan format mata uang `formattedAmount` (`Rp 15.000`).
+  - `PaymentService` di `lib/core/services/payment_service.dart`:
+    - Singleton `PaymentService.instance`:
+      - `createBlueCheckPayment()`: Memanggil Edge Function `create-payment` atau mode simulasi fallback demo yang aman.
+      - `getMyTransactions()`: Memuat riwayat pembayaran terautentikasi.
+      - `checkTransactionStatus(orderId)`: Pengecekan status transaksi real-time.
+      - `simulateWebhookSettlement(orderId)`: Pengujian simulasi settlement webhook secara idempoten di lingkungan sandbox dan testing.
+- **Antarmuka Pengguna (UI)**:
+  - **`MidtransSnapWebViewPage` (`lib/features/profile/presentation/midtrans_snap_webview_page.dart`)**:
+    - Mengintegrasikan package resmi `webview_flutter: ^4.14.1`.
+    - Menampilkan gateway pembayaran Snap Midtrans Sandbox dengan progress indicator.
+    - Mendeteksi redirect URL keberhasilan dan kegagalan secara aman.
+    - **Aturan Keras 6 Ditaati Penuh**: Redirect klien **TIDAK MENGUBAH** status `verified_until` secara langsung. Pengguna disajikan dialog informasi bahwa aktivasi menunggu verifikasi signature webhook server.
+    - Mode simulator ramah pengujian otomatis untuk lingkungan unit/widget test dan desktop (`Platform.environment['FLUTTER_TEST']`).
+  - **`UpgradeBlueCheckSheet` (`lib/features/profile/presentation/widgets/upgrade_blue_check_sheet.dart`)**:
+    - Mengikuti palet resmi Faunova (latar gading, kartu sage tua gradien, teks gelap, tombol emas).
+    - Menampilkan harga patokan Rp 15.000 / 30 hari beserta estimasi kurs live USD dan JPY via `CurrencyService`.
+    - Menampilkan 3 keunggulan utama Centang Biru (Lencana centang biru resmi, kuota chat AI 10 pertanyaan, prioritas pencarian).
+    - Tab "Riwayat Pembayaran" yang menampilkan daftar transaksi pengguna, tanggal, status, dan nominal dengan proteksi overflow teks.
+  - **Integrasi Menu & Kartu Profil (`lib/features/profile/presentation/profile_page.dart`)**:
+    - Menghubungkan kartu langganan di Beranda Profil secara reaktif: menampilkan status Centang Biru aktif atau opsi untuk berlangganan.
+    - Menambahkan opsi menu `Langganan Centang Biru` pada popup menu titik tiga di pojok kanan atas Profil.
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error lint maupun warning.
+  - `flutter test`: **92 dari 92 tes unit & widget lulus 100%** (termasuk 6 pengujian komprehensif baru untuk S19: serialisasi model, pembuatan pembayaran & order_id Snap, pemuatan riwayat transaksi, idempotensi webhook settlement, UI lembar langganan 3 mata uang & tab riwayat, serta alur redirect WebView simulator).
+
+### 2. Belum Teruji / Membutuhkan Konfigurasi Database Manual
+- **Eksekusi SQL Migrasi 011 di Supabase Dashboard**: Berkas `supabase/migrations/011_midtrans_payment.sql` telah dibuat dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk membuat tabel `transactions`, RLS policy, fungsi `process_midtrans_settlement`, dan `get_my_transactions`.
+- **Pengaturan Secret Midtrans di Edge Functions**: Pengguna perlu mendaftarkan Server Key Midtrans Sandbox di dashboard Supabase atau via CLI:
+  `supabase secrets set MIDTRANS_SERVER_KEY="your-sandbox-server-key"`
+- **Webhook URL di Midtrans Sandbox**: Daftarkan URL webhook Edge Function di dashboard Midtrans (Settings > Configuration > Payment Notification URL):
+  `https://<project-ref>.supabase.co/functions/v1/midtrans-webhook`
+
+### 3. Langkah Berikutnya (Sesi S20)
+- **Sesi S20 (Centang Biru: verified_until, ikon, kuota chat 10, prioritas pencarian)**:
+  - Validasi reaktif `verified_until` di seluruh antarmuka (ikon centang biru di avatar pengguna, postingan feed, profil publik, dan kolom pencarian).
+  - Peningkatan batas kuota tanya-jawab AI menjadi 10 pesan untuk pemilik centang biru aktif.
+  - Prioritas algoritma pemeringkatan hasil pencarian kolektor teratas untuk akun centang biru.
 
 
 

@@ -5,6 +5,7 @@ class PublicProfileModel {
   final String? avatarPath;
   final String bio;
   final bool isVerified;
+  final DateTime? verifiedUntil;
   final int streakCount;
   final int bestQuizScore;
   final DateTime? createdAt;
@@ -22,6 +23,7 @@ class PublicProfileModel {
     this.avatarPath,
     required this.bio,
     required this.isVerified,
+    this.verifiedUntil,
     required this.streakCount,
     required this.bestQuizScore,
     this.createdAt,
@@ -41,6 +43,7 @@ class PublicProfileModel {
       avatarPath: json['avatar_path'] as String? ?? json['avatar_url'] as String?,
       bio: json['bio'] as String? ?? '',
       isVerified: json['is_verified'] == true,
+      verifiedUntil: json['verified_until'] != null ? DateTime.tryParse(json['verified_until'].toString()) : null,
       streakCount: (json['streak_count'] as num?)?.toInt() ?? 0,
       bestQuizScore: (json['best_quiz_score'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
@@ -61,6 +64,7 @@ class PublicProfileModel {
       'avatar_path': avatarPath,
       'bio': bio,
       'is_verified': isVerified,
+      'verified_until': verifiedUntil?.toIso8601String(),
       'streak_count': streakCount,
       'best_quiz_score': bestQuizScore,
       'created_at': createdAt?.toIso8601String(),
@@ -80,6 +84,7 @@ class PublicProfileModel {
     String? avatarPath,
     String? bio,
     bool? isVerified,
+    DateTime? verifiedUntil,
     int? streakCount,
     int? bestQuizScore,
     DateTime? createdAt,
@@ -97,6 +102,7 @@ class PublicProfileModel {
       avatarPath: avatarPath ?? this.avatarPath,
       bio: bio ?? this.bio,
       isVerified: isVerified ?? this.isVerified,
+      verifiedUntil: verifiedUntil ?? this.verifiedUntil,
       streakCount: streakCount ?? this.streakCount,
       bestQuizScore: bestQuizScore ?? this.bestQuizScore,
       createdAt: createdAt ?? this.createdAt,

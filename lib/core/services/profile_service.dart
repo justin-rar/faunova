@@ -52,6 +52,7 @@ class ProfileService {
       avatarPath: null,
       bio: 'Penjelajah biodiversitas Indonesia Timur. Mengarsipkan reptilia dan aves endemik ke dalam rantai kanonis.',
       isVerified: true,
+      verifiedUntil: DateTime.now().add(const Duration(days: 30)),
       streakCount: 18,
       bestQuizScore: 95,
       createdAt: DateTime.now().subtract(const Duration(days: 60)),

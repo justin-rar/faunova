@@ -129,6 +129,25 @@ serve(async (req: Request) => {
 
     const midtransData = await midtransResp.json();
 
+    // Catat transaksi pending ke tabel public.transactions
+    const adminServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const adminClient = createClient(supabaseUrl, adminServiceKey || supabaseAnonKey!);
+
+    try {
+      await adminClient.from("transactions").insert({
+        order_id: orderId,
+        user_id: user.id,
+        amount_idr: BLUE_CHECK_PRICE_IDR,
+        currency: "IDR",
+        status: "pending",
+        snap_token: midtransData.token,
+        redirect_url: midtransData.redirect_url,
+        entitlement_days: 30,
+      });
+    } catch (dbErr) {
+      console.warn("Failed to record pending transaction to DB:", dbErr);
+    }
+
     return new Response(
       JSON.stringify({
         orderId,
