@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/game/models/daily_challenge_model.dart';
 import '../../features/game/models/streak_status_model.dart';
 import 'encrypted_storage_service.dart';
+import 'notification_service.dart';
 import 'timezone_service.dart';
 
 class StreakService {
@@ -94,6 +95,7 @@ class StreakService {
           final status = StreakStatusModel.fromJson(res);
           await EncryptedStorageService.instance.saveSetting('cached_streak_count', status.streakCount);
           await EncryptedStorageService.instance.saveSetting('cached_last_streak_claim', status.lastClaimDate);
+          await NotificationService.instance.cancelStreakReminderToday();
           return status;
         }
       } catch (e) {
@@ -138,6 +140,7 @@ class StreakService {
 
     await EncryptedStorageService.instance.saveSetting('cached_streak_count', newStreak);
     await EncryptedStorageService.instance.saveSetting('cached_last_streak_claim', currentWibDate);
+    await NotificationService.instance.cancelStreakReminderToday();
 
     return StreakStatusModel(
       streakCount: newStreak,
@@ -219,6 +222,7 @@ class StreakService {
           'p_selected_option': selectedOption,
         });
         if (res is Map<String, dynamic>) {
+          await NotificationService.instance.cancelChallengeReminderToday();
           return DailyChallengeModel.fromJson(res);
         }
       } catch (e) {
@@ -241,6 +245,8 @@ class StreakService {
       'is_correct': isCorrect,
       'answered_at': DateTime.now().toIso8601String(),
     };
+
+    await NotificationService.instance.cancelChallengeReminderToday();
 
     return DailyChallengeModel(
       challengeDate: currentWibDate,

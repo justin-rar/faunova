@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_compass: ^0.8.1
+  flutter_local_notifications: ^22.3.2
   flutter_map: ^8.3.2
   flutter_secure_storage: ^11.2.0
   geolocator: ^14.1.2
@@ -25,6 +26,7 @@ dependencies:
   local_auth: ^3.0.2
   sensors_plus: ^7.1.1
   supabase_flutter: ^2.18.3
+  timezone: ^0.11.2
   url_launcher: ^6.3.3
   uuid: ^4.6.0
 

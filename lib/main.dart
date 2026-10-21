@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/config/app_config.dart';
 import 'core/services/currency_service.dart';
 import 'core/services/encrypted_storage_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_gate.dart';
 
@@ -11,12 +12,15 @@ Future<void> main() async {
   // Inisialisasi Supabase secara aman (tidak crash jika .env/define masih kosong di S1)
   await AppConfig.initializeSupabase();
 
-  // Inisialisasi Hive AES-256 terenkripsi dan CurrencyService (Sesi S12)
+  // Inisialisasi Hive AES-256 terenkripsi, CurrencyService, dan Notifikasi Lokal (Sesi S12 & S18)
   try {
     await EncryptedStorageService.instance.init();
     await CurrencyService.instance.init();
+    await NotificationService.instance.init();
+    await NotificationService.instance.scheduleDailyStreakReminder();
+    await NotificationService.instance.scheduleDailyChallengeReminder();
   } catch (e) {
-    debugPrint('Faunova main storage/currency init warning: $e');
+    debugPrint('Faunova main services init warning: $e');
   }
 
   runApp(const FaunovaApp());

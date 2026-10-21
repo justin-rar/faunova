@@ -58,6 +58,8 @@ import 'package:faunova/core/services/biometric_service.dart';
 import 'package:faunova/features/profile/models/badge_model.dart';
 import 'package:faunova/features/profile/presentation/widgets/badge_celebration_dialog.dart';
 import 'package:faunova/features/profile/presentation/widgets/biometric_setting_sheet.dart';
+import 'package:faunova/core/services/notification_service.dart';
+import 'package:faunova/features/profile/presentation/widgets/notification_setting_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -2471,7 +2473,153 @@ void main() {
       expect(find.textContaining('Tombol sidik jari dinonaktifkan sementara'), findsOneWidget);
     });
   });
+
+  group('S18 - Notifikasi Lokal Terjadwal: Streak, Tantangan, dan Centang Biru (Plan 5.9, 133, 170, 223)', () {
+    setUp(() async {
+      await EncryptedStorageService.instance.init();
+      await NotificationService.instance.init();
+      await NotificationService.instance.cancelAll();
+      await NotificationService.instance.setStreakReminderEnabled(true);
+      await NotificationService.instance.setChallengeReminderEnabled(true);
+      await NotificationService.instance.setVerifiedExpiryReminderEnabled(true);
+    });
+
+    tearDown(() async {
+      await NotificationService.instance.cancelAll();
+    });
+
+    test('NotificationService: Inisialisasi dan penjadwalan pengingat streak harian (19:00 WIB)', () async {
+      expect(NotificationService.instance.isInitialized, isTrue);
+
+      await NotificationService.instance.scheduleDailyStreakReminder(hour: 19, minute: 0);
+
+      expect(
+        NotificationService.instance.isNotificationScheduled(NotificationConstants.idStreakReminder),
+        isTrue,
+      );
+
+      final record = NotificationService.instance.getScheduledRecord(NotificationConstants.idStreakReminder);
+      expect(record, isNotNull);
+      expect(record!.title, contains('Jaga Rekor Observasimu'));
+      expect(record.category, equals('streak'));
+      expect(record.isRecurringDaily, isTrue);
+    });
+
+    test('NotificationService: Pembatalan notifikasi streak hari ini saat check-in berhasil (Plan 170)', () async {
+      await NotificationService.instance.scheduleDailyStreakReminder(hour: 19, minute: 0);
+      expect(
+        NotificationService.instance.isNotificationScheduled(NotificationConstants.idStreakReminder),
+        isTrue,
+      );
+
+      // Eksekusi klaim streak harian
+      final claimRes = await StreakService.instance.claimDailyStreak();
+      expect(claimRes.isClaimedToday, isTrue);
+
+      // Notifikasi hari ini dibatalkan dan otomatis dijadwalkan ulang untuk esok hari
+      final rescheduled = NotificationService.instance.getScheduledRecord(NotificationConstants.idStreakReminder);
+      expect(rescheduled, isNotNull);
+      expect(rescheduled!.scheduledDate.isAfter(DateTime.now()), isTrue);
+    });
+
+    test('NotificationService: Penjadwalan pengingat Tantangan Hari Ini (08:00 WIB) dan pembatalan saat dijawab', () async {
+      await NotificationService.instance.scheduleDailyChallengeReminder(hour: 8, minute: 0);
+
+      expect(
+        NotificationService.instance.isNotificationScheduled(NotificationConstants.idDailyChallengeReminder),
+        isTrue,
+      );
+
+      final record = NotificationService.instance.getScheduledRecord(NotificationConstants.idDailyChallengeReminder);
+      expect(record, isNotNull);
+      expect(record!.title, contains('Tantangan Satwa Hari Ini'));
+      expect(record.category, equals('challenge'));
+
+      // Eksekusi pembatalan hari ini
+      await NotificationService.instance.cancelChallengeReminderToday();
+
+      final nextRecord = NotificationService.instance.getScheduledRecord(NotificationConstants.idDailyChallengeReminder);
+      expect(nextRecord, isNotNull);
+      expect(nextRecord!.scheduledDate.isAfter(DateTime.now()), isTrue);
+    });
+
+    test('NotificationService: Penjadwalan pengingat H-3 sebelum masa aktif Centang Biru berakhir (Plan 133, 223)', () async {
+      // 1. Akun dengan masa aktif 30 hari lagi -> Notifikasi H-3 dijadwalkan
+      final activeExpiry = DateTime.now().add(const Duration(days: 30));
+      await NotificationService.instance.scheduleVerifiedExpiryReminder(activeExpiry);
+
+      expect(
+        NotificationService.instance.isNotificationScheduled(NotificationConstants.idVerifiedExpiryReminder),
+        isTrue,
+      );
+
+      final record = NotificationService.instance.getScheduledRecord(NotificationConstants.idVerifiedExpiryReminder);
+      expect(record, isNotNull);
+      expect(record!.title, contains('Centang Biru'));
+      expect(record.category, equals('verified'));
+
+      // 2. Akun sudah kadaluwarsa -> Notifikasi dibatalkan
+      final expiredDate = DateTime.now().subtract(const Duration(days: 2));
+      await NotificationService.instance.scheduleVerifiedExpiryReminder(expiredDate);
+
+      expect(
+        NotificationService.instance.isNotificationScheduled(NotificationConstants.idVerifiedExpiryReminder),
+        isFalse,
+      );
+    });
+
+    testWidgets('NotificationSettingSheet: Menampilkan toggle switch, status alarm aktif, dan tombol uji coba notifikasi instan (Plan 223)', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await NotificationService.instance.scheduleDailyStreakReminder(hour: 19, minute: 0);
+      await NotificationService.instance.scheduleDailyChallengeReminder(hour: 8, minute: 0);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: NotificationSettingSheet(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verifikasi judul dan header
+      expect(find.text('Pengaturan Notifikasi'), findsOneWidget);
+      expect(find.text('Notifikasi Lokal Mandiri (Plan 223)'), findsOneWidget);
+
+      // Verifikasi 3 switch pengaturan
+      expect(find.text('Pengingat Streak Harian (19:00 WIB)'), findsOneWidget);
+      expect(find.text('Tantangan Satwa Hari Ini (08:00 WIB)'), findsOneWidget);
+      expect(find.text('Masa Aktif Centang Biru (H-3)'), findsOneWidget);
+      expect(find.byType(Switch), findsNWidgets(3));
+
+      // Verifikasi daftar jadwal alarm aktif
+      expect(find.text('Jadwal Alarm Notifikasi Aktif'), findsOneWidget);
+
+      // Verifikasi tombol uji coba notifikasi instan
+      final testButton = find.text('Kirim Notifikasi Percobaan');
+      expect(testButton, findsOneWidget);
+
+      await tester.tap(testButton);
+      await tester.pumpAndSettle();
+
+      // Verifikasi SnackBar muncul
+      expect(find.text('Notifikasi percobaan berhasil dikirim ke perangkat!'), findsOneWidget);
+
+      // Verifikasi tombol close icon
+      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+    });
+  });
 }
+
 
 
 

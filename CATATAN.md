@@ -880,11 +880,62 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Catatan Konfigurasi Database Supabase**: **TIDAK ADA migrasi SQL Supabase untuk Sesi S17**. Sesuai aturan Plan 76, seluruh status toggle biometrik dan token sesi disimpan secara lokal di perangkat (`flutter_secure_storage` & Hive lokal).
 
 ### 3. Langkah Berikutnya (Sesi S18)
-- **Sesi S18 (Notifikasi Lokal Terjadwal: streak, tantangan, masa aktif centang biru)**:
-  - Konfigurasi `flutter_local_notifications` dan time-zone schedule.
-  - Penjadwalan pengingat harian streak (pukul 19.00).
-  - Penjadwalan pengingat tantangan harian baru (pukul 08.00).
-  - Notifikasi pengingat H-3 sebelum masa aktif Centang Biru berakhir.
+- Dilanjutkan dan diselesaikan pada Sesi S18 di bawah.
+
+---
+
+## Sesi S18 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Integrasi `flutter_local_notifications` & `timezone` (Plan 5.9: 222-225)**:
+  - Package `flutter_local_notifications: ^22.3.2` dan `timezone: ^0.11.2` ditambahkan ke `pubspec.yaml`.
+  - Android permissions di `AndroidManifest.xml`:
+    - `<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>`
+    - `<uses-permission android:name="android.permission.VIBRATE" />`
+    - `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` (Android 13+ / API 33+)
+    - `<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>`
+- **Layanan Notifikasi Lokal Mandiri (`NotificationService`) (`lib/core/services/notification_service.dart`)**:
+  - Singleton `NotificationService.instance`:
+    - Inisialisasi timezone database `tz_data.initializeTimeZones()` dan pengaturan default zona `Asia/Jakarta` (WIB).
+    - **Pengingat Streak Harian (19:00 WIB) (Plan 170, 223)**:
+      - Menjadwalkan pengingat harian malam hari sebelum 24.00 WIB bagi pengguna yang belum check-in.
+      - **Aturan Pembatalan Hari Itu (Plan 170)**: `cancelStreakReminderToday()` otomatis dipanggil saat pengguna berhasil melakukan check-in via `StreakService.instance.claimDailyStreak()`, dan otomatis menjadwalkan ulang untuk malam berikutnya.
+    - **Pengingat Tantangan Hari Ini (08:00 WIB) (Plan 223)**:
+      - Menjadwalkan notifikasi pagi hari saat soal biologi fauna harian baru tersedia.
+      - Otomatis dibatalkan hari itu (`cancelChallengeReminderToday()`) saat pengguna telah menyelesaikan tantangan via `StreakService.instance.answerDailyChallenge()`.
+    - **Pengingat Masa Aktif Centang Biru (H-3) (Plan 133, 223)**:
+      - Menghitung tanggal 3 hari sebelum `verified_until` berakhir (`verifiedUntil.subtract(Duration(days: 3))`).
+      - Mengirim pengingat agar pengguna memperbarui langganan tepat waktu untuk menjaga badge verifikasi dan kuota analitik.
+      - Otomatis dibatalkan jika masa berlaku sudah habis atau akun tidak berlangganan.
+    - **Pengujian Notifikasi Instan (`showInstantNotification`)**:
+      - Memungkinkan pengguna dan developer menguji kemunculan notifikasi langsung dari antarmuka aplikasi.
+    - **Pengaturan On/Off Lokal Per Kategori**:
+      - Menyimpan preferensi pengingat streak, tantangan, dan Centang Biru di Hive terenkripsi via `EncryptedStorageService`.
+    - **Offline-First**:
+      - Berjalan sepenuhnya di perangkat klien tanpa memerlukan koneksi internet aktif.
+- **Integrasi Siklus Hidup Aplikasi & Startup (`lib/main.dart`)**:
+  - `NotificationService.instance.init()`, `scheduleDailyStreakReminder()`, dan `scheduleDailyChallengeReminder()` diinisialisasi saat aplikasi pertama kali dijalankan.
+- **Lembar Pengaturan Notifikasi (`NotificationSettingSheet`) (`lib/features/profile/presentation/widgets/notification_setting_sheet.dart`)**:
+  - Mengikuti palet resmi Faunova (latar gading `#F7F4ED`, kartu putih & sage muda, tombol utama emas `#C8A96B`).
+  - Banner informasi notifikasi lokal mandiri (Plan 223).
+  - 3 kartu toggle switch interaktif untuk pengingat streak, tantangan harian, dan Centang Biru.
+  - Kartu daftar jadwal alarm aktif yang menampilkan rincian jam tayang setiap notifikasi.
+  - Tombol aksi "Kirim Notifikasi Percobaan" untuk validasi instan.
+- **Integrasi Menu Profil (`lib/features/profile/presentation/profile_page.dart`)**:
+  - Menambahkan menu `Pengaturan Notifikasi` pada popup menu titik tiga di halaman Profil (`Icons.notifications_active_outlined`).
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **0 issues** / bersih tanpa error maupun peringatan lint.
+  - `flutter test`: **86 dari 86 tes unit & widget lulus 100%** (termasuk 5 pengujian baru untuk S18: inisialisasi & penjadwalan streak, pembatalan streak saat check-in, penjadwalan & pembatalan tantangan harian, pengingat H-3 Centang Biru, dan interaksi toggle/uji coba di `NotificationSettingSheet`).
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Notifikasi Suara & Getaran di Layar Terkunci HP Fisik**: Pemicuan alarm push lokal pada Android fisik saat aplikasi di latar belakang atau layar mati (diuji pada pengujian HP fisik S23).
+- **Catatan Konfigurasi Database Supabase**: **TIDAK ADA migrasi SQL Supabase untuk Sesi S18**. Sesuai ketentuan Plan 223, seluruh notifikasi dijalankan secara lokal di sistem operasi perangkat melalui `flutter_local_notifications`.
+
+### 3. Langkah Berikutnya (Sesi S19)
+- **Sesi S19 (Midtrans Sandbox: create-payment, Snap di WebView, Webhook dengan Verifikasi Signature)**:
+  - Edge Function Supabase untuk membuat order dan mendapatkan Snap token Midtrans Sandbox.
+  - Halaman WebView pembayaran Midtrans di Flutter.
+  - Edge Function webhook dengan verifikasi signature key SHA-512 Midtrans, pencocokan order_id, user_id, dan idempotensi status transaksi.
 
 
 

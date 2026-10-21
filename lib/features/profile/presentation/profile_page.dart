@@ -15,6 +15,7 @@ import 'widgets/biometric_setting_sheet.dart';
 import 'widgets/collection_grid_view.dart';
 import 'widgets/collection_map_view.dart';
 import 'widgets/edit_profile_sheet.dart';
+import 'widgets/notification_setting_sheet.dart';
 import 'widgets/currency_converter_card.dart';
 import 'widgets/multi_timezone_card.dart';
 
@@ -188,6 +189,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       _showEditProfileSheet();
                     } else if (value == 'setting_biometrik') {
                       BiometricSettingSheet.show(context);
+                    } else if (value == 'setting_notifikasi') {
+                      NotificationSettingSheet.show(context);
                     } else if (value == 'logout') {
                       _showLogoutDialog(context);
                     } else {
@@ -239,6 +242,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           Expanded(
                             child: Text(
                               'Pengaturan & Sidik Jari',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'setting_notifikasi',
+                      child: Row(
+                        children: [
+                          Icon(Icons.notifications_active_outlined, size: 18, color: AppColors.teksGelap),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Pengaturan Notifikasi',
                               style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
                             ),
                           ),
