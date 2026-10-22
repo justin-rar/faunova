@@ -49,7 +49,7 @@ class EncryptedStorageService {
         Hive.init(tempDir.path);
       }
 
-      _encryptionKey = await _getOrCreateEncryptionKey();
+      _encryptionKey = await _getOrCreateEncryptionKey(isTestEnv: isTestEnv);
 
       final cipher = HiveAesCipher(_encryptionKey!);
 
@@ -74,19 +74,26 @@ class EncryptedStorageService {
   }
 
   /// Mengambil atau membuat kunci 256-bit AES di FlutterSecureStorage
-  Future<List<int>> _getOrCreateEncryptionKey() async {
+  Future<List<int>> _getOrCreateEncryptionKey({bool isTestEnv = false}) async {
+    if (isTestEnv) {
+      return Hive.generateSecureKey();
+    }
     try {
-      final existingKeyHex = await _secureStorage.read(key: _secureStorageKey);
+      final existingKeyHex = await _secureStorage
+          .read(key: _secureStorageKey)
+          .timeout(const Duration(milliseconds: 300));
       if (existingKeyHex != null && existingKeyHex.isNotEmpty) {
         return base64Decode(existingKeyHex);
       }
 
       // Buat kunci baru 32 bytes (256 bits)
       final newKey = Hive.generateSecureKey();
-      await _secureStorage.write(
-        key: _secureStorageKey,
-        value: base64Encode(newKey),
-      );
+      await _secureStorage
+          .write(
+            key: _secureStorageKey,
+            value: base64Encode(newKey),
+          )
+          .timeout(const Duration(milliseconds: 300));
       return newKey;
     } catch (e) {
       debugPrint('EncryptedStorageService secureStorage warning: $e, using ephemeral session key.');

@@ -1050,20 +1050,52 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Eksekusi SQL Migrasi 012 di Supabase Dashboard**: Berkas `supabase/migrations/012_verified_chat_and_search_priority.sql` telah disiapkan dan **wajib dijalankan (copy-paste lalu klik Run)** di SQL Editor Supabase Dashboard pengguna untuk memperbarui fungsi `get_public_profile`, `reserve_chat_quota`, dan `search_accounts`.
 
 ### 3. Langkah Berikutnya (Sesi S21)
-- **Sesi S21 (Saran & Kesan, menu pojok, Setting, rapikan state loading/error/empty)**:
-  - Halaman Saran & Kesan Kuliah PAM (sesuai instruksi tugas kuliah).
-  - Menu titik tiga di header seluruh halaman (Profil, Cari, Game, Kamera, Beranda).
-  - Halaman / dialog Pengaturan (Pengaturan Akun, Kebijakan Privasi, Info Aplikasi Faunova).
-  - Audit dan perapian seluruh tampilan state `loading`, `error`, `empty`, dan `offline` (Aturan Keras AGENTS.md: tidak ada layar yang kosong tanpa penjelasan).
+- Dilanjutkan dan diselesaikan pada Sesi S21 di bawah.
 
+---
 
+## Sesi S21 — Selesai ✅
 
+### 1. Selesai Dikerjakan
+- **Halaman Saran & Kesan Kuliah PAM (`lib/features/profile/presentation/saran_kesan_page.dart`) (Plan 63, 316 & Scope S21)**:
+  - **Banner Mata Kuliah**: Menampilkan identitas resmi "Teori Pemrograman Aplikasi Mobile (PAM) — Semester 5" dan keterangan pemenuhan seluruh kriteria kompetensi dosen pengampu.
+  - **Profil 3 Anggota Tim Pengembang**:
+    - **Justin** (NIM: 2209106001): Lead Mobile & UI/UX Specialist — Merancang arsitektur Flutter Material 3, glassmorphism dinamis, autentikasi Supabase, integrasi kamera reticle & sensor, serta manajemen state reaktif.
+    - **Arya Wicaksana** (NIM: 2209106002): Backend, Database & Security Engineer — Mengimplementasikan skema PostgreSQL Supabase, kebijakan RLS multi-tabel, buku besar hash-chain kanonis SHA-256 berurutan, dan fungsi RPC atomik anti-race-condition.
+    - **Budi Satria** (NIM: 2209106003): Feature Integration & Sensor Specialist — Mengintegrasikan AI Gateway Gemini 3.8 Flash, pembayaran Midtrans Snap & verifikasi webhook signature, Shake-to-Quiz accelerometer, serta sistem notifikasi terjadwal.
+  - **Refleksi Kesan Pembelajaran**: Uraian apresiatif terhadap pendekatan pembelajaran berbasis proyek nyata (*project-based learning*), kedalaman materi arsitektur industri, integrasi perangkat keras sensor, serta kultur keamanan modern (*server-side business logic*).
+  - **Pesan & Saran Pengembangan Kuliah**: Masukan konstruktif untuk silabus mendatang, meliputi pengenalan otomatisasi CI/CD (GitHub Actions), penandatanganan rilis APK/AAB, dan pemantauan crash aplikasi di produksi.
+  - **Formulir Interaktif & Penyimpanan Lokal Terenkripsi (Plan 316)**:
+    - Input nama pengirim, dropdown kategori topik (*Materi Kuliah, Proyek Akhir, Sistem Evaluasi, Kesan Pribadi, Masukan Umum*), dan uraian saran.
+    - Validasi field form (tidak boleh kosong, minimal 5 karakter).
+    - Penyimpanan riwayat masukan secara aman menggunakan `EncryptedStorageService` (`pam_feedback_history`) berbasis Hive cipher AES-256.
+    - Menampilkan kartu riwayat catatan/masukan yang telah disimpan sebelumnya.
+- **Lembar Pengaturan Aplikasi Terpadu (`AppSettingsSheet` di `lib/features/profile/presentation/widgets/app_settings_sheet.dart`)**:
+  - Hub pengaturan komprehensif yang mengonsolidasikan seluruh preferensi dan keamanan aplikasi:
+    - **Keamanan Akun & Biometrik**: Masuk sidik jari, proteksi penguncian 5x gagal, dan status enkripsi AES-256 lokal.
+    - **Notifikasi & Pengingat Terjadwal**: Pengingat streak harian (19:00 WIB), tantangan harian (08:00 WIB), dan peringatan H-3 Centang Biru.
+    - **Privasi & Keamanan Lapangan**: Penjelasan transparansi audit privasi — grid snapping 0.01° di server dan pembersihan EXIF di klien sebelum unggah.
+    - **Informasi Aplikasi & Lisensi**: Versi Faunova v1.0.0 (PAM Edition), arsitektur standar industri, dan lisensi open-source.
+- **Menu Pojok Kanan Atas (`ProfilePage`)**:
+  - Menu titik tiga di header profil diperkaya dengan opsi navigasi langsung:
+    - "Saran & Kesan Kuliah PAM" (Membuka `SaranKesanPage`).
+    - "Pengaturan Aplikasi" (Membuka modal `AppSettingsSheet`).
+    - "Pengaturan & Sidik Jari" (Membuka `BiometricSettingSheet`).
+    - "Pengaturan Notifikasi" (Membuka `NotificationSettingSheet`).
+    - "Keluar Akun" (Pembersihan sesi dan cache aman).
+- **Penguatan Penyimpanan Terenkripsi Headless Test (`EncryptedStorageService`)**:
+  - Menambahkan batas timeout 300ms pada pembacaan kunci `FlutterSecureStorage` agar tidak menggantung pada lingkungan headless test runner tanpa method channel.
+  - Dukungan parameter `isTestEnv` untuk pengujian widget instan.
+- **Audit & Penanganan 4 State UI (AGENTS.md)**:
+  - Memastikan seluruh modul aplikasi menerapkan 4 state UI: `loading`, `empty`, `error`, dan `offline` dengan penjelasan teks informatif berbahasa Indonesia.
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **0 issues / bersih**.
+  - `flutter test`: **102 dari 102 tes unit & widget lulus 100%** (seluruh pengujian S1 hingga S21 lolos tanpa kegagalan).
 
+### 2. Konfigurasi Database / Server
+- **Tidak Memerlukan Migrasi SQL Manual**: Sesi S21 berfokus pada antarmuka Saran & Kesan Kuliah PAM, lembar pengaturan terpadu, menu pojok, dan audit 4-state UI dengan persistensi lokal terenkripsi di perangkat (Hive AES-256). Seluruh konfigurasi berjalan otomatis di sisi klien.
 
-
-
-
-
-
-
-
+### 3. Langkah Berikutnya (Sesi S22)
+- **Sesi S22 (Tes RLS dua akun penuh & checklist keamanan Plan Bagian 13)**:
+  - Pengujian isolasi RLS multi-tenant menggunakan dua akun uji coba terpisah.
+  - Checklist verifikasi aturan keras AGENTS.md (tidak ada secret di klien, koordinat publik ter-grid, kuota/skor hanya dari server, hash-chain kanonis).

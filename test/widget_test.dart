@@ -64,6 +64,8 @@ import 'package:faunova/features/profile/models/payment_transaction_model.dart';
 import 'package:faunova/core/services/payment_service.dart';
 import 'package:faunova/features/profile/presentation/midtrans_snap_webview_page.dart';
 import 'package:faunova/features/profile/presentation/widgets/upgrade_blue_check_sheet.dart';
+import 'package:faunova/features/profile/presentation/saran_kesan_page.dart';
+import 'package:faunova/features/profile/presentation/widgets/app_settings_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -2986,6 +2988,242 @@ void main() {
 
       // Kuota awal untuk Centang Biru adalah 10/10 Sisa
       expect(find.text('10/10 Sisa'), findsOneWidget);
+    });
+  });
+
+  group('S21 - Saran & Kesan Kuliah PAM, Menu Pojok, Layar Pengaturan, dan Perapian 4 State UI (Plan 63, 316 & Scope S21)', () {
+    testWidgets('SaranKesanPage: Menampilkan banner kuliah PAM, profil 3 anggota tim, kesan, pesan & saran', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const SaranKesanPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Judul dan Header
+      expect(find.text('Saran & Kesan Kuliah PAM'), findsOneWidget);
+      expect(find.textContaining('Teori Pemrograman Aplikasi Mobile'), findsOneWidget);
+      expect(find.text('SEMESTER 5'), findsOneWidget);
+
+      // 3 Anggota Tim Pengembang
+      expect(find.text('Justin'), findsOneWidget);
+      expect(find.text('Lead Mobile & UI/UX Specialist'), findsOneWidget);
+
+      expect(find.text('Arya Wicaksana'), findsOneWidget);
+      expect(find.text('Backend, Database & Security Engineer'), findsOneWidget);
+
+      final budiFinder = find.text('Budi Satria');
+      await tester.scrollUntilVisible(budiFinder, 200, scrollable: find.byType(Scrollable).first);
+      expect(budiFinder, findsOneWidget);
+      expect(find.text('Feature Integration & Sensor Specialist'), findsOneWidget);
+
+      // Seksi Kesan dan Saran
+      final kesanHeader = find.text('Kesan Selama Perkuliahan PAM');
+      await tester.scrollUntilVisible(kesanHeader, 200, scrollable: find.byType(Scrollable).first);
+      expect(kesanHeader, findsOneWidget);
+
+      final pesanHeader = find.text('Pesan & Saran Mata Kuliah');
+      await tester.scrollUntilVisible(pesanHeader, 200, scrollable: find.byType(Scrollable).first);
+      expect(pesanHeader, findsOneWidget);
+
+      final masukanHeader = find.text('Beri Masukan / Saran Tambahan');
+      await tester.scrollUntilVisible(masukanHeader, 200, scrollable: find.byType(Scrollable).first);
+      expect(masukanHeader, findsOneWidget);
+    });
+
+    testWidgets('SaranKesanPage: Validasi formulir masukan dan penyimpanan masukan ke riwayat', (tester) async {
+      await tester.runAsync(() async {
+        await EncryptedStorageService.instance.init(isTestEnv: true);
+      });
+
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const SaranKesanPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final submitButton = find.byKey(const Key('feedback_submit_button'));
+      await tester.scrollUntilVisible(submitButton, 200, scrollable: find.byType(Scrollable).first);
+      expect(submitButton, findsOneWidget);
+
+      final formTitle = find.text('Formulir Catatan & Saran Tambahan');
+      expect(formTitle, findsOneWidget);
+
+      final nameField = find.byKey(const Key('feedback_name_field'));
+      final feedbackField = find.byKey(const Key('feedback_text_field'));
+      expect(nameField, findsOneWidget);
+      expect(feedbackField, findsOneWidget);
+
+      await tester.enterText(nameField, 'Dosen Pengampu PAM');
+      await tester.pump();
+      await tester.enterText(feedbackField, 'Aplikasi Faunova sangat komprehensif, fitur lengkap, dan UI elegan!');
+      await tester.pump();
+
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        await tester.tap(submitButton);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.textContaining('berhasil dicatat secara lokal'), findsOneWidget);
+
+      final savedItem = find.text('Dosen Pengampu PAM');
+      await tester.scrollUntilVisible(savedItem, 200, scrollable: find.byType(Scrollable).first);
+      expect(savedItem, findsOneWidget);
+      expect(find.textContaining('Aplikasi Faunova sangat komprehensif'), findsOneWidget);
+    });
+
+    testWidgets('AppSettingsSheet: Menampilkan pengaturan biometrik, notifikasi, privasi lapangan, dan info aplikasi', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: AppSettingsSheet(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verifikasi komponen header
+      expect(find.text('Pengaturan Aplikasi'), findsOneWidget);
+      expect(find.textContaining('Keamanan, notifikasi, privasi'), findsOneWidget);
+
+      // Verifikasi seksi-seksi
+      expect(find.text('Keamanan Akun & Biometrik'), findsOneWidget);
+      expect(find.text('Masuk dengan Sidik Jari'), findsOneWidget);
+      expect(find.text('Enkripsi Penyimpanan Lokal'), findsOneWidget);
+
+      expect(find.text('Notifikasi & Pengingat Terjadwal'), findsOneWidget);
+      expect(find.text('Pengingat Lapangan & Streak'), findsOneWidget);
+
+      expect(find.textContaining('Privasi & Keamanan Lapangan'), findsOneWidget);
+      expect(find.text('Grid Snapping 0.01° di Server'), findsOneWidget);
+      expect(find.text('Pembersihan Metadata EXIF di Klien'), findsOneWidget);
+
+      expect(find.text('Informasi Aplikasi & Lisensi'), findsOneWidget);
+      expect(find.text('Faunova — Jurnal Sosial Satwa'), findsOneWidget);
+    });
+
+    testWidgets('ProfilePage: Popup menu pojok memuat opsi Saran & Kesan dan Pengaturan Aplikasi', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const ProfilePage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Buka popup menu di pojok kanan atas profil
+      final popupMenuIcon = find.byIcon(Icons.more_vert_rounded);
+      expect(popupMenuIcon, findsOneWidget);
+      await tester.tap(popupMenuIcon);
+      await tester.pumpAndSettle();
+
+      // Verifikasi menu items
+      expect(find.text('Saran & Kesan Kuliah PAM'), findsOneWidget);
+      expect(find.text('Pengaturan Aplikasi'), findsOneWidget);
+      expect(find.text('Pengaturan & Sidik Jari'), findsOneWidget);
+      expect(find.text('Pengaturan Notifikasi'), findsOneWidget);
+      expect(find.text('Keluar Akun'), findsOneWidget);
+    });
+
+    testWidgets('AppStateView: Menampilkan 4 state wajib (loading, empty, error, offline) dengan penjelasan jelas (AGENTS.md)', (tester) async {
+      // 1. Loading state
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppStateView(
+              status: AppViewStatus.loading,
+              loadingMessage: 'Memuat data satwa...',
+              child: Text('Konten'),
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Memuat data satwa...'), findsOneWidget);
+
+      // 2. Empty state
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppStateView(
+              status: AppViewStatus.empty,
+              emptyTitle: 'Koleksi Kosong',
+              emptyMessage: 'Belum ada data koleksi satwa.',
+              child: Text('Konten'),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Koleksi Kosong'), findsOneWidget);
+      expect(find.text('Belum ada data koleksi satwa.'), findsOneWidget);
+
+      // 3. Error state
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppStateView(
+              status: AppViewStatus.error,
+              errorMessage: 'Gagal menghubungi server.',
+              child: Text('Konten'),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Terjadi Kendala'), findsOneWidget);
+      expect(find.text('Gagal menghubungi server.'), findsOneWidget);
+
+      // 4. Offline state
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppStateView(
+              status: AppViewStatus.offline,
+              offlineMessage: 'Koneksi internet terputus.',
+              child: Text('Konten'),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Mode Luring (Offline)'), findsOneWidget);
+      expect(find.text('Koneksi internet terputus.'), findsOneWidget);
     });
   });
 }

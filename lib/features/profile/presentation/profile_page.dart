@@ -19,6 +19,8 @@ import 'widgets/notification_setting_sheet.dart';
 import 'widgets/upgrade_blue_check_sheet.dart';
 import 'widgets/currency_converter_card.dart';
 import 'widgets/multi_timezone_card.dart';
+import 'widgets/app_settings_sheet.dart';
+import 'saran_kesan_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -193,6 +195,14 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                         context,
                         onSubscriptionUpdated: () => _loadProfile(),
                       );
+                    } else if (value == 'saran_kesan') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SaranKesanPage(),
+                        ),
+                      );
+                    } else if (value == 'app_settings') {
+                      AppSettingsSheet.show(context);
                     } else if (value == 'setting_biometrik') {
                       BiometricSettingSheet.show(context);
                     } else if (value == 'setting_notifikasi') {
@@ -248,6 +258,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           Expanded(
                             child: Text(
                               'Saran & Kesan Kuliah PAM',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'app_settings',
+                      child: Row(
+                        children: [
+                          Icon(Icons.settings_outlined, size: 18, color: AppColors.teksGelap),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Pengaturan Aplikasi',
                               style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
                             ),
                           ),
