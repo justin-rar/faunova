@@ -1555,5 +1555,37 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 3. Langkah Berikutnya
 - Melanjutkan pengujian langsung pada perangkat fisik melalui Wi-Fi (`flutter run`).
 
+---
+
+## Sesi Integrasi Fallback DeepSeek API pada Edge Function ai-gateway — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Integrasi Fallback Multi-Provider DeepSeek pada Edge Function (`ai-gateway`)**:
+  - Diterapkan di `supabase/functions/ai-gateway/index.ts`.
+  - Membaca environment secret `DEEPSEEK_API_KEY` dari Supabase Secrets (tanpa mengekspos kunci di klien atau repositori, taat aturan keras `AGENTS.md`).
+  - **Mode Chat Tanya-Jawab Satwa (`callDeepSeekChat`)**:
+    - Alur utama menggunakan Google Gemini 2.0 Flash / Cloudflare.
+    - Mekanisme cadangan otomatis (*graceful fallback*) ke DeepSeek (`deepseek-flash` dan `deepseek-chat`) apabila Gemini terkena *rate limit* (HTTP 429), server sibuk (HTTP 503), atau timeout.
+    - Prompt guardrail biologi dan konservasi satwa tetap dipertahankan secara identik pada payload DeepSeek.
+  - **Mode Identifikasi Satwa Vision (`callDeepSeekVision`)**:
+    - Mendukung fallback identifikasi visual melalui model multimodal `deepseek-flash` (DeepSeek-V4.1-Flash) yang mendukung input teks dan gambar (*vision*).
+  - **Penanganan Kesalahan Anggun (*Graceful Error Handling*)**:
+    - Mendeteksi error kuota/saldo (*insufficient balance*) agar tidak menyebabkan unhandled exception atau crash pada klien.
+- **Konfigurasi & Pengujian Kredensial**:
+  - Kunci API DeepSeek `sk-c65c...` terverifikasi valid dan terotentikasi aktif (`HTTP 200 OK`) terhadap endpoint model `api.deepseek.com`.
+  - Secret `DEEPSEEK_API_KEY` tersimpan aman di server Supabase proyek `yziubaqkrhxtneaybllq`.
+- **Deployment ke Supabase Production**:
+  - Edge Function `ai-gateway` berhasil dideploy ke Supabase Edge Runtime (`ap-southeast-1` Singapore) via CLI Supabase (`npx supabase functions deploy ai-gateway`).
+  - Uji koneksi pra-layang CORS (`OPTIONS`) ke `https://yziubaqkrhxtneaybllq.supabase.co/functions/v1/ai-gateway` menghasilkan status `HTTP/2 200 OK`.
+- **Verifikasi Kualitas Kode**:
+  - `flutter analyze`: **0 issues / No issues found**.
+  - `flutter test test/security_and_rls_test.dart`: **All tests passed (100% lulus)**.
+
+### 2. Belum Teruji / Membutuhkan Pengujian Nyata
+- Inferensi aktif DeepSeek saat ini mengembalikan pesan *Insufficient Balance* karena saldo dompet developer akun DeepSeek bernilai $0.00. Fungsi fallback akan otomatis aktif menghasilkan balasan begitu akun DeepSeek diisi saldo minimum.
+
+### 3. Langkah Berikutnya
+- Menjalankan kembali aplikasi via `flutter run` di perangkat fisik untuk pengujian alur observasi dan chat satwa di lapangan.
+
 
 

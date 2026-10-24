@@ -253,6 +253,116 @@ async function callGemini(
   );
 }
 
+// Panggil DeepSeek API untuk Chat Tanya-Jawab (Fallback jika Gemini sibuk/limit)
+async function callDeepSeekChat(
+  apiKey: string,
+  messages: Array<{ role: string; content: string }>,
+  timeoutMs = 25000
+): Promise<{ ok: boolean; reply?: string; error?: string }> {
+  try {
+    const completionsUrl = "https://api.deepseek.com/chat/completions";
+    const models = ["deepseek-flash", "deepseek-chat"];
+
+    for (const model of models) {
+      try {
+        const payload = {
+          model: model,
+          messages: messages,
+          temperature: 0.6,
+          max_tokens: 1000,
+        };
+
+        const resp = await fetch(completionsUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+
+        if (resp.ok) {
+          const json = await resp.json();
+          const text = json.choices?.[0]?.message?.content?.trim();
+          if (text) {
+            return { ok: true, reply: text };
+          }
+        } else {
+          const errText = await resp.text();
+          console.warn(`DeepSeek Chat model ${model} status ${resp.status}:`, errText);
+          if (errText.includes("Insufficient Balance")) {
+            return { ok: false, error: "Insufficient Balance" };
+          }
+        }
+      } catch (mErr: any) {
+        console.warn(`DeepSeek Chat model ${model} request error:`, mErr.message);
+      }
+    }
+  } catch (err: any) {
+    console.warn("DeepSeek Chat error:", err.message);
+    return { ok: false, error: err.message };
+  }
+
+  return { ok: false, error: "DeepSeek Chat tidak menghasilkan respons" };
+}
+
+// Panggil DeepSeek API untuk Identifikasi Satwa Vision (DeepSeek-V4.1-Flash multimodal)
+async function callDeepSeekVision(
+  apiKey: string,
+  prompt: string,
+  mimeType: string,
+  imageBase64: string,
+  timeoutMs = 25000
+): Promise<{ ok: boolean; data?: any; error?: string }> {
+  try {
+    const completionsUrl = "https://api.deepseek.com/chat/completions";
+    const payload = {
+      model: "deepseek-flash",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+            },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+      temperature: 0.1,
+    };
+
+    const resp = await fetch(completionsUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (resp.ok) {
+      const json = await resp.json();
+      const rawContent = json.choices?.[0]?.message?.content;
+      if (rawContent) {
+        return { ok: true, data: extractCleanJson(rawContent) };
+      }
+    } else {
+      const errText = await resp.text();
+      console.warn("DeepSeek Vision non-ok:", resp.status, errText);
+      return { ok: false, error: errText };
+    }
+  } catch (err: any) {
+    console.warn("DeepSeek Vision error:", err.message);
+    return { ok: false, error: err.message };
+  }
+
+  return { ok: false, error: "DeepSeek Vision gagal diproses" };
+}
+
 serve(async (req: Request) => {
   // 1. CORS Preflight
   if (req.method === "OPTIONS") {
@@ -266,6 +376,7 @@ serve(async (req: Request) => {
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
     const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN");
     const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
+    const deepseekApiKey = Deno.env.get("DEEPSEEK_API_KEY");
 
     if (!supabaseUrl || !geminiApiKey) {
       return new Response(
@@ -518,32 +629,54 @@ serve(async (req: Request) => {
           25000
         );
 
-        if (!geminiResp.ok) {
+        if (geminiResp.ok) {
+          const geminiData = await geminiResp.json();
+          const parts = geminiData.candidates?.[0]?.content?.parts;
+          const answerPart =
+            parts?.find((p: any) => !p.thought && typeof p.text === "string" && p.text.trim().length > 0) ||
+            parts?.[parts.length - 1];
+          const rawJsonText =
+            answerPart?.text ||
+            geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "{}";
+          parsedResult = extractCleanJson(rawJsonText);
+        } else {
           const errorText = await geminiResp.text();
-          console.error("Gemini scan provider error:", geminiResp.status, errorText);
-          return new Response(
-            JSON.stringify({
-              error: "PROVIDER_ERROR",
-              message: `Layanan identifikasi AI: ${errorText.substring(0, 160)}`,
-              details: errorText,
-            }),
-            {
-              status: geminiResp.status,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
+          console.warn("Gemini scan gagal, mencoba fallback DeepSeek Vision:", geminiResp.status, errorText);
 
-        const geminiData = await geminiResp.json();
-        const parts = geminiData.candidates?.[0]?.content?.parts;
-        const answerPart =
-          parts?.find((p: any) => !p.thought && typeof p.text === "string" && p.text.trim().length > 0) ||
-          parts?.[parts.length - 1];
-        const rawJsonText =
-          answerPart?.text ||
-          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "{}";
-        parsedResult = extractCleanJson(rawJsonText);
+          // Fallback ke DeepSeek-V4.1-Flash Vision jika Gemini gagal
+          if (deepseekApiKey) {
+            try {
+              const dsResult = await callDeepSeekVision(
+                deepseekApiKey,
+                prompt,
+                mimeType,
+                imageBase64
+              );
+              if (dsResult.ok && dsResult.data) {
+                parsedResult = dsResult.data;
+                console.log("Identifikasi satwa sukses via fallback DeepSeek Vision");
+              }
+            } catch (dsErr) {
+              console.warn("DeepSeek Vision fallback error:", dsErr);
+            }
+          }
+
+          if (!parsedResult) {
+            console.error("Gemini scan provider error:", geminiResp.status, errorText);
+            return new Response(
+              JSON.stringify({
+                error: "PROVIDER_ERROR",
+                message: `Layanan identifikasi AI: ${errorText.substring(0, 160)}`,
+                details: errorText,
+              }),
+              {
+                status: geminiResp.status,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
+          }
+        }
       }
 
       // Sanitasi & Validasi ketat hasil isAnimal di sisi server
@@ -954,32 +1087,86 @@ serve(async (req: Request) => {
           25000
         );
 
-        if (!geminiResp.ok) {
+        if (geminiResp.ok) {
+          const geminiData = await geminiResp.json();
+          const chatParts = geminiData.candidates?.[0]?.content?.parts;
+          const chatAnswerPart =
+            chatParts?.find((p: any) => !p.thought && typeof p.text === "string" && p.text.trim().length > 0) ||
+            chatParts?.[chatParts.length - 1];
+          const rawReply =
+            chatAnswerPart?.text ||
+            geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "Maaf, asisten tidak dapat memberikan penjelasan saat ini.";
+          reply = rawReply.trim();
+        } else {
           const errorText = await geminiResp.text();
-          console.error("Gemini chat provider error:", geminiResp.status, errorText);
-          return new Response(
-            JSON.stringify({
-              error: "PROVIDER_ERROR",
-              message: "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi.",
-              details: errorText,
-            }),
-            {
-              status: geminiResp.status,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
+          console.warn("Gemini chat provider error, mencoba fallback DeepSeek:", geminiResp.status, errorText);
 
-        const geminiData = await geminiResp.json();
-        const chatParts = geminiData.candidates?.[0]?.content?.parts;
-        const chatAnswerPart =
-          chatParts?.find((p: any) => !p.thought && typeof p.text === "string" && p.text.trim().length > 0) ||
-          chatParts?.[chatParts.length - 1];
-        const rawReply =
-          chatAnswerPart?.text ||
-          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "Maaf, asisten tidak dapat memberikan penjelasan saat ini.";
-        reply = rawReply.trim();
+          // 3. Fallback ke DeepSeek jika Gemini gagal / rate limited
+          if (deepseekApiKey) {
+            try {
+              const dsChatMessages: Array<{ role: string; content: string }> = [
+                {
+                  role: "system",
+                  content:
+                    "Sistem Faunova: Kamu adalah pemandu konservasi satwa dan naturalis lapangan Faunova yang ramah, santun, dan berbasis sains. " +
+                    `Pengguna sedang berdiskusi mengenai hasil observasi satwa berikut:\n` +
+                    `- Nama Umum: ${animalInfo?.name || "Satwa Lapangan"}\n` +
+                    `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
+                    `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
+                    `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
+                    "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
+                    "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
+                    (animalInfo?.name || "satwa") +
+                    "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
+                    "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna, kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
+                    "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek).",
+                },
+              ];
+
+              if (chatHistory && chatHistory.length > 0) {
+                for (const h of chatHistory) {
+                  dsChatMessages.push({
+                    role: h.role === "assistant" ? "assistant" : "user",
+                    content: h.content,
+                  });
+                }
+              }
+
+              dsChatMessages.push({
+                role: "user",
+                content: trimmedMessage,
+              });
+
+              const dsChatResult = await callDeepSeekChat(
+                deepseekApiKey,
+                dsChatMessages
+              );
+
+              if (dsChatResult.ok && dsChatResult.reply) {
+                reply = dsChatResult.reply;
+                console.log("Balasan chat sukses via fallback DeepSeek");
+              }
+            } catch (dsErr) {
+              console.warn("DeepSeek Chat fallback error:", dsErr);
+            }
+          }
+
+          if (!reply) {
+            console.error("Seluruh provider chat AI gagal");
+            return new Response(
+              JSON.stringify({
+                error: "PROVIDER_ERROR",
+                message: "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi.",
+                details: errorText,
+              }),
+              {
+                status: geminiResp.status,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
+          }
+        }
       }
 
       // Simpan riwayat chat ke tabel scan_chats (user message dan assistant reply)
