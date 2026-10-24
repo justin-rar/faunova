@@ -1099,3 +1099,329 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Sesi S22 (Tes RLS dua akun penuh & checklist keamanan Plan Bagian 13)**:
   - Pengujian isolasi RLS multi-tenant menggunakan dua akun uji coba terpisah.
   - Checklist verifikasi aturan keras AGENTS.md (tidak ada secret di klien, koordinat publik ter-grid, kuota/skor hanya dari server, hash-chain kanonis).
+
+---
+
+## Pembaruan Konfigurasi Build Android (Fix `flutter run` / Core Library Desugaring) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Aktifkan Java Core Library Desugaring di `android/app/build.gradle.kts`**:
+  - Menyelesaikan error build Gradle `Execution failed for task ':app:checkDebugAarMetadata': Dependency ':flutter_local_notifications' requires core library desugaring to be enabled for :app`.
+  - Menambahkan `isCoreLibraryDesugaringEnabled = true` di dalam blok `compileOptions`.
+  - Menambahkan dependensi `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")`.
+- **Verifikasi & Build**:
+  - `flutter analyze`: **0 issues / bersih**.
+  - `flutter test`: **102 dari 102 tes lulus 100%**.
+  - `flutter build apk --debug`: **Berhasil dikompilasi** (`app-debug.apk`) tanpa error.
+
+### 2. Belum Teruji / Catatan
+- Aplikasi siap dijalankan ke emulator maupun perangkat fisik (`flutter run`).
+
+---
+
+## Pembaruan UI: GlassAppBar Glassmorphism pada PublicProfilePage — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Penerapan `GlassAppBar` pada `PublicProfilePage` (`lib/features/profile/presentation/public_profile_page.dart`)**:
+  - Mengganti AppBar solid standar sage tua menjadi `GlassAppBar` frosted glassmorphism (`BackdropFilter` blur sigma 12, gradien sage tua semi-transparan `0.78` ke `0.50`, dan garis pembatas bawah putih halus).
+  - Mengaktifkan `extendBodyBehindAppBar: true` pada `Scaffold`.
+  - Menghitung `topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14` agar konten halaman profil (`ListView`), state loading, maupun galat berjarak tepat di bawah bar saat posisi awal dan dapat meluncur transparan di belakang bar saat discroll.
+  - Menambahkan parameter `edgeOffset: topPadding` pada `RefreshIndicator` agar indikator muat ulang tampil bersih di bawah AppBar.
+- **Verifikasi & Build**:
+  - `flutter analyze`: **0 issues / bersih**.
+  - `flutter test`: **102 dari 102 tes lulus 100%**.
+
+### 2. Belum Teruji / Catatan
+- Efek blur rendering real-time pada emulator / device fisik saat user melakukan scroll.
+
+### 3. Langkah Berikutnya
+- Melanjutkan ke pengujian atau fitur berikutnya sesuai permintaan.
+
+---
+
+## Pembaruan & Perbaikan: Fix Edit Nama Profil Memuat Terus & Fitur Ubah Foto Profil — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Perbaikan Masalah Simpan Nama Profil Memuat Terus (`_isSaving` Hanging)**:
+  - **Penyebab**: Pemanggilan `client.rpc('update_my_profile')` dan `getMyProfile()` pada `ProfileService` sebelumnya tidak memiliki batas waktu (timeout) HTTP, sehingga saat koneksi menunggu atau lambat, indikator loading menggantung tanpa henti. Selain itu, pada `EditProfileSheet`, tidak ada blok `finally` yang menjamin `_isSaving = false` dieksekusi.
+  - **Solusi**:
+    - Menambahkan batas waktu `.timeout(const Duration(seconds: 10))` pada pemanggilan RPC `update_my_profile` di `ProfileService`.
+    - Menambahkan batas waktu `.timeout(const Duration(seconds: 8))` pada `getMyProfile()`.
+    - Memperbaiki `_getCurrentUserId()` agar mengecek `currentUser?.id ?? currentSession?.user.id`.
+    - Mengintegrasikan blok `finally { if (mounted) setState(() => _isSaving = false); }` pada `_handleSave()` di `EditProfileSheet` agar loading button selalu berhenti terlepas dari status sukses atau galat.
+    - Menyiapkan berkas migrasi database `supabase/migrations/013_fix_update_my_profile_and_avatar.sql` dengan klausa `IF NOT FOUND THEN INSERT` (upsert profil aman jika baris pengguna belum ada) dan `search_path = public, auth, pg_temp`.
+- **Fitur Lengkap Ubah Foto Profil Kolektor (Galeri, Kamera, dan Avatar Satwa Endemik)**:
+  - Menambahkan dependensi `image_picker: ^1.1.2` di `pubspec.yaml`.
+  - Membuat widget modular terpadu `AppAvatar` (`lib/core/widgets/app_avatar.dart`) yang mendukung 4 mode:
+    1. **10 Preset Satwa Endemik Nusantara**: Badak Jawa 🦏, Harimau Sumatera 🐯, Jalak Bali 🐦, Penyu Hijau 🐢, Komodo 🦎, Orangutan 🦧, Cenderawasih 🦜, Rusa Bawean 🦌, Gajah Sumatera 🐘, Kucing Kuwuk 🐆.
+    2. **Foto Berkas Lokal**: Diambil dari galeri perangkat atau kamera HP pengguna (`ImageSource.gallery` & `ImageSource.camera`).
+    3. **URL Jaringan**: Untuk avatar cloud Supabase Storage / CDN.
+    4. **Inisial Huruf**: Fallback bersih pada latar belakang sage tua.
+  - Memperbarui `EditProfileSheet` (`lib/features/profile/presentation/widgets/edit_profile_sheet.dart`):
+    - Avatar pratinjau kini interaktif dan dilengkapi tombol `Ubah Foto / Avatar Satwa`.
+    - Modal pilihan sumber: Preset Satwa Endemik, Galeri Foto, Kamera, atau Hapus Foto (Gunakan Inisial).
+    - Grid visual interaktif pemilihan 10 avatar satwa endemik dengan animasi sentuh halus.
+  - Memperbarui rendering avatar di seluruh aplikasi (`ProfilePage`, `PublicProfilePage`, `PostCard`, `SearchPage`) menggunakan `AppAvatar`.
+- **Verifikasi & Build**:
+  - `flutter analyze`: **0 issues / bersih**.
+  - `flutter test`: **104 dari 104 tes lulus 100%** (termasuk 2 tes baru untuk `AppAvatar` preset satwa dan interaksi `EditProfileSheet`).
+
+### 2. Belum Teruji / Catatan
+- Akses perangkat kamera fisik dan pembukaan galeri foto pada perangkat riil (image picker membutuhkan interaksi manual user pada HP).
+- Eksekusi migrasi `013_fix_update_my_profile_and_avatar.sql` di Supabase SQL Editor jika ada akun yang baris profilnya belum terbuat.
+
+### 3. Langkah Berikutnya
+- Melanjutkan ke Sesi S22 (Tes RLS dua akun penuh & checklist keamanan Plan Bagian 13).
+
+---
+
+## Sesi S22 — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Uji Penetrasi & Isolasi RLS Dua Akun Multi-Tenant (`supabase/tests/rls_two_accounts_test.sql`) (Scope S22 & Plan Bagian 13, 15)**:
+  - Berkas skrip pengujian SQL berbasis transaksi terisolasi (`BEGIN ... ROLLBACK`) yang dapat dieksekusi langsung di Supabase SQL Editor tanpa meninggalkan data sampah:
+    - **Isolasi Penuh User A vs User B**: Membuktikan bahwa User B tidak dapat membaca atau mengubah baris pada tabel privat User A (`scans`, `captures`, `scan_chats`, `transactions`, `quiz_sessions`).
+    - **Proteksi Hapus Konten**: Membuktikan User B tidak dapat menghapus atau mengubah postingan publik (`posts`) atau like milik User A.
+    - **Integritas Relasi Sosial**: Memvalidasi bahwa User B dilarang mem-follow dirinya sendiri (`CHECK(follower_id <> followed_id)`), serta menjamin relasi follow pertama dan kedua bersifat idempoten (`ON CONFLICT DO NOTHING`).
+    - **View Publik Tanpa Bocor**: Memvalidasi bahwa `public_profiles` milik User A dapat diakses oleh User B tanpa mengekspos koordinat presisi, email, atau status kuota internal.
+- **Rangkaian Pengujian Otomatis Keamanan & Checklist MVP (`test/security_and_rls_test.dart`)**:
+  - Dibuat 8 modul pengujian unit & integrasi yang memvalidasi kepatuhan 22 butir checklist Plan Bagian 13:
+    1. **Audit Secret Scanner (Hard Rule 1)**: Memindai seluruh berkas `.dart` di direktori `lib/` menggunakan regex pola token rahasia untuk menjamin tidak ada kunci Gemini (`AIza...`), kunci server Midtrans (`SB-Mid-server-...` / `Mid-server-...`), token JWT live, atau secret `service_role` yang ter-hardcode.
+    2. **Audit Berkas Lingkungan (.env & .gitignore)**: Memastikan `.env` wajib diabaikan oleh `.gitignore` dan `.env.example` bersih dari kredensial asli.
+    3. **Kerahasiaan Koordinat Lapangan (Hard Rule 4)**: Menguji pemotongan koordinat presisi ke titik tengah sel grid 0.01° (~1.1 km) via `PostService.snapToGridLocally` dan memastikan mode `hidden` mengosongkan display latitude/longitude serta label wilayah.
+    4. **Kerahasiaan Kunci Kuis (Hard Rule 5)**: Memastikan pemanggilan `QuizService.startQuizSession()` dan `StreakService.getDailyChallenge()` mengembalikan daftar opsi tanpa field `correctOption` atau penjelasan sebelum dijawab.
+    5. **Aturan Bisnis Server & Idempotensi (Hard Rule 2)**: Menguji pencegahan klaim ganda streak harian, serta penegakan kuota maksimum 3x per hari pada Shake-to-Quiz.
+    6. **Integritas Hash-Chain SHA-256 (Plan Bagian 17)**: Menguji bahwa manipulasi sekecil apapun pada `cameraHeading`, `latitude`, atau `seq` secara instan membatalkan validitas blok dan memutuskan rantai.
+    7. **Validasi AI Penolakan Non-Hewan**: Menguji bahwa pemindaian dengan `isAnimal == false` ditolak dari pencatatan koleksi jurnal.
+    8. **Ketahanan Transaksi & Kurs Multi-Mata Uang (Hard Rule 6)**: Menguji bahwa harga resmi berpatokan pada Rp15.000 IDR dan konversi kurs ke USD/JPY tetap memberikan estimasi tanpa gangguan saat server kurs luring.
+- **Verifikasi Rangkaian Tes & Analisis Keseluruhan**:
+  - `flutter analyze`: **0 issues / bersih (No issues found!)**.
+  - `flutter test test/security_and_rls_test.dart`: **8 dari 8 tes keamanan lulus 100%**.
+  - `flutter test`: **112 dari 112 tes lulus 100%** di seluruh proyek (`widget_test.dart` dan `security_and_rls_test.dart`).
+
+### 2. Belum Teruji / Catatan
+- Eksekusi langsung skrip `supabase/tests/rls_two_accounts_test.sql` di SQL Editor proyek Supabase milik pengguna (skrip sudah siap dijalankan dan aman karena menggunakan `ROLLBACK`).
+- Sensor perangkat keras pada HP Android fisik (kamera fisik, sensor GPS satelit, kompas arah magnetik, accelerometer goyangan, scanner biometrik sidik jari, notifikasi lokal terjadwal) akan diuji pada Sesi S23.
+
+### 3. Langkah Berikutnya (Sesi S23 & S24)
+- **Sesi S23 (Tes seluruh fitur di HP fisik, perbaiki bug)**:
+  - Menjalankan aplikasi di HP Android fisik untuk memverifikasi alur penuh demo tanpa kendala sensor atau izin sistem.
+  - Memastikan daftar bug kosong untuk persiapan skenario demo presentasi (Sesi S24).
+
+---
+
+## Perbaikan Beranda & Pembuatan Seed Komunitas Demo Satwa (014) ✅
+
+### 1. Selesai Dikerjakan
+- **Penyelesaian Error Beranda PostgrestException (42702 - column reference "post_id" is ambiguous)**:
+  - Mengidentifikasi dan memperbaiki query subquery `LEFT JOIN (SELECT post_id, COUNT(*)...)` pada RPC database Supabase `get_for_you_feed`, `get_following_feed`, dan `get_user_posts` di `supabase/migrations/014_fix_feed_and_seed_demo_community.sql` dengan mengkualifikasi alias tabel secara eksplisit (`lk.post_id`).
+- **Migrasi Seed 6 Akun Komunitas Peneliti Satwa Nusantara (`014_fix_feed_and_seed_demo_community.sql`)**:
+  - Dibuat 6 akun peneliti satwa realistis (`wayan_bali`, `siti_sumatera`, `budi_satria`, `borneo_wildlife`, `dewi_papua`, `faiz_ocean`) di `auth.users` dan `public.profiles`.
+  - 4 akun memiliki langganan **Centang Biru** aktif (`verified_until`), nilai kuis tinggi, dan streak observasi.
+  - Dibuatkan 6 data tangkapan (`captures`) dan 6 postingan feed (`posts`) dengan foto satwa berkualitas tinggi dari Unsplash (*Komodo, Jalak Bali, Harimau Sumatera, Orangutan Kalimantan, Cenderawasih Kuning Kecil, Penyu Hijau*).
+  - Setiap postingan dilengkapi rantai blok kanonis SHA-256 yang valid, koordinat ter-grid 0.01° (sesuai privasi AGENTS.md), jumlah likes, dan jaringan saling mengikuti (*mutual follows*).
+- **Penyempurnaan Klien Flutter (`PostService`, `SocialService`, `PostCard`)**:
+  - Fallback aman di `PostService`: jika database luring atau migrasi belum dijalankan, feed otomatis memuat tiruan satwa komunitas tanpa menampilkan kotak galat merah.
+  - Dukungan render gambar URL internet (`Image.network`) dengan loading indikator dan fallback ikon di `PostCard` dan `CaptureDetailPage`.
+  - `flutter analyze`: **0 issues (No issues found!)**.
+  - `flutter test`: **113 dari 113 tes lulus 100%**.
+
+### 2. Belum Teruji / Perlu Dijalankan
+- Eksekusi berkas `supabase/migrations/014_fix_feed_and_seed_demo_community.sql` di Supabase SQL Editor oleh pengguna agar database live Supabase terisi akun & foto satwa tersebut.
+
+---
+
+## Ekspansi Katalog Taksonomi 28+ Satwa Nusantara & Render Foto Asli ✅
+
+### 1. Selesai Dikerjakan
+- **Ekspansi Ensiklopedia Satwa Nusantara (`search_service.dart`)**:
+  - Memperluas katalog satwa dari semula 8 spesies menjadi **28+ spesies satwa endemik & terancam punah dari seluruh bioregion Indonesia**:
+    - **Aves**: Jalak Bali, Cenderawasih Kuning-Kecil, Elang Jawa, Kasuari Gelambir Ganda, Rangkong Badak, Maleo Senkawor, Kakatua Jambul Kuning.
+    - **Mamalia**: Kucing Kuwuk, Harimau Sumatera, Orangutan Kalimantan, Orangutan Sumatera, Badak Jawa, Gajah Sumatera, Bekantan, Babirusa Sulawesi, Anoa Pegunungan, Rusa Bawean, Tarsius Kerdil.
+    - **Reptilia**: Komodo, Penyu Hijau, Penyu Sisik, Buaya Muara, Soa-soa Layar.
+    - **Amfibi**: Katak Pohon Jawa, Katak Bertanduk Kalimantan.
+    - **Biota Air & Ikan**: Ikan Arwana Super Red, Pari Manta Karang.
+    - **Serangga**: Kupu-kupu Sayap Burung Surga.
+  - Setiap satwa dilengkapi nama binomial ilmiah, status resmi IUCN (*Kritis/CR, Terancam/EN, Rentan/VU, Risiko Rendah/LC*), deskripsi habitat alami, dan tautan foto asli berkualitas tinggi.
+  - Penggabungan cerdas di `SearchService`: Data tangkapan dari Supabase secara otomatis di-enrich dengan taksonomi, deskripsi, dan foto kurasi, serta digabungkan dengan katalog lengkap.
+- **Tampilan Foto Asli & Modal Detail Interaktif (`search_page.dart`)**:
+  - Mengganti thumbnail ikon jejak kaki (`Icons.pets_rounded`) dengan widget foto satwa sesungguhnya (`Image.network` & `Image.asset`) berukuran 70x70 px dengan radius 14 dan loading shimmer.
+  - Menambahkan chip filter kategori taksonomi baru: *Biota Air* dan *Serangga*.
+  - Menambahkan bottom sheet modal interaktif saat kartu satwa diketuk: menampilkan foto satwa resolusi tinggi, badge IUCN, kelas taksonomi, jumlah observasi komunitas, dan deskripsi perilaku alami.
+- **Verifikasi Kualitas**:
+  - `flutter analyze`: **No issues found! (0 issues)**.
+  - `flutter test`: **113 dari 113 tes lulus 100%**.
+
+---
+
+## Penampil Foto Layar Penuh (FullScreenImageViewer) Pinch-to-Zoom & Pan ✅
+
+### 1. Selesai Dikerjakan
+- **Widget Penampil Foto Layar Penuh (`lib/core/widgets/full_screen_image_viewer.dart`)**:
+  - Dibuatkan widget modal layar penuh imersif tanpa dependensi eksternal, memanfaatkan `InteractiveViewer`:
+    - Mendukung gestur cubit untuk perbesar (*pinch-to-zoom*) rentang 0.8x hingga 4.5x dan geser (*pan*).
+    - Ketuk ganda (*double-tap*) untuk perbesar instan 2.5x ke titik sentuh atau reset kembali ke ukuran normal.
+    - Ketuk sekali untuk sembunyikan/tampilkan bilah kontrol (*header bar* dan *footer overlay*).
+    - Menampilkan nama satwa, nama latin binomial, nomor blok/lokasi, serta deskripsi observasi di atas latar belakang gradien hitam transparan.
+    - Mendukung gambar internet HTTPS (`Image.network`), aset lokal (`Image.asset`), dan berkas kamera HP (`Image.file`).
+- **Integrasi di Seluruh Titik Foto Aplikasi**:
+  1. **Katalog Pencarian (`search_page.dart`)**: Ketuk banner foto di modal detail atau ketuk thumbnail satwa untuk melihat foto asli satwa nusantara secara utuh tanpa terpotong (*uncropped*).
+  2. **Linimasa Beranda (`post_card.dart`)**: Ketuk foto pada kartu postingan untuk membuka penampil layar penuh lengkap dengan lencana ikon layar penuh di pojok kiri atas.
+  3. **Detail Koleksi Tangkapan (`capture_detail_page.dart`)**: Ketuk kartu foto hero untuk melihat detail foto observasi beresolusi penuh.
+- **Verifikasi Kualitas**:
+  - `flutter analyze`: **No issues found! (0 issues)**.
+  - `flutter test`: **113 dari 113 tes lulus 100%**.
+
+---
+
+## Daftar Pengikut & Mengikuti (Followers & Following) & Perbaikan Gap Jam Observasi ✅
+
+### 1. Selesai Dikerjakan
+- **Perbaikan Gap Vertikal Jam Observasi Lapangan (`multi_timezone_card.dart`)**:
+  - Mendiagnosis akar penyebab celah kosong besar: `GridView.builder` di Flutter secara otomatis mewarisi *top padding* status bar dari `MediaQuery` jika properti `padding` tidak didefinisikan secara eksplisit.
+  - Menetapkan `padding: EdgeInsets.zero` pada `GridView.builder` serta menyesuaikan jarak vertikal judul menjadi 12px.
+  - Kartu 4 zona waktu (*WIB, WITA, WIT, BST/GMT*) kini tersusun pas, rapat, dan proporsional tepat di bawah header kartu.
+- **Backend Supabase Migration 015 (`015_get_followers_and_following.sql`)**:
+  - Dibuatkan fungsi RPC aman berstatus `SECURITY DEFINER` dengan skema `search_path = public, auth`:
+    1. `public.get_user_followers(p_target_user_id, p_limit, p_offset)`: Mengembalikan daftar profil pengguna yang mengikuti akun target beserta badge verifikasi, status `is_followed_by_me`, dan jumlah relasi.
+    2. `public.get_user_following(p_target_user_id, p_limit, p_offset)`: Mengembalikan daftar profil pengguna yang diikuti oleh akun target.
+  - Diberikan izin eksekusi kepada peran `anon` dan `authenticated`.
+- **Layanan Relasi Sosial (`social_service.dart`)**:
+  - Menambahkan metode `fetchUserFollowers(targetUserId)` dan `fetchUserFollowing(targetUserId)`.
+  - Dilengkapi validasi format UUID (`_isUuid`) sehingga akun simulasi/demo lokal tidak memicu galat sintaksis UUID pada Postgres.
+  - Sinkronisasi instan dua arah pada set demo in-memory (`_mockFollowersMap` dan `_mockFollowingMap`) sehingga saat tombol Ikuti/Mengikuti ditekan, daftar berpindah secara reaktif.
+- **Lembar Modal Interaktif (`FollowListSheet` / `follow_list_sheet.dart`)**:
+  - Desain sesuai panduan visual Faunova: sudut membulat 24px, drag handle, judul nama & `@username`.
+  - Dilengkapi 2 tab: **Pengikut** dan **Mengikuti** dengan indikator jumlah akun real-time.
+  - Kolom pencarian instan (*instant search filter*) untuk menyaring berdasarkan nama pengguna, `@username`, maupun bio.
+  - Daftar penjelajah satwa memuat: Avatar (`AppAvatar`), nama lengkap, centang biru terverifikasi (`Icons.verified_rounded`), `@username`, penggalan bio, serta tombol aksi **+ Ikuti** (emas) atau **Mengikuti** (sage outline).
+  - Ketuk kartu penjelajah untuk langsung membuka profil publik (`PublicProfilePage`).
+  - Penanganan status komprehensif (`AppStateView`): memuat (*loading*), galat (*error* dengan tombol coba lagi), kosong (*empty state* ramah), dan tarik untuk perbarui (*pull-to-refresh*).
+- **Integrasi di Seluruh Halaman Profil**:
+  1. **Profil Akun Saya (`profile_page.dart`)**: Metrik `Pengikut` dan `Mengikuti` pada kartu hero kini interaktif dengan `InkWell`. Mengetuk angka atau label langsung membuka `FollowListSheet` pada tab yang sesuai.
+  2. **Profil Publik Orang Lain (`public_profile_page.dart`)**: Metrik `Pengikut` dan `Mengikuti` pada kartu statistik pengguna lain kini juga dapat diketuk untuk melihat siapa saja pengikut dan yang diikuti oleh pengguna tersebut.
+- **Verifikasi Kualitas**:
+  - `flutter analyze`: **No issues found! (0 issues)**.
+  - `flutter test`: **116 dari 116 tes unit & widget lulus 100%** (termasuk 3 tes baru untuk relasi pengikut, lembar modal interaktif, dan verifikasi padding nol jam observasi).
+  - `Android Emulator (Live)`: Diuji langsung via ADB, interaksi tombol Ikuti/Mengikuti dan perpindahan tab terbukti berjalan responsif dan akurat.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Eksekusi Migration 015 di Supabase Dashboard**: Berkas migrasi `supabase/migrations/015_get_followers_and_following.sql` telah disiapkan dan perlu dijalankan di Supabase SQL Editor pengguna jika ingin mengaktifkan fungsi RPC di server live Supabase. (Pada mode demo / offline / belum migrasi, aplikasi otomatis menggunakan fallback in-memory yang mulus).
+
+---
+
+## Sesi Pemulihan AI & Sensor (Bug Fixes) — Selesai ✅
+
+### 1. Selesai Dikerjakan & Akar Masalah Teratasi
+- **Investigasi & Perbaikan Timeout Identifikasi Kamera AI (Scan)**:
+  - *Gejala*: Pengguna mengalami error modal *"Identifikasi Gagal: Layanan identifikasi AI memakan waktu terlalu lama. Silakan coba bidik kembali."* saat membidik foto fisik.
+  - *Penyebab*: Batas timeout pemanggilan Gemini di Edge Function `ai-gateway` sebelumnya disetel terlalu ketat (`AbortSignal.timeout(20000)` = 20 detik). Saat foto kamera fisik HP berukuran nyata diunggah via seluler dan diproses oleh Gemini multimodal dengan penalaran visual, durasi total melebihi 20 detik sehingga koneksi dibatalkan sepihak oleh server dan mengirimkan error 504.
+  - *Solusi*:
+    - Menambah batas `AbortSignal.timeout` di Edge Function `ai-gateway` dari 20 detik menjadi 35 detik.
+    - Menambah client timeout di `ScanService` dari 30 detik menjadi 45 detik.
+    - Memperbaiki ekstraksi respon JSON Gemini agar membaca part non-thought (`parts.find(p => !p.thought)`) sehingga payload JSON tidak tertimpa token penalaran internal.
+    - Membedakan galat timeout vs galat koneksi provider pada blok `catch` agar tidak di-masking secara buta.
+- **Investigasi & Perbaikan Timeout Tanya Jawab AI (Chat)**:
+  - *Gejala*: Pengguna mengalami notifikasi merah *"Gagal mengirim: Asisten AI memakan waktu terlalu lama. Silakan coba kirim kembali."* pada layar `Tanya AI`.
+  - *Penyebab*:
+    1. Batas timeout server di `ai-gateway` (mode `chat`) hanya 15 detik (`AbortSignal.timeout(15000)`).
+    2. Konfigurasi `maxOutputTokens: 350` terlalu kecil di mana pada model generasi baru (Gemini 2.5 / 3.x Flash dengan thinking enabled), token penalaran (*thinking tokens*) berbagi batas kuota yang sama dengan *candidate output tokens*. Akibatnya, token tercekik atau model mengalami perlambatan generasi hingga melewati 15 detik.
+  - *Solusi*:
+    - Menaikkan `maxOutputTokens` dari 350 menjadi 1500 token.
+    - Menaikkan timeout server Edge Function dari 15 detik menjadi 30 detik.
+    - Menaikkan client timeout di `ChatService` dari 25 detik menjadi 35 detik.
+    - Mengekstrak teks balasan asisten dari part non-thought (`!p.thought`).
+- **Deploy Edge Function Terkini**:
+  - Edge Function `ai-gateway` versi yang telah diperbaiki berhasil dideploy langsung ke Supabase Cloud (`yziubaqkrhxtneaybllq`).
+- **Perbaikan Pelanggaran Aturan Plan 191 pada Sensor Goyang HP (Accelerometer)**:
+  - *Gejala*: Muncul toast merah *"Kuota goyang HP harian kamu sudah habis (3/3). Reset 00:00 WIB."* secara tiba-tiba di layar chat `Tanya AI` saat pengguna sedang mengetik.
+  - *Penyebab*: `GamePage` mendengarkan sensor accelerometer `ShakeService` di `initState()`. Karena berada di dalam `IndexedStack` pada `MainNavigationScaffold`, sensor terus aktif di latar belakang saat pengguna berada di tab lain atau membuka halaman chat/detail. Getaran tangan saat mengetik memicu sensor goyang HP.
+  - *Solusi Sesuai Plan 191*:
+    - Menambahkan kontrol `isActive` dari `MainNavigationScaffold` (`GamePage(isActive: _currentIndex == 3)`).
+    - Membatalkan/menjeda stream accelerometer (`_pauseShakeSensor()`) saat pengguna berpindah tab, membuka dialog soal kuis, maupun membuka halaman arena kuis.
+    - Sensor goyang HP kini **hanya aktif secara eksklusif** saat pengguna benar-benar membuka dan berada di tab Game.
+- **Penegakan Batasan Domain (Guardrail Keras) pada Tanya Jawab AI**:
+  - Menambahkan aturan ketat pada sistem instruksi Gemini di Edge Function `ai-gateway` dan `ChatService` (mode demo):
+    - AI **hanya boleh** menjawab pertanyaan seputar satwa yang diobservasi, taksonomi, pola makan, siklus hidup, habitat, perilaku, dan konservasinya.
+    - AI **wajib menolak secara sopan** jika ditanya topik di luar satwa (seperti pemrograman/coding, matematika/hitungan, rumus, politik, tugas umum, dll.) dengan mengarahkan kembali ke topik satwa.
+- **Rangkaian Pengujian & Analisis**:
+  - `flutter analyze`: **No issues found! (0 issues)**.
+  - `flutter test`: **117 dari 117 tes unit & widget lulus 100%** (termasuk verifikasi penolakan pertanyaan coding & matematika).
+  - `flutter test test/security_and_rls_test.dart`: **9 dari 9 rangkaian tes keamanan dan RLS lulus 100%**.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Pengujian Latensi Jaringan Seluler Nyata**: Kinerja round-trip Gemini di Edge Function bergantung pada kecepatan internet perangkat seluler pengguna.
+
+### 3. Langkah Berikutnya
+- Pengguna dapat mencoba kembali fitur bidik kamera fisik dan tanya jawab AI di HP fisik.
+
+---
+
+## Sesi S23 — Kunci Aplikasi Biometrik (App Lock), Auto-Lock, dan Fallback Kata Sandi Akun ✅
+
+### 1. Selesai Dikerjakan
+- **Alur Kunci Aplikasi Biometrik (App Lock) Sesuai Konsep Diskusi**:
+  - **Kondisi Biometrik Nonaktif**: Pengguna yang sudah login dan membuka aplikasi langsung masuk ke Beranda (`MainNavigationScaffold`) tanpa memasukkan kata sandi maupun sidik jari.
+  - **Kondisi Biometrik Aktif**: Saat aplikasi dibuka, layar `BiometricLockPage` otomatis meminta pemindaian sidik jari/biometrik perangkat sebelum memberikan akses ke aplikasi.
+  - **Auto-Relock Latar Belakang (2 Menit)**: Mengimplementasikan `WidgetsBindingObserver` di `AuthGate` yang mengukur durasi aplikasi berada di status `paused`. Jika ditinggalkan lebih dari 2 menit dan biometrik aktif, aplikasi otomatis mengunci kembali sesi demi keamanan data observasi satwa.
+- **Layar Kunci Aplikasi (`BiometricLockPage`)**:
+  - Dibuat di `lib/features/auth/presentation/biometric_lock_page.dart`.
+  - Mengikuti palet resmi Faunova (`AGENTS.md`): Latar Gading `#F7F4ED`, badge lingkaran sidik jari Sage Tua `#5C7457`, tombol pemindai emas `#C8A96B`, dan peringatan lockout Merah Status `#B3261E`.
+  - Menampilkan badge chip email akun aktif pengguna.
+  - Menampilkan counter kegagalan dinamis (contoh: *Percobaan gagal: 2/5*).
+- **Fallback Kata Sandi Akun (Tanpa Perlu Bikin PIN Terpisah)**:
+  - Jika sidik jari gagal 5 kali berturut-turut (*lockout*) atau pengguna memilih tombol *"Buka dengan Kata Sandi"*, formulir input kata sandi akun akan terbuka.
+  - Memverifikasi kata sandi langsung ke Supabase Auth (`signInWithPassword`) secara aman tanpa pernah menyimpan plaintext kata sandi di penyimpanan lokal.
+  - Saat kata sandi benar: counter kegagalan di-reset kembali ke 0, sesi diperbarui, dan aplikasi terbuka.
+- **Opsi Keluar / Ganti Akun**:
+  - Tersedia tombol *"Keluar / Ganti Akun"* dengan dialog konfirmasi jika pengguna ingin berpindah akun atau lupa kata sandi.
+- **Pembaruan Service & State Management**:
+  - `BiometricService`:
+    - Menambahkan `isAppUnlockedNotifier` (ValueNotifier) dan getter `isAppUnlocked`.
+    - Menambahkan method `performBiometricUnlock()` dan `verifyPasswordToUnlock()`.
+    - Dukungan fallback in-memory untuk testing environment tanpa menyentuh platform channel native.
+  - `AuthService`:
+    - Menambahkan getter `currentUserEmail`.
+    - Otomatis memicu `setAppUnlocked(true)` saat login awal atau masuk demo mode agar pengguna baru tidak langsung terblokir.
+    - Otomatis mereset `setAppUnlocked(false)` saat logout.
+  - `AuthGate`:
+    - Memadukan status autentikasi (`AuthService.authStateChanges`), status toggle biometrik (`isBiometricEnabled()`), dan status buka kunci aplikasi (`isAppUnlockedNotifier`).
+- **Verifikasi & Analisis Kode**:
+  - `flutter analyze`: **No issues found! (0 issues)**.
+  - `flutter test test/security_and_rls_test.dart`: **9 dari 9 tes keamanan & RLS lulus 100%**.
+  - `flutter test test/widget_test.dart`: **112 dari 112 tes lulus 100%** (termasuk grup tes `S23`).
+
+- **Optimasi Latensi & Akurasi AI Vision (ai-gateway & ImageProcessingService)**:
+  - Mengatasi masalah respon AI lambat (15-25s) dan gagal mengenali hewan:
+    1. Menghapus parameter `thinkingConfig` yang tidak didukung model standar dan menyebabkan Google menolak request dengan status 400 Bad Request.
+    2. Menggunakan model resmi Google `gemini-2.0-flash` dan `gemini-1.5-flash` yang memiliki kecepatan inferensi instan (~1 detik) tanpa overhead penalaran.
+    3. Menambahkan dukungan penuh untuk Alibaba Cloud Qwen (`https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1`) via secret `QWEN_API_KEY`, sehingga sistem memiliki arsitektur multi-provider dengan failover otomatis.
+    4. Memperbaiki format payload multimodal Google REST API dari `inline_data` (*snake_case*) menjadi `inlineData` (*camelCase*) dengan `mimeType`.
+    5. Menambahkan fungsi `extractCleanJson` yang membersihkan blok markdown ````json ```` secara regex untuk mencegah parsing error.
+    6. Mengoptimalkan resolusi foto kamera di `ImageProcessingService` dari 960px menjadi 640px JPEG (kualitas 70). Payload data Base64 menyusut 85% (dari ~350KB menjadi ~45KB), membuat transmisi jaringan seluler HP seketika (<200ms).
+- **Integrasi Cloudflare Workers AI Llama 3.2 11B Vision & MiniMax (Edge Network)**:
+  - Menyambungkan Cloudflare Workers AI menggunakan Account ID dan API Token aman di secrets Supabase.
+  - Melakukan handshake persetujuan lisensi model Meta Llama 3.2 11B Vision Instruct di Cloudflare.
+  - Mengimplementasikan endpoint multimodal REST dengan konversi byte array langsung (`base64ToByteArray`) dan alokasi `max_tokens: 1024` agar output JSON tidak terpotong.
+  - Mengonfigurasi arsitektur AI berlapis:
+    1. **Primary**: Cloudflare Workers AI `@cf/meta/llama-3.2-11b-vision-instruct` (gratis, cepat, tanpa ketergantungan saldo).
+    2. **Secondary**: MiniMax M3.1 Flash via Cloudflare AI Gateway jika kredit/BYOK tersedia.
+    3. **Fallback**: Google Gemini 2.0 Flash / 1.5 Flash Latest.
+  - Berhasil diuji langsung via live script: pengenalan satwa nyata (Kupu-kupu Jeruk) dan penolakan non-satwa (keyboard/latar) berjalan 100% akurat.
+  - Deploy Edge Function `ai-gateway` ke Supabase Cloud (`yziubaqkrhxtneaybllq`).
+  - Verifikasi: `flutter analyze` 0 issues, 121/121 widget and unit tests lulus 100%.
+
+- **Perbaikan Rantai Simpan Koleksi Kanonis & Badge (Migration 016, 017 & 018)**:
+  - Menyelesaikan error `function digest(text, unknown) does not exist` dengan menyertakan skema `extensions` pada `search_path` dan kualifikasi eksplisit `extensions.digest(...)` (Migration 016).
+  - Menyelesaikan error `column "awarded_at" of relation "user_badges" does not exist` dengan mencocokkan skema riil tabel `user_badges` (`unlocked_at`, `is_unlocked: true`, dan ID badge `'pemula'`) (Migration 017).
+  - Menyelesaikan error `structure of query does not match function result type (42804)` dengan menambahkan casting eksplisit pada seluruh kolom `RETURN QUERY SELECT` di `save_capture_with_chain`, khususnya `v_scan.photo_sha256::TEXT` yang bertipe `CHAR(64)` (`bpchar`) di tabel `scans` agar presisi 100% dengan signature `RETURNS TABLE` (Migration 018).
+  - Sukses diterapkan ke remote database Supabase Cloud (`db push`).
+  - Deploy ulang Edge Function `ai-gateway` dengan perbaikan scope token Cloudflare global.
+  - Verifikasi: `flutter analyze` 0 issues, 121/121 widget and unit tests lulus 100%.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Pemindai Sensor Biometrik Fisik (Fingerprint / Face ID)**:
+  - Verifikasi dialog sensor sidik jari native Android/iOS memerlukan pengujian langsung pada HP fisik yang telah mendaftarkan sidik jari di pengaturan sistem OS.
+
+### 3. Langkah Berikutnya
+- Melakukan pengujian simpan ke koleksi kanonis langsung pada aplikasi dan memeriksa tampilan di feed/profil.

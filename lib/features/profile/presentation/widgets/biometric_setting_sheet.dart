@@ -71,6 +71,7 @@ class _BiometricSettingSheetState extends State<BiometricSettingSheet> {
       if (authenticated) {
         await BiometricService.instance.setBiometricEnabled(true);
         await BiometricService.instance.saveCurrentSession();
+        BiometricService.instance.setAppUnlocked(true);
         if (mounted) {
           setState(() {
             _isEnabled = true;
@@ -79,7 +80,7 @@ class _BiometricSettingSheetState extends State<BiometricSettingSheet> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Autentikasi sidik jari berhasil diaktifkan.'),
+              content: Text('Kunci aplikasi sidik jari berhasil diaktifkan.'),
               backgroundColor: AppColors.sageTua,
             ),
           );
@@ -97,11 +98,12 @@ class _BiometricSettingSheetState extends State<BiometricSettingSheet> {
     } else {
       // Nonaktifkan
       await BiometricService.instance.setBiometricEnabled(false);
+      BiometricService.instance.setAppUnlocked(true);
       if (mounted) {
         setState(() => _isEnabled = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Autentikasi sidik jari dinonaktifkan.'),
+            content: Text('Kunci aplikasi sidik jari dinonaktifkan.'),
             backgroundColor: AppColors.sageTua,
           ),
         );
@@ -269,7 +271,7 @@ class _BiometricSettingSheetState extends State<BiometricSettingSheet> {
                   const SizedBox(height: 6),
                   Text(
                     canToggle
-                        ? 'Buka sesi akun Faunova secara instan menggunakan sensor biometrik perangkat tanpa mengetik kata sandi.'
+                        ? 'Saat aktif, membuka Faunova akan meminta verifikasi sidik jari demi keamanan. Jika sidik jari gagal atau tidak cocok, Anda dapat membuka dengan kata sandi akun.'
                         : !_isHardwareAvailable
                             ? 'Fitur dinonaktifkan karena perangkat ini tidak memiliki sensor biometrik.'
                             : 'Fitur dinonaktifkan karena belum ada sidik jari yang didaftarkan di pengaturan sistem HP.',

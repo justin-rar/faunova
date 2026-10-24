@@ -59,6 +59,25 @@ class CollectionGridView extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            if (onRefresh != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.sageTua),
+                label: const Text(
+                  'Segarkan Koleksi',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.sageTua,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.sageTua),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
           ],
         ),
       );

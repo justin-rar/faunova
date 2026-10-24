@@ -30,7 +30,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
       const FeedPage(),
       const SearchPage(),
       _currentIndex == 2 ? const CameraPage(isActive: true) : const SizedBox.shrink(),
-      const GamePage(),
+      GamePage(isActive: _currentIndex == 3),
       const ProfilePage(),
     ];
 

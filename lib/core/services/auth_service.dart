@@ -32,6 +32,17 @@ class AuthService {
     return null;
   }
 
+  /// Mendapatkan email user yang sedang aktif (atau demo email)
+  String? get currentUserEmail {
+    if (AppConfig.isSupabaseConfigured && AppConfig.isSupabaseInitialized) {
+      return Supabase.instance.client.auth.currentUser?.email;
+    }
+    if (_isDemoAuthenticated) {
+      return 'demo@faunova.app';
+    }
+    return null;
+  }
+
   /// Stream perubahan status autentikasi
   Stream<bool> get authStateChanges {
     if (AppConfig.isSupabaseConfigured && AppConfig.isSupabaseInitialized) {
@@ -100,6 +111,7 @@ class AuthService {
       // Jika berhasil masuk, reset kegagalan biometrik & perbarui sesi jika biometrik aktif
       if (response.session != null) {
         await BiometricService.instance.resetFailedAttempts();
+        BiometricService.instance.setAppUnlocked(true);
         if (BiometricService.instance.isBiometricEnabled()) {
           await BiometricService.instance.saveCurrentSession(
             email: response.user?.email,
@@ -143,6 +155,7 @@ class AuthService {
     try {
       await EncryptedStorageService.instance.clearPrivateCacheOnSignOut();
       await BiometricService.instance.clearSavedSession();
+      BiometricService.instance.setAppUnlocked(false);
     } catch (_) {}
 
     if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
@@ -164,6 +177,7 @@ class AuthService {
   void enterDemoMode() {
     _isDemoAuthenticated = true;
     BiometricService.instance.resetFailedAttempts();
+    BiometricService.instance.setAppUnlocked(true);
     if (BiometricService.instance.isBiometricEnabled()) {
       BiometricService.instance.saveCurrentSession(
         email: 'demo@faunova.app',

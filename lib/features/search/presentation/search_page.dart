@@ -9,7 +9,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/services/search_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../profile/models/public_profile_model.dart';
 import '../../profile/presentation/public_profile_page.dart';
@@ -40,6 +42,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     'Aves (Burung)',
     'Reptilia',
     'Amfibi',
+    'Biota Air',
+    'Serangga',
   ];
 
   @override
@@ -340,17 +344,11 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                CircleAvatar(
+                AppAvatar(
+                  avatarPath: account.avatarPath,
+                  displayName: account.displayName,
                   radius: 24,
                   backgroundColor: account.isVerifiedActive ? AppColors.sageTua : AppColors.sage,
-                  child: Text(
-                    account.displayName.isNotEmpty ? account.displayName[0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                      color: AppColors.teksPutih,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
-                    ),
-                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -527,9 +525,92 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     );
   }
 
+  Widget _buildSpeciesThumbnail(String photoPath) {
+    const double size = 70;
+    Widget img;
+
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      img = Image.network(
+        photoPath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: size,
+            height: size,
+            color: AppColors.sageMuda.withValues(alpha: 0.5),
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.sageTua),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: size,
+          height: size,
+          color: AppColors.sageMuda,
+          child: const Center(
+            child: Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 30),
+          ),
+        ),
+      );
+    } else if (photoPath.startsWith('assets/')) {
+      img = Image.asset(
+        photoPath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: size,
+          height: size,
+          color: AppColors.sageMuda,
+          child: const Center(
+            child: Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 30),
+          ),
+        ),
+      );
+    } else {
+      img = Container(
+        width: size,
+        height: size,
+        color: AppColors.sageMuda,
+        child: const Center(
+          child: Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 30),
+        ),
+      );
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: img,
+      ),
+    );
+  }
+
   Widget _buildSpeciesCard(SpeciesCatalogModel sp) {
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -542,106 +623,393 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: AppColors.sageMuda,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showSpeciesDetailModal(context, sp),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        sp.speciesName,
-                        style: const TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.teksGelap,
-                        ),
+                _buildSpeciesThumbnail(sp.samplePhotoPath),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              sp.speciesName,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.teksGelap,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: _getConservationBadgeColor(sp.conservationStatus).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              sp.conservationStatus,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: _getConservationBadgeColor(sp.conservationStatus),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: _getConservationBadgeColor(sp.conservationStatus).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        sp.conservationStatus,
+                      const SizedBox(height: 2),
+                      Text(
+                        sp.scientificName,
                         style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          color: _getConservationBadgeColor(sp.conservationStatus),
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.teksGelap.withValues(alpha: 0.75),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  sp.scientificName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    color: AppColors.teksGelap.withValues(alpha: 0.75),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  sp.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    height: 1.3,
-                    color: AppColors.teksGelap.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.gading,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        sp.taxonomyClass,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.sageTua,
+                      const SizedBox(height: 6),
+                      Text(
+                        sp.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.3,
+                          color: AppColors.teksGelap.withValues(alpha: 0.8),
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${sp.observationsCount} observasi tercatat',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.teksGelap.withValues(alpha: 0.6),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.gading,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              sp.taxonomyClass,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.sageTua,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${sp.observationsCount} observasi',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.teksGelap.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  void _showSpeciesDetailModal(BuildContext context, SpeciesCatalogModel sp) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.82,
+          ),
+          decoration: const BoxDecoration(
+            color: AppColors.gading,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 44,
+                height: 4.5,
+                decoration: BoxDecoration(
+                  color: AppColors.sage.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Banner Foto Besar (Ketuk untuk Layar Penuh)
+                      GestureDetector(
+                        onTap: () {
+                          FullScreenImageViewer.open(
+                            context,
+                            imageUrl: sp.samplePhotoPath,
+                            title: sp.speciesName,
+                            subtitle: sp.scientificName,
+                            description: sp.description,
+                          );
+                        },
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 200,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(17),
+                                child: sp.samplePhotoPath.startsWith('http')
+                                    ? Image.network(
+                                        sp.samplePhotoPath,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          color: AppColors.sageMuda,
+                                          child: const Center(
+                                            child: Icon(Icons.pets_rounded, size: 54, color: AppColors.sageTua),
+                                          ),
+                                        ),
+                                      )
+                                    : Image.asset(
+                                        sp.samplePhotoPath,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          color: AppColors.sageMuda,
+                                          child: const Center(
+                                            child: Icon(Icons.pets_rounded, size: 54, color: AppColors.sageTua),
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 10,
+                              right: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.fullscreen_rounded, color: Colors.white, size: 16),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Layar Penuh',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Nama Satwa & Badge Status IUCN
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sp.speciesName,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.teksGelap,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  sp.scientificName,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.teksGelap.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _getConservationBadgeColor(sp.conservationStatus).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _getConservationBadgeColor(sp.conservationStatus).withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Text(
+                              sp.conservationStatus,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: _getConservationBadgeColor(sp.conservationStatus),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // Baris Taksonomi & Observasi
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.sageTua,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.category_rounded, size: 13, color: AppColors.teksPutih),
+                                const SizedBox(width: 5),
+                                Text(
+                                  sp.taxonomyClass,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.teksPutih,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.sageMuda,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.visibility_rounded, size: 13, color: AppColors.teksGelap),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${sp.observationsCount} Observasi Komunitas',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.teksGelap,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Deskripsi & Catatan Konservasi
+                      const Text(
+                        'Deskripsi & Perilaku Alami',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.teksGelap,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        sp.description,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: AppColors.teksGelap.withValues(alpha: 0.85),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Catatan Konservasi
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.sageMuda.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sage.withValues(alpha: 0.25)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.shield_rounded, color: AppColors.sageTua, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Spesies satwa terdata dalam repositori konservasi Faunova Nusantara. Foto lapangan terverifikasi rantai hash kriptografi.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.teksGelap,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.sageTua,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Tutup Detail Satwa',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.teksPutih,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

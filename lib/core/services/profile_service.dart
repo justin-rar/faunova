@@ -37,7 +37,8 @@ class ProfileService {
 
   String? _getCurrentUserId() {
     try {
-      return Supabase.instance.client.auth.currentSession?.user.id;
+      final client = Supabase.instance.client;
+      return client.auth.currentUser?.id ?? client.auth.currentSession?.user.id;
     } catch (_) {
       return null;
     }
@@ -89,7 +90,7 @@ class ProfileService {
       final response = await client.rpc(
         'get_public_profile',
         params: {'p_target_user_id': myId},
-      );
+      ).timeout(const Duration(seconds: 8));
 
       final data = Map<String, dynamic>.from(response as Map);
       if (data['found'] == false) {
@@ -97,9 +98,11 @@ class ProfileService {
         return _myDemoProfile!;
       }
 
-      return PublicProfileModel.fromJson(data);
+      final profile = PublicProfileModel.fromJson(data);
+      _myDemoProfile = profile;
+      return profile;
     } catch (e) {
-      debugPrint('ProfileService getMyProfile error: $e');
+      debugPrint('ProfileService getMyProfile error/timeout: $e');
       if (_myDemoProfile == null) initMockDemoMyProfile();
       return _myDemoProfile!;
     }
@@ -145,17 +148,48 @@ class ProfileService {
           'p_bio': cleanBio,
           'p_avatar_path': avatarPath,
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = Map<String, dynamic>.from(response as Map);
       if (data['success'] != true) {
         throw const ProfileException('Gagal memperbarui profil.');
       }
 
-      // Ambil kembali data profil yang sudah teragregat
-      return await getMyProfile();
+      // Perbarui cache profil lokal agar instan
+      if (_myDemoProfile != null) {
+        _myDemoProfile = _myDemoProfile!.copyWith(
+          displayName: cleanName,
+          bio: cleanBio,
+          avatarPath: avatarPath ?? _myDemoProfile!.avatarPath,
+        );
+      }
+
+      // Ambil kembali data profil agregat terbaru dengan timeout singkat
+      try {
+        return await getMyProfile().timeout(const Duration(seconds: 4));
+      } catch (_) {
+        return _myDemoProfile ??
+            PublicProfileModel(
+              id: myId,
+              username: data['username'] as String? ?? 'kolektor',
+              displayName: cleanName,
+              avatarPath: avatarPath,
+              bio: cleanBio,
+              isVerified: data['is_verified'] == true,
+              streakCount: (data['streak_count'] as num?)?.toInt() ?? 0,
+              bestQuizScore: (data['best_quiz_score'] as num?)?.toInt() ?? 0,
+              createdAt: DateTime.now(),
+              capturesCount: 0,
+              postsCount: 0,
+              followersCount: 0,
+              followingCount: 0,
+              isFollowedByMe: false,
+              isMyProfile: true,
+            );
+      }
     } catch (e) {
       debugPrint('ProfileService updateMyProfile error: $e');
+      if (e is ProfileException) rethrow;
       throw ProfileException('Gagal menyimpan profil: ${e.toString()}');
     }
   }

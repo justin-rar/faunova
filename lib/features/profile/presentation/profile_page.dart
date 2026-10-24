@@ -4,6 +4,7 @@ import '../../../core/services/badge_service.dart';
 import '../../../core/services/capture_service.dart';
 import '../../../core/services/profile_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
@@ -20,6 +21,7 @@ import 'widgets/upgrade_blue_check_sheet.dart';
 import 'widgets/currency_converter_card.dart';
 import 'widgets/multi_timezone_card.dart';
 import 'widgets/app_settings_sheet.dart';
+import 'widgets/follow_list_sheet.dart';
 import 'saran_kesan_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -452,7 +454,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         ? _myProfile!.bio
         : 'Penjelajah biodiversitas Indonesia Timur. Mengarsipkan reptilia dan aves endemik ke dalam buku besar terenkripsi.';
     final isVerified = _myProfile?.isVerifiedActive ?? false;
-    final initialLetter = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A';
 
     return Container(
       decoration: BoxDecoration(
@@ -466,17 +467,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         children: [
           Row(
             children: [
-              CircleAvatar(
+              AppAvatar(
+                avatarPath: _myProfile?.avatarPath,
+                displayName: displayName,
                 radius: 34,
-                backgroundColor: AppColors.sageTua,
-                child: Text(
-                  initialLetter,
-                  style: const TextStyle(
-                    color: AppColors.teksPutih,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 26,
-                  ),
-                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -547,9 +541,39 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _MetricItem(label: 'Koleksi', value: '${_captures.length}'),
-              const _MetricItem(label: 'Postingan', value: '0'),
-              const _MetricItem(label: 'Pengikut', value: '218'),
-              const _MetricItem(label: 'Badge Sah', value: '4/8'),
+              _MetricItem(label: 'Postingan', value: '${_myProfile?.postsCount ?? 0}'),
+              _MetricItem(
+                label: 'Pengikut',
+                value: '${_myProfile?.followersCount ?? 0}',
+                onTap: () {
+                  final p = _myProfile;
+                  if (p == null) return;
+                  FollowListSheet.show(
+                    context,
+                    userId: p.id,
+                    displayName: displayName,
+                    username: username,
+                    initialTab: FollowTab.followers,
+                    onFollowStatusChanged: _loadProfile,
+                  );
+                },
+              ),
+              _MetricItem(
+                label: 'Mengikuti',
+                value: '${_myProfile?.followingCount ?? 0}',
+                onTap: () {
+                  final p = _myProfile;
+                  if (p == null) return;
+                  FollowListSheet.show(
+                    context,
+                    userId: p.id,
+                    displayName: displayName,
+                    username: username,
+                    initialTab: FollowTab.following,
+                    onFollowStatusChanged: _loadProfile,
+                  );
+                },
+              ),
             ],
           ),
         ],
@@ -1288,12 +1312,18 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 class _MetricItem extends StatelessWidget {
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
-  const _MetricItem({required this.label, required this.value});
+  const _MetricItem({
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           value,
@@ -1312,6 +1342,17 @@ class _MetricItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return column;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: column,
+      ),
     );
   }
 }

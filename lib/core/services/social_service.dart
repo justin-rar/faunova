@@ -27,8 +27,10 @@ class SocialService {
     initMockDemoSocial();
   }
 
-  final Set<String> _followingUserIds = {'user-budi'};
+  final Set<String> _followingUserIds = {'user-budi', 'user-wayan', 'user-siti'};
   final Map<String, PublicProfileModel> _demoProfiles = {};
+  final Map<String, Set<String>> _mockFollowersMap = {};
+  final Map<String, Set<String>> _mockFollowingMap = {};
 
   SupabaseClient? _getSupabaseClient() {
     try {
@@ -54,10 +56,13 @@ class SocialService {
   /// Inisialisasi data sosial tiruan untuk pengujian dan mode demo
   void initMockDemoSocial() {
     _followingUserIds.clear();
-    _followingUserIds.add('user-budi'); // Budi diikuti secara bawaan di demo
+    _followingUserIds.add('user-budi');
     _demoProfiles.clear();
+    _mockFollowersMap.clear();
+    _mockFollowingMap.clear();
 
     final now = DateTime.now();
+    const myId = '00000000-0000-0000-0000-000000000001';
 
     _demoProfiles['user-budi'] = PublicProfileModel(
       id: 'user-budi',
@@ -112,6 +117,82 @@ class SocialService {
       isFollowedByMe: false,
       isMyProfile: false,
     );
+
+    _demoProfiles['user-wayan'] = PublicProfileModel(
+      id: 'user-wayan',
+      username: 'wayan_herpetologi',
+      displayName: 'Dr. Wayan Sudarma',
+      avatarPath: null,
+      bio: 'Peneliti herpetofauna & konservasi amfibi reptil Bali-Nusa Tenggara.',
+      isVerified: true,
+      streakCount: 35,
+      bestQuizScore: 100,
+      createdAt: now.subtract(const Duration(days: 180)),
+      capturesCount: 42,
+      postsCount: 12,
+      followersCount: 312,
+      followingCount: 78,
+      isFollowedByMe: false,
+      isMyProfile: false,
+    );
+
+    _demoProfiles['user-farhan'] = PublicProfileModel(
+      id: 'user-farhan',
+      username: 'farhan_primata',
+      displayName: 'Farhan Pratama',
+      avatarPath: null,
+      bio: 'Bioakustik & perilaku primata hutan rawa gambut dan hutan dataran rendah.',
+      isVerified: true,
+      streakCount: 19,
+      bestQuizScore: 91,
+      createdAt: now.subtract(const Duration(days: 75)),
+      capturesCount: 15,
+      postsCount: 6,
+      followersCount: 174,
+      followingCount: 49,
+      isFollowedByMe: false,
+      isMyProfile: false,
+    );
+
+    _demoProfiles['user-ratna'] = PublicProfileModel(
+      id: 'user-ratna',
+      username: 'ratna_biomarine',
+      displayName: 'Ratna Biologi Bahari',
+      avatarPath: null,
+      bio: 'Eksplorasi biota laut karang Segitiga Karang & mamalia laut Raja Ampat.',
+      isVerified: false,
+      streakCount: 11,
+      bestQuizScore: 88,
+      createdAt: now.subtract(const Duration(days: 60)),
+      capturesCount: 22,
+      postsCount: 7,
+      followersCount: 129,
+      followingCount: 34,
+      isFollowedByMe: false,
+      isMyProfile: false,
+    );
+
+    // Seed relasi followers & following lokal
+    _mockFollowersMap[myId] = {'user-budi', 'user-siti', 'user-wayan', 'user-farhan'};
+    _mockFollowingMap[myId] = {'user-budi'};
+
+    _mockFollowersMap['user-budi'] = {myId, 'user-siti', 'user-dewi', 'user-wayan'};
+    _mockFollowingMap['user-budi'] = {'user-siti', 'user-wayan', 'user-ratna'};
+
+    _mockFollowersMap['user-siti'] = {'user-budi', 'user-dewi', 'user-ratna'};
+    _mockFollowingMap['user-siti'] = {'user-budi', 'user-wayan', myId};
+
+    _mockFollowersMap['user-dewi'] = {'user-budi', 'user-farhan'};
+    _mockFollowingMap['user-dewi'] = {'user-budi', 'user-siti'};
+
+    _mockFollowersMap['user-wayan'] = {'user-budi', 'user-siti', 'user-farhan', myId};
+    _mockFollowingMap['user-wayan'] = {'user-budi', 'user-ratna'};
+
+    _mockFollowersMap['user-farhan'] = {'user-dewi', 'user-wayan'};
+    _mockFollowingMap['user-farhan'] = {'user-budi', 'user-wayan', myId};
+
+    _mockFollowersMap['user-ratna'] = {'user-budi', 'user-wayan'};
+    _mockFollowingMap['user-ratna'] = {'user-siti', 'user-dewi'};
   }
 
   /// Mengikuti atau membatalkan ikuti pengguna lain secara idempoten dan atomik
@@ -124,15 +205,20 @@ class SocialService {
       throw const SocialException('Pengguna tidak dapat mengikuti diri sendiri.');
     }
 
-    if (AppConfig.isDemoMode || client == null || myId == null) {
+    if (AppConfig.isDemoMode || client == null || myId == null || !_isUuid(targetUserId)) {
       // Penanganan Mode Demo / Pengujian Offline
       final wasFollowing = _followingUserIds.contains(targetUserId);
       final newFollowing = !wasFollowing;
+      final currentUserId = myId ?? '00000000-0000-0000-0000-000000000001';
 
       if (newFollowing) {
         _followingUserIds.add(targetUserId);
+        _mockFollowersMap.putIfAbsent(targetUserId, () => <String>{}).add(currentUserId);
+        _mockFollowingMap.putIfAbsent(currentUserId, () => <String>{}).add(targetUserId);
       } else {
         _followingUserIds.remove(targetUserId);
+        _mockFollowersMap[targetUserId]?.remove(currentUserId);
+        _mockFollowingMap[currentUserId]?.remove(targetUserId);
       }
 
       var profile = _demoProfiles[targetUserId];
@@ -203,16 +289,25 @@ class SocialService {
       );
 
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
-    } catch (e) {
-      debugPrint('fetchFollowingFeed error: $e');
-      // Fallback ramah jika server belum merespons
+      if (data.isNotEmpty) {
+        return data.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+      }
+
+      // Jika data server masih kosong, gunakan fallback ramah
+      if (PostService.instance.demoPosts.isEmpty) {
+        PostService.instance.initMockDemoPosts();
+      }
       final allPosts = PostService.instance.demoPosts;
       final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId)).toList();
-      if (followingPosts.isNotEmpty) {
-        return List<PostModel>.from(followingPosts);
+      return List<PostModel>.from(followingPosts);
+    } catch (e) {
+      debugPrint('fetchFollowingFeed error: $e');
+      if (PostService.instance.demoPosts.isEmpty) {
+        PostService.instance.initMockDemoPosts();
       }
-      throw SocialException('Gagal memuat linimasa mengikuti: ${e.toString()}');
+      final allPosts = PostService.instance.demoPosts;
+      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId)).toList();
+      return List<PostModel>.from(followingPosts);
     }
   }
 
@@ -297,5 +392,133 @@ class SocialService {
       debugPrint('fetchUserPublicPosts error: $e');
       return PostService.instance.demoPosts.where((p) => p.authorId == targetUserId).toList();
     }
+  }
+
+  bool _isUuid(String id) {
+    return RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(id);
+  }
+
+  /// Mengambil daftar akun pengikut (Followers) dari pengguna tertentu
+  Future<List<PublicProfileModel>> fetchUserFollowers(
+    String targetUserId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final client = _getSupabaseClient();
+
+    if (AppConfig.isDemoMode || client == null || !_isUuid(targetUserId)) {
+      return _getMockFollowers(targetUserId);
+    }
+
+    try {
+      final response = await client.rpc(
+        'get_user_followers',
+        params: {
+          'p_target_user_id': targetUserId,
+          'p_limit': limit,
+          'p_offset': offset,
+        },
+      );
+
+      final List<dynamic> data = response as List<dynamic>;
+      return data
+          .map((item) => PublicProfileModel.fromJson(Map<String, dynamic>.from(item as Map)))
+          .toList();
+    } catch (e) {
+      debugPrint('fetchUserFollowers error: $e');
+      return _getMockFollowers(targetUserId);
+    }
+  }
+
+  /// Mengambil daftar akun yang diikuti (Following) dari pengguna tertentu
+  Future<List<PublicProfileModel>> fetchUserFollowing(
+    String targetUserId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final client = _getSupabaseClient();
+
+    if (AppConfig.isDemoMode || client == null || !_isUuid(targetUserId)) {
+      return _getMockFollowing(targetUserId);
+    }
+
+    try {
+      final response = await client.rpc(
+        'get_user_following',
+        params: {
+          'p_target_user_id': targetUserId,
+          'p_limit': limit,
+          'p_offset': offset,
+        },
+      );
+
+      final List<dynamic> data = response as List<dynamic>;
+      return data
+          .map((item) => PublicProfileModel.fromJson(Map<String, dynamic>.from(item as Map)))
+          .toList();
+    } catch (e) {
+      debugPrint('fetchUserFollowing error: $e');
+      return _getMockFollowing(targetUserId);
+    }
+  }
+
+  List<PublicProfileModel> _getMockFollowers(String targetUserId) {
+    if (!_demoProfiles.containsKey('user-wayan')) {
+      initMockDemoSocial();
+    }
+    final myId = _getCurrentUserId() ?? '00000000-0000-0000-0000-000000000001';
+    final normalizedTarget = (targetUserId == myId) ? '00000000-0000-0000-0000-000000000001' : targetUserId;
+    final followerIds = _mockFollowersMap[normalizedTarget] ?? {'user-budi', 'user-siti', 'user-wayan', 'user-farhan'};
+
+    return followerIds.map((id) {
+      final base = _demoProfiles[id] ?? _createFallbackMockProfile(id);
+      return base.copyWith(
+        isFollowedByMe: _followingUserIds.contains(id),
+        isMyProfile: id == myId || id == '00000000-0000-0000-0000-000000000001',
+      );
+    }).toList();
+  }
+
+  List<PublicProfileModel> _getMockFollowing(String targetUserId) {
+    if (!_demoProfiles.containsKey('user-wayan')) {
+      initMockDemoSocial();
+    }
+    final myId = _getCurrentUserId() ?? '00000000-0000-0000-0000-000000000001';
+    final normalizedTarget = (targetUserId == myId) ? '00000000-0000-0000-0000-000000000001' : targetUserId;
+
+    Set<String> followingIds;
+    if (normalizedTarget == '00000000-0000-0000-0000-000000000001') {
+      followingIds = _followingUserIds;
+    } else {
+      followingIds = _mockFollowingMap[normalizedTarget] ?? {'user-budi', 'user-siti'};
+    }
+
+    return followingIds.map((id) {
+      final base = _demoProfiles[id] ?? _createFallbackMockProfile(id);
+      return base.copyWith(
+        isFollowedByMe: _followingUserIds.contains(id),
+        isMyProfile: id == myId || id == '00000000-0000-0000-0000-000000000001',
+      );
+    }).toList();
+  }
+
+  PublicProfileModel _createFallbackMockProfile(String userId) {
+    return PublicProfileModel(
+      id: userId,
+      username: 'kolektor_${userId.replaceAll('-', '_').substring(0, userId.length > 8 ? 8 : userId.length)}',
+      displayName: 'Penjelajah Satwa',
+      avatarPath: null,
+      bio: 'Pemerhati biodiversitas satwa liar Indonesia.',
+      isVerified: false,
+      streakCount: 5,
+      bestQuizScore: 78,
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
+      capturesCount: 8,
+      postsCount: 2,
+      followersCount: 45,
+      followingCount: 20,
+      isFollowedByMe: _followingUserIds.contains(userId),
+      isMyProfile: false,
+    );
   }
 }

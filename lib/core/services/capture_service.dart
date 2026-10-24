@@ -120,7 +120,8 @@ class CaptureService {
 
   String? _getCurrentUserId() {
     try {
-      return Supabase.instance.client.auth.currentSession?.user.id;
+      final client = Supabase.instance.client;
+      return client.auth.currentUser?.id ?? client.auth.currentSession?.user.id;
     } catch (_) {
       return null;
     }

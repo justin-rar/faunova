@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/capture_service.dart';
 import '../../../core/services/compass_heading_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
@@ -163,9 +164,56 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
 
   Widget _buildHeroPhotoCard() {
     Widget imageWidget;
-    if (capture.photoObjectPath.isNotEmpty && File(capture.photoObjectPath).existsSync()) {
+    final path = capture.photoObjectPath;
+
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      imageWidget = Image.network(
+        path,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: 270,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: 270,
+            color: AppColors.sageMuda.withValues(alpha: 0.5),
+            child: const Center(
+              child: SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.sageTua),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 270,
+          color: AppColors.sageTua,
+          child: const Center(
+            child: Icon(Icons.pets_rounded, size: 72, color: Colors.white54),
+          ),
+        ),
+      );
+    } else if (path.startsWith('assets/')) {
+      imageWidget = Image.asset(
+        path,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: 270,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 270,
+          color: AppColors.sageTua,
+          child: const Center(
+            child: Icon(Icons.pets_rounded, size: 72, color: Colors.white54),
+          ),
+        ),
+      );
+    } else if (path.isNotEmpty && File(path).existsSync()) {
       imageWidget = Image.file(
-        File(capture.photoObjectPath),
+        File(path),
         fit: BoxFit.cover,
         width: double.infinity,
         height: 270,
@@ -186,10 +234,20 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.4), width: 1.5),
+    return GestureDetector(
+      onTap: () {
+        FullScreenImageViewer.open(
+          context,
+          imageUrl: capture.photoObjectPath,
+          title: capture.speciesName,
+          subtitle: '${capture.category} • Blok #${capture.seq}',
+          description: capture.description,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.sage.withValues(alpha: 0.4), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -257,8 +315,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSpeciesHeaderCard() {
     return Container(

@@ -71,7 +71,7 @@ class PostService {
       PostModel(
         id: 'mock-post-1',
         captureId: 'mock-cap-1',
-        caption: 'Teramati sepasang Jalak Bali bertengger di dahan pohon beringin pesisir Teluk Brumbun. Jambul tegak sempurna dalam kondisi sangat sehat!',
+        caption: 'Teramati sepasang Jalak Bali bertengger di dahan beringin pesisir Teluk Brumbun. Jambul putih tegak sempurna dalam kondisi sehat dan terlindungi.',
         locationVisibility: 'coarse',
         displayLatitude: -8.115000,
         displayLongitude: 114.525000,
@@ -79,15 +79,15 @@ class PostService {
         createdAt: now.subtract(const Duration(minutes: 20)),
         speciesName: 'Jalak Bali',
         category: 'Leucopsar rothschildi',
-        photoUrl: 'assets/images/jalak_bali.jpg',
+        photoUrl: 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=900&auto=format&fit=crop&q=80',
         blockSeq: 1,
         blockHash: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
         photoSha256: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
         authorId: 'user-budi',
         authorName: 'Budi Satria Wibowo',
         authorUsername: 'budi_satria',
-        authorVerifiedUntil: now.add(const Duration(days: 30)),
-        likesCount: 38,
+        authorVerifiedUntil: now.add(const Duration(days: 28)),
+        likesCount: 98,
         isLikedByMe: false,
       ),
       PostModel(
@@ -101,37 +101,103 @@ class PostService {
         createdAt: now.subtract(const Duration(hours: 2)),
         speciesName: 'Kucing Kuwuk',
         category: 'Prionailurus bengalensis',
-        photoUrl: 'assets/images/kucing_kuwuk.jpg',
+        photoUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=900&auto=format&fit=crop&q=80',
         blockSeq: 2,
         blockHash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
         photoSha256: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
         authorId: 'user-siti',
         authorName: 'Siti Rahmawati',
         authorUsername: 'siti_flora_fauna',
-        authorVerifiedUntil: now.add(const Duration(days: 15)),
+        authorVerifiedUntil: now.add(const Duration(days: 25)),
         likesCount: 114,
         isLikedByMe: true,
       ),
       PostModel(
         id: 'mock-post-3',
         captureId: 'mock-cap-3',
-        caption: 'Kupu-kupu anggun tropis bertotol kuning hitam yang diabadikan pada observasi bunga pekarangan.',
+        caption: 'Individu Komodo jantan dewasa berukuran 2.8 meter sedang berjemur di savana Loh Liang. Kondisi fisik sangat prima dengan lidah bercabang aktif mendeteksi aroma.',
         locationVisibility: 'coarse',
-        displayLatitude: -6.205000,
-        displayLongitude: 106.845000,
-        areaLabel: 'Cagar Alam Pegunungan Cycloop (Area Perkiraan)',
-        createdAt: now.subtract(const Duration(hours: 5)),
-        speciesName: 'Kupu-kupu Jeruk',
-        category: 'Papilio demoleus',
-        photoUrl: 'assets/images/butterfly.jpg',
+        displayLatitude: -8.585000,
+        displayLongitude: 119.495000,
+        areaLabel: 'Pulau Komodo, TN Komodo (Area Perkiraan)',
+        createdAt: now.subtract(const Duration(hours: 3)),
+        speciesName: 'Komodo',
+        category: 'Varanus komodoensis',
+        photoUrl: 'https://images.unsplash.com/photo-1544979590-37e9b47eb705?w=900&auto=format&fit=crop&q=80',
         blockSeq: 3,
-        blockHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-        photoSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-        authorId: 'user-indra',
-        authorName: 'drh. Indra Perkasa',
-        authorUsername: 'indra_vet',
+        blockHash: '7f9a8b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a',
+        photoSha256: '7f9a8b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a',
+        authorId: 'user-wayan',
+        authorName: 'Dr. Wayan Suastika, M.Si',
+        authorUsername: 'wayan_bali',
+        authorVerifiedUntil: now.add(const Duration(days: 30)),
+        likesCount: 142,
+        isLikedByMe: true,
+      ),
+      PostModel(
+        id: 'mock-post-4',
+        captureId: 'mock-cap-4',
+        caption: 'Induk Orangutan Kalimantan mengajarkan anaknya mencari buah ara di kanopi hutan primer. Sangat tenang tanpa merasa terganggu.',
+        locationVisibility: 'coarse',
+        displayLatitude: -2.755000,
+        displayLongitude: 111.925000,
+        areaLabel: 'Taman Nasional Tanjung Puting, Kalteng (Area Perkiraan)',
+        createdAt: now.subtract(const Duration(hours: 6)),
+        speciesName: 'Orangutan Kalimantan',
+        category: 'Pongo pygmaeus',
+        photoUrl: 'https://images.unsplash.com/photo-1535083783855-76ae62b2914e?w=900&auto=format&fit=crop&q=80',
+        blockSeq: 4,
+        blockHash: '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f',
+        photoSha256: '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f',
+        authorId: 'user-borneo',
+        authorName: 'Dedi Pratama',
+        authorUsername: 'borneo_wildlife',
         authorVerifiedUntil: null,
-        likesCount: 205,
+        likesCount: 215,
+        isLikedByMe: false,
+      ),
+      PostModel(
+        id: 'mock-post-5',
+        captureId: 'mock-cap-5',
+        caption: 'Atraksi tarian pikat Cenderawasih jantan di dahan display pada ketinggian 20 meter. Bulu kuning keemasan mekar memukau di hutan pegunungan.',
+        locationVisibility: 'coarse',
+        displayLatitude: -1.155000,
+        displayLongitude: 133.955000,
+        areaLabel: 'Cagar Alam Pegunungan Arfak, Papua (Area Perkiraan)',
+        createdAt: now.subtract(const Duration(hours: 10)),
+        speciesName: 'Cenderawasih Kuning Kecil',
+        category: 'Paradisaea minor',
+        photoUrl: 'https://images.unsplash.com/photo-1452570053594-1b985d6ea890?w=900&auto=format&fit=crop&q=80',
+        blockSeq: 5,
+        blockHash: '7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b',
+        photoSha256: '7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b',
+        authorId: 'user-dewi',
+        authorName: 'Dewi Lestari',
+        authorUsername: 'dewi_papua',
+        authorVerifiedUntil: null,
+        likesCount: 176,
+        isLikedByMe: false,
+      ),
+      PostModel(
+        id: 'mock-post-6',
+        captureId: 'mock-cap-6',
+        caption: 'Penyu Hijau dewasa melayang tenang di atas padang lamun terumbu karang tepi pulau. Jarak pandang air laut mencapai 25 meter.',
+        locationVisibility: 'coarse',
+        displayLatitude: 2.255000,
+        displayLongitude: 118.255000,
+        areaLabel: 'Kepulauan Derawan, Kalimantan Timur (Area Perkiraan)',
+        createdAt: now.subtract(const Duration(hours: 14)),
+        speciesName: 'Penyu Hijau',
+        category: 'Chelonia mydas',
+        photoUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=900&auto=format&fit=crop&q=80',
+        blockSeq: 6,
+        blockHash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+        photoSha256: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+        authorId: 'user-faiz',
+        authorName: 'Faiz Alamsyah',
+        authorUsername: 'faiz_ocean',
+        authorVerifiedUntil: now.add(const Duration(days: 10)),
+        likesCount: 129,
         isLikedByMe: false,
       ),
     ]);
@@ -251,17 +317,20 @@ class PostService {
       );
 
       final List<dynamic> data = response as List<dynamic>;
-      if (data.isEmpty && _demoPosts.isNotEmpty) {
+      if (data.isEmpty) {
+        if (_demoPosts.isEmpty) {
+          initMockDemoPosts();
+        }
         return List<PostModel>.from(_demoPosts);
       }
 
       return data.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
     } catch (e) {
       debugPrint('PostService fetchForYouFeed error: $e');
-      if (_demoPosts.isNotEmpty) {
-        return List<PostModel>.from(_demoPosts);
+      if (_demoPosts.isEmpty) {
+        initMockDemoPosts();
       }
-      throw PostException('Gagal memuat feed linimasa: ${e.toString()}');
+      return List<PostModel>.from(_demoPosts);
     }
   }
 

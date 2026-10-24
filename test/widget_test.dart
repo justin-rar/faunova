@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:faunova/core/theme/app_colors.dart';
 import 'package:faunova/core/theme/app_theme.dart';
 import 'package:faunova/core/widgets/glass_bottom_bar.dart';
+import 'package:faunova/core/widgets/app_avatar.dart';
 import 'package:faunova/core/widgets/app_state_view.dart';
 import 'package:faunova/features/navigation/main_navigation_scaffold.dart';
 import 'package:faunova/core/services/auth_service.dart';
@@ -58,6 +59,7 @@ import 'package:faunova/core/services/biometric_service.dart';
 import 'package:faunova/features/profile/models/badge_model.dart';
 import 'package:faunova/features/profile/presentation/widgets/badge_celebration_dialog.dart';
 import 'package:faunova/features/profile/presentation/widgets/biometric_setting_sheet.dart';
+import 'package:faunova/features/auth/presentation/biometric_lock_page.dart';
 import 'package:faunova/core/services/notification_service.dart';
 import 'package:faunova/features/profile/presentation/widgets/notification_setting_sheet.dart';
 import 'package:faunova/features/profile/models/payment_transaction_model.dart';
@@ -66,6 +68,7 @@ import 'package:faunova/features/profile/presentation/midtrans_snap_webview_page
 import 'package:faunova/features/profile/presentation/widgets/upgrade_blue_check_sheet.dart';
 import 'package:faunova/features/profile/presentation/saran_kesan_page.dart';
 import 'package:faunova/features/profile/presentation/widgets/app_settings_sheet.dart';
+import 'package:faunova/features/profile/presentation/widgets/follow_list_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -713,6 +716,37 @@ void main() {
         ),
         throwsA(isA<ChatQuotaExceededException>()),
       );
+    });
+
+    test('ChatService: Batasan domain guardrail menolak pertanyaan non-satwa (coding & matematika)', () async {
+      final chatService = ChatService.instance;
+      chatService.resetDemoState();
+      const scanContext = ScanResultModel(
+        scanId: 'scan-guardrail-test',
+        requestId: 'req-guardrail-test',
+        status: 'completed',
+        isAnimal: true,
+        name: 'Gajah Afrika',
+        categoryOrSpecies: 'Loxodonta africana',
+      );
+
+      // Uji pertanyaan coding
+      final resCoding = await chatService.sendMessage(
+        scanId: 'scan-guardrail-test',
+        message: 'Bagaimana cara membuat fungsi python dan coding flutter?',
+        scanContext: scanContext,
+      );
+      expect(resCoding.reply, contains('hanya dapat membantu menjawab pertanyaan seputar satwa'));
+
+      // Uji pertanyaan matematika
+      final resMath = await chatService.sendMessage(
+        scanId: 'scan-guardrail-test',
+        message: 'Tolong hitung rumus matematika 25 * 40 berapa hasilnya?',
+        scanContext: scanContext,
+      );
+      expect(resMath.reply, contains('hanya dapat membantu menjawab pertanyaan seputar satwa'));
+
+      chatService.resetDemoState();
     });
 
     testWidgets('ScanChatPage: UI rendering, suggestions, tanya jawab, dan banner kuota', (tester) async {
@@ -3224,6 +3258,293 @@ void main() {
       );
       expect(find.text('Mode Luring (Offline)'), findsOneWidget);
       expect(find.text('Koneksi internet terputus.'), findsOneWidget);
+    });
+
+    testWidgets('S22 - AppAvatar: Mendukung preset satwa endemik, inisial fallback, dan nama', (tester) async {
+      // 1. Uji preset Badak Jawa (emoji 🦏)
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppAvatar(
+              avatarPath: 'preset:badak',
+              displayName: 'badak',
+              radius: 30,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('🦏'), findsOneWidget);
+
+      // 2. Uji preset Harimau Sumatera (emoji 🐯)
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppAvatar(
+              avatarPath: 'preset:harimau',
+              displayName: 'Harimau',
+              radius: 30,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('🐯'), findsOneWidget);
+
+      // 3. Uji fallback inisial huruf pertama jika avatarPath null
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppAvatar(
+              avatarPath: null,
+              displayName: 'Arya Wicaksana',
+              radius: 30,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('A'), findsOneWidget);
+    });
+
+    testWidgets('S22 - EditProfileSheet: Menampilkan tombol ubah foto dan avatar satwa', (tester) async {
+      final dummyProfile = PublicProfileModel(
+        id: 'user-test-1',
+        username: 'badaks',
+        displayName: 'badak',
+        avatarPath: 'preset:badak',
+        bio: 'Pecinta satwa',
+        isVerified: false,
+        streakCount: 1,
+        bestQuizScore: 0,
+        createdAt: DateTime.now(),
+        capturesCount: 0,
+        postsCount: 0,
+        followersCount: 0,
+        followingCount: 1,
+        isFollowedByMe: false,
+        isMyProfile: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EditProfileSheet(initialProfile: dummyProfile),
+          ),
+        ),
+      );
+
+      // Pastikan form dan tombol ubah foto tampil
+      expect(find.text('Edit Profil Kolektor'), findsOneWidget);
+      expect(find.text('Ubah Foto / Avatar Satwa'), findsOneWidget);
+      expect(find.text('Simpan Perubahan'), findsOneWidget);
+      expect(find.text('🦏'), findsOneWidget);
+
+      // Ketuk tombol Ubah Foto / Avatar Satwa untuk membuka opsi
+      await tester.tap(find.text('Ubah Foto / Avatar Satwa'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ubah Foto Profil Kolektor'), findsOneWidget);
+      expect(find.text('Pilih Avatar Satwa Endemik'), findsOneWidget);
+      expect(find.text('Pilih dari Galeri Foto'), findsOneWidget);
+      expect(find.text('Ambil Foto dengan Kamera'), findsOneWidget);
+    });
+
+    test('SocialService: fetchUserFollowers dan fetchUserFollowing mengembalikan profil publik dengan relasi sosial yang valid', () async {
+      SocialService.instance.initMockDemoSocial();
+
+      // Cek followers akun saya
+      final myFollowers = await SocialService.instance.fetchUserFollowers('00000000-0000-0000-0000-000000000001');
+      expect(myFollowers, isNotEmpty);
+      expect(myFollowers.any((u) => u.username == 'budi_satria'), isTrue);
+
+      // Cek following akun saya
+      final myFollowing = await SocialService.instance.fetchUserFollowing('00000000-0000-0000-0000-000000000001');
+      expect(myFollowing, isNotEmpty);
+      expect(myFollowing.any((u) => u.username == 'budi_satria'), isTrue);
+
+      // Cek followers orang lain (budi_satria)
+      final budiFollowers = await SocialService.instance.fetchUserFollowers('user-budi');
+      expect(budiFollowers, isNotEmpty);
+
+      // Cek following orang lain (budi_satria)
+      final budiFollowing = await SocialService.instance.fetchUserFollowing('user-budi');
+      expect(budiFollowing, isNotEmpty);
+    });
+
+    testWidgets('FollowListSheet: Menampilkan tab Pengikut & Mengikuti, filter pencarian, dan tombol ikuti/mengikuti', (tester) async {
+      SocialService.instance.initMockDemoSocial();
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: FollowListSheet(
+              userId: '00000000-0000-0000-0000-000000000001',
+              displayName: 'Arya Wicaksana',
+              username: 'arya_wallacea',
+              initialTab: FollowTab.followers,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Pastikan nama pemilik akun dan username tampil
+      expect(find.text('Arya Wicaksana'), findsOneWidget);
+      expect(find.text('@arya_wallacea'), findsOneWidget);
+
+      // Pastikan kedua tab Pengikut dan Mengikuti tampil
+      expect(find.textContaining('Pengikut'), findsWidgets);
+      expect(find.textContaining('Mengikuti'), findsWidgets);
+
+      // Pastikan ada search field
+      expect(find.byType(TextField), findsOneWidget);
+
+      // Pastikan salah satu pengikut tampil di list
+      expect(find.text('Budi Satria Wibowo'), findsOneWidget);
+
+      // Uji coba tab Mengikuti
+      await tester.tap(find.textContaining('Mengikuti').first);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('MultiTimeZoneCard: Menggunakan padding EdgeInsets.zero untuk menghilangkan gap vertikal berlebih', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: MultiTimeZoneCard(
+              title: 'Jam Observasi Lapangan (4 Zona)',
+              subtitle: 'Sinkronisasi taktis WIB, WITA, WIT, dan London (BST/GMT)',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final gridFinder = find.byType(GridView);
+      expect(gridFinder, findsOneWidget);
+
+      final grid = tester.widget<GridView>(gridFinder);
+      expect(grid.padding, equals(EdgeInsets.zero));
+    });
+
+    // ============================================================================
+    // S23 - Kunci Aplikasi Biometrik (App Lock) & Fallback Kata Sandi
+    // ============================================================================
+    group('S23 - Kunci Aplikasi Biometrik (App Lock) & Fallback Kata Sandi', () {
+      setUp(() async {
+        BiometricService.instance.resetMockOverrides();
+        BiometricService.instance.setMockDependencies(
+          mockCanCheckBiometrics: true,
+          mockIsDeviceSupported: true,
+          mockAuthResult: false,
+          disableAutoTrigger: true,
+          mockBiometricEnabled: false,
+        );
+        BiometricService.instance.setAppUnlocked(false);
+      });
+
+      tearDown(() async {
+        BiometricService.instance.resetMockOverrides();
+        await AuthService.instance.signOut();
+      });
+
+      test('BiometricService: performBiometricUnlock berhasil membuka kunci aplikasi', () async {
+        BiometricService.instance.setMockDependencies(
+          mockCanCheckBiometrics: true,
+          mockIsDeviceSupported: true,
+          mockAuthResult: true,
+        );
+
+        expect(BiometricService.instance.isAppUnlocked, isFalse);
+
+        final result = await BiometricService.instance.performBiometricUnlock();
+        expect(result.success, isTrue);
+        expect(BiometricService.instance.isAppUnlocked, isTrue);
+        expect(BiometricService.instance.getFailedAttempts(), equals(0));
+      });
+
+      test('BiometricService: verifyPasswordToUnlock dengan password valid membuka kunci', () async {
+        expect(BiometricService.instance.isAppUnlocked, isFalse);
+
+        // Password kurang dari 6 karakter gagal
+        final failRes = await BiometricService.instance.verifyPasswordToUnlock('123');
+        expect(failRes, isFalse);
+        expect(BiometricService.instance.isAppUnlocked, isFalse);
+
+        // Password >= 6 karakter berhasil (demo/test fallback)
+        final successRes = await BiometricService.instance.verifyPasswordToUnlock('password123');
+        expect(successRes, isTrue);
+        expect(BiometricService.instance.isAppUnlocked, isTrue);
+      });
+
+      testWidgets('BiometricLockPage: Menampilkan UI kunci, info email, dan toggle password', (tester) async {
+        bool unlocked = false;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: BiometricLockPage(
+              autoTrigger: false,
+              onUnlocked: () => unlocked = true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Faunova Terkunci'), findsOneWidget);
+        expect(find.text('Pindai Sidik Jari'), findsOneWidget);
+        expect(find.text('Buka dengan Kata Sandi'), findsOneWidget);
+
+        // Tap Buka dengan Kata Sandi
+        await tester.tap(find.text('Buka dengan Kata Sandi'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Buka Kunci dengan Kata Sandi'), findsOneWidget);
+        expect(find.byType(TextFormField), findsOneWidget);
+
+        // Masukkan kata sandi
+        await tester.enterText(find.byType(TextFormField), 'password123');
+        await tester.pump();
+
+        final unlockBtn = find.widgetWithText(ElevatedButton, 'Buka Kunci');
+        await tester.ensureVisible(unlockBtn);
+        await tester.tap(unlockBtn);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(unlocked, isTrue);
+      });
+
+      testWidgets('AuthGate: Menampilkan BiometricLockPage saat biometrik aktif dan belum unlock', (tester) async {
+        AuthService.instance.enterDemoMode();
+        BiometricService.instance.setMockDependencies(mockBiometricEnabled: true);
+        BiometricService.instance.setAppUnlocked(false);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const AuthGate(),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Harusnya berada di BiometricLockPage
+        expect(find.byType(BiometricLockPage), findsOneWidget);
+        expect(find.text('Faunova Terkunci'), findsOneWidget);
+
+        // Setelah unlock, berpindah ke MainNavigationScaffold
+        BiometricService.instance.setAppUnlocked(true);
+        await tester.pump();
+
+        expect(find.byType(MainNavigationScaffold), findsOneWidget);
+      });
     });
   });
 }

@@ -14,7 +14,8 @@ import 'quiz_arena_page.dart';
 import 'widgets/shake_quiz_sheet.dart';
 
 class GamePage extends StatefulWidget {
-  const GamePage({super.key});
+  final bool isActive;
+  const GamePage({super.key, this.isActive = true});
 
   @override
   State<GamePage> createState() => _GamePageState();
@@ -36,20 +37,40 @@ class _GamePageState extends State<GamePage> {
   void initState() {
     super.initState();
     _loadGameData();
-    _initShakeSensor();
+    if (widget.isActive) {
+      _initShakeSensor();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant GamePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive) {
+      if (widget.isActive) {
+        _initShakeSensor();
+      } else {
+        _pauseShakeSensor();
+      }
+    }
   }
 
   @override
   void dispose() {
-    _shakeSubscription?.cancel();
+    _pauseShakeSensor();
     super.dispose();
   }
 
   void _initShakeSensor() {
     // Listener accelerometer hanya aktif saat membuka tab Game (Plan 191)
+    if (_shakeSubscription != null) return;
     _shakeSubscription = ShakeService.instance.listenToShakeEvents(
       onShakeDetected: _handleShakeTriggered,
     );
+  }
+
+  void _pauseShakeSensor() {
+    _shakeSubscription?.cancel();
+    _shakeSubscription = null;
   }
 
   Future<void> _loadGameData() async {
@@ -103,6 +124,7 @@ class _GamePageState extends State<GamePage> {
         }
 
         // Tampilkan modal soal kejutan goyang HP
+        _pauseShakeSensor();
         await ShakeQuizSheet.show(
           context,
           claim: claim,
@@ -110,6 +132,9 @@ class _GamePageState extends State<GamePage> {
             _loadGameData();
           },
         );
+        if (mounted && widget.isActive) {
+          _initShakeSensor();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -197,9 +222,13 @@ class _GamePageState extends State<GamePage> {
       final session = await QuizService.instance.startQuizSession();
       if (mounted) {
         setState(() => _isStartingQuiz = false);
+        _pauseShakeSensor();
         await Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => QuizArenaPage(session: session)),
         );
+        if (mounted && widget.isActive) {
+          _initShakeSensor();
+        }
         setState(() {}); // refresh best score
       }
     } catch (e) {

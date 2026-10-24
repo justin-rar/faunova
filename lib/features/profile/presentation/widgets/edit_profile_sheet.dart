@@ -1,12 +1,14 @@
 // ==============================================================================
 // FAUNOVA WIDGET: EditProfileSheet
 // Lembar modal pengeditan profil kolektor (Nama tampilan, bio, avatar)
-// Sesuai Plan 5.2, 5.7, 18 & AGENTS.md (Sesi S11)
+// Sesuai Plan 5.2, 5.7, 18 & AGENTS.md (Sesi S11 & S22)
 // ==============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/profile_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../models/public_profile_model.dart';
 
 class EditProfileSheet extends StatefulWidget {
@@ -26,6 +28,7 @@ class EditProfileSheet extends StatefulWidget {
 class _EditProfileSheetState extends State<EditProfileSheet> {
   late TextEditingController _nameController;
   late TextEditingController _bioController;
+  String? _selectedAvatarPath;
   bool _isSaving = false;
   String? _errorMessage;
 
@@ -34,6 +37,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     super.initState();
     _nameController = TextEditingController(text: widget.initialProfile.displayName);
     _bioController = TextEditingController(text: widget.initialProfile.bio);
+    _selectedAvatarPath = widget.initialProfile.avatarPath;
   }
 
   @override
@@ -63,6 +67,9 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       final updated = await ProfileService.instance.updateMyProfile(
         displayName: name,
         bio: bio,
+        avatarPath: _selectedAvatarPath != widget.initialProfile.avatarPath
+            ? (_selectedAvatarPath ?? '__clear__')
+            : widget.initialProfile.avatarPath,
       );
 
       if (mounted) {
@@ -84,14 +91,317 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
           _isSaving = false;
         });
       }
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 720,
+        maxHeight: 720,
+        imageQuality: 85,
+      );
+      if (picked != null && mounted) {
+        setState(() {
+          _selectedAvatarPath = picked.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.merahStatus,
+            content: Text('Gagal memilih gambar: ${e.toString()}'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showFaunaPresetsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Material(
+          color: AppColors.gading,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: AppColors.sage.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Row(
+                  children: [
+                    Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Pilih Avatar Satwa Endemik',
+                      style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.teksGelap,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Pilih maskot satwa Nusantara sebagai identitas penjelajah Anda.',
+                  style: TextStyle(fontSize: 12, color: AppColors.teksGelap),
+                ),
+                const SizedBox(height: 18),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 0.85,
+                  ),
+                  itemCount: AppAvatar.presets.length,
+                  itemBuilder: (context, index) {
+                    final preset = AppAvatar.presets[index];
+                    final isSelected = _selectedAvatarPath == preset.id;
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedAvatarPath = preset.id;
+                        });
+                        Navigator.of(ctx).pop();
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: preset.backgroundColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? AppColors.emas : Colors.white,
+                                width: isSelected ? 2.5 : 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isSelected ? 0.2 : 0.08),
+                                  blurRadius: isSelected ? 8 : 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              preset.emoji,
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            preset.name.split(' ').first,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                              color: isSelected ? AppColors.sageTua : AppColors.teksGelap,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAvatarOptionsModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Material(
+          color: AppColors.gading,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: AppColors.sage.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Ubah Foto Profil Kolektor',
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.teksGelap,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Opsi 1: Preset Avatar Satwa
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.sageMuda.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('🦏', style: TextStyle(fontSize: 22)),
+                  ),
+                  title: const Text(
+                    'Pilih Avatar Satwa Endemik',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.teksGelap),
+                  ),
+                  subtitle: const Text(
+                    '10 maskot fauna khas Indonesia (Badak, Harimau, Jalak Bali, dll.)',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _showFaunaPresetsDialog();
+                  },
+                ),
+                const Divider(height: 16),
+
+                // Opsi 2: Dari Galeri
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.sageMuda.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: AppColors.sageTua, size: 22),
+                  ),
+                  title: const Text(
+                    'Pilih dari Galeri Foto',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.teksGelap),
+                  ),
+                  subtitle: const Text(
+                    'Unggah foto profil dari penyimpanan perangkat Anda',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+                const Divider(height: 16),
+
+                // Opsi 3: Ambil dari Kamera
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.sageMuda.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: AppColors.sageTua, size: 22),
+                  ),
+                  title: const Text(
+                    'Ambil Foto dengan Kamera',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.teksGelap),
+                  ),
+                  subtitle: const Text(
+                    'Bidikan langsung untuk foto potret kolektor lapangan',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+
+                // Opsi 4: Hapus foto / Reset ke Inisial (jika ada avatar kustom)
+                if (_selectedAvatarPath != null) ...[
+                  const Divider(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.merahStatus.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: AppColors.merahStatus, size: 22),
+                    ),
+                    title: const Text(
+                      'Gunakan Inisial Huruf',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.merahStatus),
+                    ),
+                    subtitle: const Text(
+                      'Hapus foto/avatar dan tampilkan inisial nama',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap),
+                    ),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      setState(() {
+                        _selectedAvatarPath = null;
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final previewDisplayName = _nameController.text.isNotEmpty
+        ? _nameController.text
+        : widget.initialProfile.displayName;
+
     return Container(
       padding: EdgeInsets.only(
         top: 20,
@@ -143,41 +453,59 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
             ),
             const SizedBox(height: 12),
 
-            // Pratinjau Avatar
+            // Pratinjau Avatar Interaktif
             Center(
-              child: Stack(
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColors.sageTua,
-                    child: Text(
-                      _nameController.text.isNotEmpty
-                          ? _nameController.text[0].toUpperCase()
-                          : widget.initialProfile.displayName[0].toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.teksPutih,
-                      ),
+                  GestureDetector(
+                    onTap: _showAvatarOptionsModal,
+                    child: Stack(
+                      children: [
+                        AppAvatar(
+                          avatarPath: _selectedAvatarPath,
+                          displayName: previewDisplayName,
+                          radius: 42,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppColors.emas,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.gading, width: 2.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded, size: 14, color: AppColors.teksGelap),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.emas,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.gading, width: 2),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _showAvatarOptionsModal,
+                    icon: const Icon(Icons.edit_rounded, size: 15, color: AppColors.sageTua),
+                    label: const Text(
+                      'Ubah Foto / Avatar Satwa',
+                      style: TextStyle(
+                        color: AppColors.sageTua,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
-                      child: const Icon(Icons.edit_rounded, size: 14, color: AppColors.teksGelap),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
             if (_errorMessage != null) ...[
               Container(

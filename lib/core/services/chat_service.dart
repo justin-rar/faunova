@@ -166,7 +166,7 @@ class ChatService {
         },
         body: jsonEncode(payload),
       ).timeout(
-        const Duration(seconds: 25),
+        const Duration(seconds: 35),
         onTimeout: () {
           throw const ChatException(
             'Asisten AI membutuhkan waktu terlalu lama. Silakan coba kirim kembali.',
@@ -241,8 +241,29 @@ class ChatService {
     final species = scanContext?.categoryOrSpecies ?? 'Fauna Tropis';
     final lowerMsg = message.toLowerCase();
 
+    // Deteksi pertanyaan di luar topik satwa (coding, matematika, dsb)
+    final isUnrelated = lowerMsg.contains('coding') ||
+        lowerMsg.contains('koding') ||
+        lowerMsg.contains('program') ||
+        lowerMsg.contains('python') ||
+        lowerMsg.contains('javascript') ||
+        lowerMsg.contains('java') ||
+        lowerMsg.contains('html') ||
+        lowerMsg.contains('css') ||
+        lowerMsg.contains('flutter') ||
+        lowerMsg.contains('dart') ||
+        lowerMsg.contains('matematika') ||
+        lowerMsg.contains('hitung') ||
+        lowerMsg.contains('kalkulus') ||
+        lowerMsg.contains('aljabar') ||
+        lowerMsg.contains('rumus') ||
+        RegExp(r'\d+\s*[\+\-\*\/\^]\s*\d+').hasMatch(lowerMsg);
+
     String reply;
-    if (lowerMsg.contains('makan') || lowerMsg.contains('pangan') || lowerMsg.contains('diet')) {
+    if (isUnrelated) {
+      reply =
+          'Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, dan ekologi $animalName ($species). Silakan ajukan pertanyaan yang berkaitan dengan satwa ya!';
+    } else if (lowerMsg.contains('makan') || lowerMsg.contains('pangan') || lowerMsg.contains('diet')) {
       reply = '$animalName ($species) umumnya mengonsumsi nektar bunga, getah tanaman, atau buah-buahan yang jatuh di sekitarnya. Pola makannya mendukung proses penyerbukan vegetasi hutan tropis.';
     } else if (lowerMsg.contains('habitat') || lowerMsg.contains('tinggal') || lowerMsg.contains('wilayah')) {
       reply = 'Habitat alami $animalName mencakup kanopi hutan dataran rendah, semak belukar terbuka, hingga kebun warga yang kaya akan vegetasi berbunga dan sumber air tawar.';

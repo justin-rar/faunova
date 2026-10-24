@@ -9,6 +9,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../profile/presentation/public_profile_page.dart';
 import '../../models/post_model.dart';
 
@@ -106,17 +108,10 @@ class PostCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  AppAvatar(
+                    avatarPath: post.authorAvatar,
+                    displayName: post.authorName,
                     radius: 19,
-                    backgroundColor: AppColors.sageTua,
-                    child: Text(
-                      post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : 'U',
-                      style: const TextStyle(
-                        color: AppColors.teksPutih,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -191,9 +186,53 @@ class PostCard extends StatelessWidget {
 
   Widget _buildPhotoSurface(BuildContext context) {
     Widget imageWidget;
-    if (post.photoUrl.isNotEmpty && File(post.photoUrl).existsSync()) {
+    final url = post.photoUrl;
+
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      imageWidget = Image.network(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: AppColors.sageMuda.withValues(alpha: 0.5),
+            child: const Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.sageTua),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: AppColors.sage,
+          child: const Center(
+            child: Icon(Icons.pets_rounded, size: 48, color: AppColors.gading),
+          ),
+        ),
+      );
+    } else if (url.startsWith('assets/')) {
+      imageWidget = Image.asset(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: AppColors.sage,
+          child: const Center(
+            child: Icon(Icons.pets_rounded, size: 48, color: AppColors.gading),
+          ),
+        ),
+      );
+    } else if (url.isNotEmpty && File(url).existsSync()) {
       imageWidget = Image.file(
-        File(post.photoUrl),
+        File(url),
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
@@ -207,19 +246,43 @@ class PostCard extends StatelessWidget {
       );
     }
 
-    return Container(
-      height: 220,
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            imageWidget,
+    return GestureDetector(
+      onTap: () {
+        FullScreenImageViewer.open(
+          context,
+          imageUrl: post.photoUrl,
+          title: post.speciesName,
+          subtitle: '@${post.authorUsername} • ${post.category}',
+          description: post.caption,
+        );
+      },
+      child: Container(
+        height: 220,
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              imageWidget,
+
+              // Indikator Layar Penuh
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.fullscreen_rounded, size: 15, color: Colors.white),
+                ),
+              ),
 
             // Gradient halus bawah
             Positioned(
@@ -297,8 +360,9 @@ class PostCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBodyContent() {
     return Padding(

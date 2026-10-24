@@ -89,10 +89,10 @@ class ScanService {
         },
         body: jsonEncode(payload),
       ).timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 45),
         onTimeout: () {
           throw const ScanException(
-            'Identifikasi AI membutuhkan waktu lebih dari 30 detik. Silakan coba bidik kembali.',
+            'Identifikasi AI membutuhkan waktu lebih dari 45 detik. Silakan coba bidik kembali.',
             code: 'TIMEOUT',
             statusCode: 504,
           );

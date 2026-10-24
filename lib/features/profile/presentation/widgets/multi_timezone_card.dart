@@ -135,10 +135,11 @@ class _MultiTimeZoneCardState extends State<MultiTimeZoneCard> {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // Grid 2x2 kartu zona waktu
+          // Grid 2x2 kartu zona waktu (tanpa padding implisit status bar)
           GridView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: zones.length,

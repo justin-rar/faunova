@@ -4,12 +4,16 @@
 // ==============================================================================
 
 import 'package:flutter/material.dart';
+
 import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/glass_app_bar.dart';
 import '../../feed/models/post_model.dart';
 import '../../feed/presentation/widgets/post_card.dart';
 import '../models/public_profile_model.dart';
+import 'widgets/follow_list_sheet.dart';
 
 class PublicProfilePage extends StatefulWidget {
   final String userId;
@@ -47,8 +51,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     });
 
     try {
-      final profile = await SocialService.instance.getPublicProfile(widget.userId);
-      final posts = await SocialService.instance.fetchUserPublicPosts(widget.userId);
+      final profile = await SocialService.instance.getPublicProfile(
+        widget.userId,
+      );
+      final posts = await SocialService.instance.fetchUserPublicPosts(
+        widget.userId,
+      );
 
       if (mounted) {
         setState(() {
@@ -91,7 +99,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         setState(() {
           _profile = _profile!.copyWith(
             isFollowedByMe: result['is_following'] == true,
-            followersCount: (result['followers_count'] as num?)?.toInt() ?? newFollowers,
+            followersCount:
+                (result['followers_count'] as num?)?.toInt() ?? newFollowers,
           );
           _isTogglingFollow = false;
         });
@@ -100,7 +109,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           SnackBar(
             backgroundColor: AppColors.sageTua,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             content: Text(
               newFollow
                   ? 'Sekarang Anda mengikuti ${_profile!.displayName}. Observasi mereka akan tampil di tab Mengikuti!'
@@ -119,7 +130,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             isFollowedByMe: currentFollow,
             followersCount: currentFollow
                 ? _profile!.followersCount + 1
-                : (_profile!.followersCount > 0 ? _profile!.followersCount - 1 : 0),
+                : (_profile!.followersCount > 0
+                      ? _profile!.followersCount - 1
+                      : 0),
           );
           _isTogglingFollow = false;
         });
@@ -140,44 +153,60 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
+
     return Scaffold(
       backgroundColor: AppColors.gading,
-      appBar: AppBar(
-        backgroundColor: AppColors.sageTua,
-        elevation: 0,
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.teksPutih, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.teksPutih,
+            size: 20,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          _profile != null ? '@${_profile!.username}' : (widget.initialAuthorUsername != null ? '@${widget.initialAuthorUsername}' : 'Profil Penjelajah'),
+          _profile != null
+              ? '@${_profile!.username}'
+              : (widget.initialAuthorUsername != null
+                    ? '@${widget.initialAuthorUsername}'
+                    : 'Profil Penjelajah'),
           style: const TextStyle(
             color: AppColors.teksPutih,
             fontWeight: FontWeight.w700,
-            fontSize: 16,
+            fontSize: 16.5,
+            letterSpacing: 0.3,
           ),
         ),
         centerTitle: true,
       ),
-      body: _buildBody(),
+      body: _buildBody(topPadding),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(double topPadding) {
     if (_isLoading) {
-      return const AppStateView(
-        status: AppViewStatus.loading,
-        loadingMessage: 'Memuat profil penjelajah satwa...',
-        child: SizedBox.shrink(),
+      return Padding(
+        padding: EdgeInsets.only(top: topPadding),
+        child: const AppStateView(
+          status: AppViewStatus.loading,
+          loadingMessage: 'Memuat profil penjelajah satwa...',
+          child: SizedBox.shrink(),
+        ),
       );
     }
 
     if (_errorMessage != null || _profile == null) {
-      return AppStateView(
-        status: AppViewStatus.error,
-        errorMessage: _errorMessage ?? 'Profil penjelajah tidak ditemukan.',
-        onRetry: _loadProfileData,
-        child: const SizedBox.shrink(),
+      return Padding(
+        padding: EdgeInsets.only(top: topPadding),
+        child: AppStateView(
+          status: AppViewStatus.error,
+          errorMessage: _errorMessage ?? 'Profil penjelajah tidak ditemukan.',
+          onRetry: _loadProfileData,
+          child: const SizedBox.shrink(),
+        ),
       );
     }
 
@@ -185,9 +214,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return RefreshIndicator(
       onRefresh: _loadProfileData,
+      edgeOffset: topPadding,
       color: AppColors.sageTua,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 40),
         children: [
           // 1. Kartu Header Profil
           _buildProfileHeaderCard(p),
@@ -207,7 +237,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           // 4. Header Observasi Lapangan Publik
           Row(
             children: [
-              const Icon(Icons.public_rounded, size: 20, color: AppColors.sageTua),
+              const Icon(
+                Icons.public_rounded,
+                size: 20,
+                color: AppColors.sageTua,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Observasi Publik (${_publicPosts.length})',
@@ -225,15 +259,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           if (_publicPosts.isEmpty)
             _buildEmptyPostsCard(p)
           else
-            ..._publicPosts.map((post) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: PostCard(
-                    post: post,
-                    onLike: () {
-                      _loadProfileData();
-                    },
-                  ),
-                )),
+            ..._publicPosts.map(
+              (post) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: PostCard(
+                  post: post,
+                  onLike: () {
+                    _loadProfileData();
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -256,18 +292,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       ),
       child: Column(
         children: [
-          // Avatar dengan inisial
-          CircleAvatar(
+          // Avatar profil
+          AppAvatar(
+            avatarPath: p.avatarPath,
+            displayName: p.displayName,
             radius: 38,
-            backgroundColor: AppColors.sageTua,
-            child: Text(
-              p.displayName.isNotEmpty ? p.displayName[0].toUpperCase() : 'U',
-              style: const TextStyle(
-                color: AppColors.teksPutih,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
           ),
           const SizedBox(height: 12),
 
@@ -337,7 +366,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.sageMuda.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(20),
@@ -345,7 +377,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.local_fire_department_rounded, size: 15, color: Color(0xFFE65100)),
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 15,
+                      color: Color(0xFFE65100),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${p.streakCount} Hari',
@@ -360,7 +396,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.sageMuda.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(20),
@@ -368,7 +407,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.emoji_events_rounded, size: 15, color: AppColors.emasTua),
+                    const Icon(
+                      Icons.emoji_events_rounded,
+                      size: 15,
+                      color: AppColors.emasTua,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Skor ${p.bestQuizScore}',
@@ -401,16 +444,43 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         children: [
           _buildStatColumn('Observasi', p.capturesCount.toString()),
           Container(height: 28, width: 1, color: AppColors.sageMuda),
-          _buildStatColumn('Pengikut', p.followersCount.toString()),
+          _buildStatColumn(
+            'Pengikut',
+            p.followersCount.toString(),
+            onTap: () {
+              FollowListSheet.show(
+                context,
+                userId: p.id,
+                displayName: p.displayName,
+                username: p.username,
+                initialTab: FollowTab.followers,
+                onFollowStatusChanged: _loadProfileData,
+              );
+            },
+          ),
           Container(height: 28, width: 1, color: AppColors.sageMuda),
-          _buildStatColumn('Mengikuti', p.followingCount.toString()),
+          _buildStatColumn(
+            'Mengikuti',
+            p.followingCount.toString(),
+            onTap: () {
+              FollowListSheet.show(
+                context,
+                userId: p.id,
+                displayName: p.displayName,
+                username: p.username,
+                initialTab: FollowTab.following,
+                onFollowStatusChanged: _loadProfileData,
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatColumn(String label, String value) {
-    return Column(
+  Widget _buildStatColumn(String label, String value, {VoidCallback? onTap}) {
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           value,
@@ -430,6 +500,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return column;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: column,
+      ),
     );
   }
 
@@ -459,7 +540,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     if (p.isFollowedByMe) {
       return OutlinedButton.icon(
         onPressed: _isTogglingFollow ? null : _handleToggleFollow,
-        icon: const Icon(Icons.check_rounded, size: 18, color: AppColors.sageTua),
+        icon: const Icon(
+          Icons.check_rounded,
+          size: 18,
+          color: AppColors.sageTua,
+        ),
         label: Text(
           _isTogglingFollow ? 'Memperbarui...' : 'Mengikuti',
           style: const TextStyle(
@@ -472,14 +557,20 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           side: const BorderSide(color: AppColors.sageTua, width: 1.5),
           backgroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 46),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       );
     }
 
     return ElevatedButton.icon(
       onPressed: _isTogglingFollow ? null : _handleToggleFollow,
-      icon: const Icon(Icons.person_add_rounded, size: 18, color: AppColors.teksGelap),
+      icon: const Icon(
+        Icons.person_add_rounded,
+        size: 18,
+        color: AppColors.teksGelap,
+      ),
       label: Text(
         _isTogglingFollow ? 'Memproses...' : '+ Ikuti Penjelajah Ini',
         style: const TextStyle(
@@ -507,7 +598,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.photo_library_outlined, size: 48, color: AppColors.sage),
+          const Icon(
+            Icons.photo_library_outlined,
+            size: 48,
+            color: AppColors.sage,
+          ),
           const SizedBox(height: 12),
           Text(
             'Belum Ada Observasi Publik',

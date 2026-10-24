@@ -52,6 +52,207 @@ async function calculateSha256(base64Data: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Ekstraksi JSON bersih dari teks output Gemini (menghapus blok markdown ```json ... ```)
+function extractCleanJson(rawText: string): any {
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.replace(/^```json\s*/i, "").replace(/\s*```$/, "");
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
+  }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  return JSON.parse(cleaned);
+}
+
+// Konversi base64 string ke array angka byte (diperlukan untuk endpoint REST Cloudflare Workers AI)
+function base64ToByteArray(base64: string): number[] {
+  const binaryString = atob(base64);
+  const bytes = new Array<number>(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Panggil Cloudflare Workers AI Vision (Llama 3.2 11B Vision Instruct & MiniMax M3.1 Flash)
+async function callCloudflareVision(
+  accountId: string,
+  apiToken: string,
+  prompt: string,
+  mimeType: string,
+  imageBase64: string,
+  timeoutMs = 25000
+): Promise<{ ok: boolean; data?: any; error?: string }> {
+  // 1. Coba native Cloudflare Llama 3.2 11B Vision (Gratis, cepat di edge, token & account aktif)
+  try {
+    const bytes = base64ToByteArray(imageBase64);
+    const runUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
+    const resp = await fetch(runUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        image: bytes,
+        max_tokens: 1024,
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (resp.ok) {
+      const json = await resp.json();
+      const raw = json.result?.response;
+      if (raw) {
+        if (typeof raw === "object") {
+          return { ok: true, data: raw };
+        }
+        try {
+          return { ok: true, data: extractCleanJson(String(raw)) };
+        } catch (parseErr) {
+          console.warn("Gagal parse raw JSON string:", parseErr, raw);
+        }
+      }
+    } else {
+      const errText = await resp.text();
+      console.warn("Cloudflare Llama Vision non-ok:", resp.status, errText);
+    }
+  } catch (err: any) {
+    console.warn("Cloudflare Llama Vision error:", err.message);
+  }
+
+  // 2. Coba MiniMax M3.1 Flash via OpenAI chat/completions (jika tersedia kredit/BYOK)
+  try {
+    const completionsUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`;
+    const payload = {
+      model: "minimax/m3.1-flash",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+            },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+      temperature: 0.1,
+    };
+
+    const resp = await fetch(completionsUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (resp.ok) {
+      const json = await resp.json();
+      const rawContent = json.choices?.[0]?.message?.content;
+      if (rawContent) {
+        return { ok: true, data: extractCleanJson(rawContent) };
+      }
+    }
+  } catch (err: any) {
+    console.warn("Cloudflare MiniMax error:", err.message);
+  }
+
+  return { ok: false, error: "Cloudflare Vision gagal diproses" };
+}
+
+// Panggil Cloudflare Workers AI untuk Chat Multi-turn
+async function callCloudflareChat(
+  accountId: string,
+  apiToken: string,
+  messages: Array<{ role: string; content: string }>,
+  timeoutMs = 25000
+): Promise<{ ok: boolean; reply?: string; error?: string }> {
+  try {
+    const completionsUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`;
+    const payload = {
+      model: "@cf/meta/llama-3.2-11b-vision-instruct",
+      messages: messages,
+      temperature: 0.6,
+      max_tokens: 600,
+    };
+
+    const resp = await fetch(completionsUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (resp.ok) {
+      const json = await resp.json();
+      const text = json.choices?.[0]?.message?.content?.trim();
+      if (text) {
+        return { ok: true, reply: text };
+      }
+    }
+  } catch (err: any) {
+    console.warn("Cloudflare Chat error:", err.message);
+  }
+
+  return { ok: false, error: "Cloudflare Chat gagal" };
+}
+
+// Panggil Gemini API (kompatibilitas gemini-3.8-flash & fallback otomatis ke gemini-2.0-flash)
+async function callGemini(
+  geminiApiKey: string,
+  payload: any,
+  models = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"],
+  timeoutMs = 25000
+): Promise<Response> {
+  let lastErrorText = "";
+  let lastStatus = 502;
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (resp.ok) {
+        return resp;
+      }
+
+      lastStatus = resp.status;
+      lastErrorText = await resp.text();
+      console.warn(`Model ${model} gagal status ${lastStatus}: ${lastErrorText}. Mencoba model fallback.`);
+    } catch (err: any) {
+      console.warn(`Model ${model} request error: ${err.message}. Mencoba model fallback.`);
+      lastErrorText = err.message;
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      error: "PROVIDER_ERROR",
+      message: `Layanan identifikasi AI: ${lastErrorText.substring(0, 160)}`,
+      details: lastErrorText,
+    }),
+    { status: lastStatus >= 400 && lastStatus < 600 ? lastStatus : 502 }
+  );
+}
+
 serve(async (req: Request) => {
   // 1. CORS Preflight
   if (req.method === "OPTIONS") {
@@ -63,6 +264,8 @@ serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN");
+    const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
 
     if (!supabaseUrl || !geminiApiKey) {
       return new Response(
@@ -237,83 +440,97 @@ serve(async (req: Request) => {
       // Hitung SHA-256 byte foto
       const photoSha256 = await calculateSha256(imageBase64);
 
-      // Panggil Gemini Vision API (gemini-3.8-flash)
+      // Prompt identifikasi satwa Faunova
       const prompt =
         "Kamu adalah pakar zoologi dan taksonomi fauna Indonesia untuk aplikasi Faunova. " +
-        "Analisis gambar satwa berikut secara cermat. Tentukan apakah gambar ini menampilkan satwa/hewan nyata atau bukan. " +
-        "Kembalikan jawaban HANYA berupa JSON valid sesuai skema:\n" +
+        "Analisis gambar berikut secara cermat. Tentukan apakah gambar ini menampilkan satwa/hewan nyata atau bukan. " +
+        "Kembalikan jawaban HANYA berupa JSON valid sesuai skema berikut tanpa teks pembuka atau penutup:\n" +
         "{\n" +
-        '  "isAnimal": true/false,\n' +
+        '  "isAnimal": true,\n' +
         '  "name": "Nama umum satwa dalam bahasa Indonesia (atau null jika bukan hewan)",\n' +
         '  "categoryOrSpecies": "Nama ilmiah / taksonomi genus & spesies (atau null jika bukan hewan)",\n' +
-        '  "description": "Deskripsi singkat ciri fisik, habitat, dan status konservasi dalam 2-3 kalimat (atau null jika bukan hewan)",\n' +
-        '  "additionalFact": "Fakta unik satwa ini dalam 1-2 kalimat (atau pesan peringatan jika bukan hewan: Foto ini tidak memuat satwa)")\n' +
+        '  "description": "Deskripsi singkat ciri fisik, habitat, dan status konservasi (atau null jika bukan hewan)",\n' +
+        '  "additionalFact": "Fakta unik satwa ini (atau pesan: Foto ini tidak memuat satwa)"\n' +
         "}";
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiApiKey}`;
-      const geminiPayload = {
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: imageBase64,
+      let parsedResult: any = null;
+
+      // 1. Coba Cloudflare Workers AI Vision terlebih dahulu jika token dan account ID diset
+      if (cloudflareApiToken && cloudflareAccountId) {
+        try {
+          const cfResult = await callCloudflareVision(
+            cloudflareAccountId,
+            cloudflareApiToken,
+            prompt,
+            mimeType,
+            imageBase64
+          );
+          if (cfResult.ok && cfResult.data) {
+            parsedResult = cfResult.data;
+            console.log("Identifikasi satwa sukses via Cloudflare Workers AI Vision");
+          }
+        } catch (cfErr) {
+          console.warn("Cloudflare Vision error, beralih ke Gemini:", cfErr);
+        }
+      }
+
+      // 2. Jika Cloudflare belum berhasil, gunakan Google Gemini Flash
+      if (!parsedResult) {
+        const geminiPayload = {
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: imageBase64,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
+            maxOutputTokens: 800,
           },
-        ],
-        generationConfig: {
-          response_mime_type: "application/json",
-          temperature: 0.2,
-          thinkingConfig: {
-            thinkingLevel: "low",
-          },
-        },
-      };
+        };
 
-      let geminiResp: Response;
-      try {
-        geminiResp = await fetch(geminiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(geminiPayload),
-          signal: AbortSignal.timeout(20000),
-        });
-      } catch (fetchErr: any) {
-        return new Response(
-          JSON.stringify({
-            error: "TIMEOUT_ERROR",
-            message: "Layanan identifikasi AI memakan waktu terlalu lama. Silakan coba bidik kembali.",
-          }),
-          {
-            status: 504,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+        const geminiResp = await callGemini(
+          geminiApiKey,
+          geminiPayload,
+          ["gemini-2.0-flash", "gemini-1.5-flash"],
+          25000
         );
-      }
 
-      if (!geminiResp.ok) {
-        const errorText = await geminiResp.text();
-        return new Response(
-          JSON.stringify({
-            error: "PROVIDER_ERROR",
-            message: "Layanan identifikasi AI sedang mengalami gangguan.",
-            details: errorText,
-          }),
-          {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+        if (!geminiResp.ok) {
+          const errorText = await geminiResp.text();
+          console.error("Gemini scan provider error:", geminiResp.status, errorText);
+          return new Response(
+            JSON.stringify({
+              error: "PROVIDER_ERROR",
+              message: `Layanan identifikasi AI: ${errorText.substring(0, 160)}`,
+              details: errorText,
+            }),
+            {
+              status: geminiResp.status,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
 
-      const geminiData = await geminiResp.json();
-      const rawJsonText =
-        geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-      const parsedResult = JSON.parse(rawJsonText);
+        const geminiData = await geminiResp.json();
+        const parts = geminiData.candidates?.[0]?.content?.parts;
+        const answerPart =
+          parts?.find((p: any) => !p.thought && typeof p.text === "string" && p.text.trim().length > 0) ||
+          parts?.[parts.length - 1];
+        const rawJsonText =
+          answerPart?.text ||
+          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "{}";
+        parsedResult = extractCleanJson(rawJsonText);
+      }
 
       // Jika tidak menggunakan RPC reservation, update counter sekarang
       if (!usedRpcReservation) {
@@ -565,7 +782,15 @@ serve(async (req: Request) => {
                 `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
                 `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
                 `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
-                "Tugasmu: Jawab pertanyaan seputar satwa tersebut secara informatif, lugas, dan ringkas (1-2 paragraf pendek dalam bahasa Indonesia). Jangan berhalusinasi.",
+                "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
+                "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
+                (animalInfo?.name || "satwa") +
+                "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
+                "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna (seperti pemrograman/coding, matematika/hitungan, rumus, tugas sekolah non-fauna, politik, resep masakan manusia, atau obrolan umum yang tidak berkaitan dengan satwa), kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT. Ingatkan pengguna bahwa kamu adalah pemandu satwa Faunova dan arahkan mereka kembali untuk bertanya seputar satwa ini.\n" +
+                "Contoh penolakan: 'Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, dan ekologinya. Silakan ajukan pertanyaan yang berkaitan dengan " +
+                (animalInfo?.name || "satwa ini") +
+                " ya!'\n" +
+                "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek). Jangan pernah berhalusinasi atau melanggar batasan topik ini.",
             },
           ],
         },
@@ -573,7 +798,7 @@ serve(async (req: Request) => {
           role: "model",
           parts: [
             {
-              text: `Halo Penjelajah Faunova! Saya siap membantu menjawab pertanyaan Anda mengenai satwa ${animalInfo?.name || "ini"}. Silakan tanyakan apa saja yang ingin Anda ketahui!`,
+              text: `Halo Penjelajah Faunova! Saya siap membantu menjawab pertanyaan Anda mengenai satwa ${animalInfo?.name || "ini"}. Silakan tanyakan apa saja seputar satwa, habitat, atau perilakunya!`,
             },
           ],
         },
@@ -595,55 +820,103 @@ serve(async (req: Request) => {
         parts: [{ text: trimmedMessage }],
       });
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiApiKey}`;
-      let geminiResp: Response;
-      try {
-        geminiResp = await fetch(geminiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: geminiContents,
-            generationConfig: {
-              temperature: 0.6,
-              maxOutputTokens: 350,
-              thinkingConfig: {
-                thinkingLevel: "low",
-              },
+      let reply: string = "";
+
+      // 1. Coba Cloudflare MiniMax untuk Chat jika token dan account ID diset
+      if (cloudflareApiToken && cloudflareAccountId) {
+        try {
+          const cfChatMessages: Array<{ role: string; content: string }> = [
+            {
+              role: "system",
+              content:
+                "Sistem Faunova: Kamu adalah pemandu konservasi satwa dan naturalis lapangan Faunova yang ramah, santun, dan berbasis sains. " +
+                `Pengguna sedang berdiskusi mengenai hasil observasi satwa berikut:\n` +
+                `- Nama Umum: ${animalInfo?.name || "Satwa Lapangan"}\n` +
+                `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
+                `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
+                `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
+                "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
+                "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
+                (animalInfo?.name || "satwa") +
+                "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
+                "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna, kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
+                "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek).",
             },
-          }),
-          signal: AbortSignal.timeout(15000),
-        });
-      } catch (fetchErr: any) {
-        return new Response(
-          JSON.stringify({
-            error: "TIMEOUT_ERROR",
-            message: "Asisten AI memakan waktu terlalu lama. Silakan coba kirim kembali.",
-          }),
-          {
-            status: 504,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          ];
+
+          if (chatHistory && chatHistory.length > 0) {
+            for (const h of chatHistory) {
+              cfChatMessages.push({
+                role: h.role === "assistant" ? "assistant" : "user",
+                content: h.content,
+              });
+            }
           }
-        );
+
+          cfChatMessages.push({
+            role: "user",
+            content: trimmedMessage,
+          });
+
+          const cfChatResult = await callCloudflareChat(
+            cloudflareAccountId,
+            cloudflareApiToken,
+            cfChatMessages
+          );
+
+          if (cfChatResult.ok && cfChatResult.reply) {
+            reply = cfChatResult.reply;
+            console.log("Balasan chat sukses via Cloudflare Workers AI");
+          }
+        } catch (cfChatErr) {
+          console.warn("Cloudflare MiniMax Chat error, beralih ke Gemini:", cfChatErr);
+        }
       }
 
-      if (!geminiResp.ok) {
-        return new Response(
-          JSON.stringify({
-            error: "PROVIDER_ERROR",
-            message: "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi.",
-          }),
-          {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+      // 2. Fallback ke Gemini jika Cloudflare MiniMax belum ada balasan
+      if (!reply) {
+        const geminiChatPayload = {
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.6,
+            maxOutputTokens: 1000,
+          },
+        };
 
-      const geminiData = await geminiResp.json();
-      const rawReply =
-        geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "Maaf, asisten tidak dapat memberikan penjelasan saat ini.";
-      const reply = rawReply.trim();
+        const geminiResp = await callGemini(
+          geminiApiKey,
+          geminiChatPayload,
+          ["gemini-2.0-flash", "gemini-1.5-flash-latest"],
+          25000
+        );
+
+        if (!geminiResp.ok) {
+          const errorText = await geminiResp.text();
+          console.error("Gemini chat provider error:", geminiResp.status, errorText);
+          return new Response(
+            JSON.stringify({
+              error: "PROVIDER_ERROR",
+              message: "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi.",
+              details: errorText,
+            }),
+            {
+              status: geminiResp.status,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+
+        const geminiData = await geminiResp.json();
+        const chatParts = geminiData.candidates?.[0]?.content?.parts;
+        const chatAnswerPart =
+          chatParts?.find((p: any) => !p.thought && typeof p.text === "string" && p.text.trim().length > 0) ||
+          chatParts?.[chatParts.length - 1];
+        const rawReply =
+          chatAnswerPart?.text ||
+          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "Maaf, asisten tidak dapat memberikan penjelasan saat ini.";
+        reply = rawReply.trim();
+      }
 
       // Simpan riwayat chat ke tabel scan_chats (user message dan assistant reply)
       try {
