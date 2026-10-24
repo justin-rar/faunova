@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/data/sample_images.dart';
 import '../../../core/services/compass_heading_service.dart';
 import '../../../core/services/image_processing_service.dart';
+import '../../../core/services/permission_service.dart';
 import '../../../core/services/scan_service.dart';
 import '../../../core/services/sensor_location_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -100,6 +101,24 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   }
 
   Future<void> _initSensorsAndCamera() async {
+    if (!mounted) return;
+
+    // ── Minta izin runtime sebelum akses hardware ──────────────────────────
+    final cameraGranted = await PermissionService.instance.requestCamera(context);
+    if (!mounted) return;
+    final locationGranted = await PermissionService.instance.requestLocation(context);
+    if (!mounted) return;
+
+    if (!cameraGranted || !locationGranted) {
+      // Izin ditolak — tampilkan status error agar tidak gagal diam-diam
+      setState(() {
+        _currentStatus = AppViewStatus.error;
+        _gpsStatus = !locationGranted ? 'LOKASI DITOLAK' : 'GPS SIAP';
+        _isGpsLocked = locationGranted;
+      });
+      return;
+    }
+
     // 1. Kompas & Lokasi
     SensorLocationService.instance.startCompassListener();
     _checkGpsStatus();
