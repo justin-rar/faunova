@@ -10,6 +10,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../camera/models/capture_model.dart';
 import '../capture_detail_page.dart';
 
@@ -311,18 +312,51 @@ class _CollectionMapViewState extends State<CollectionMapView> {
 
   Widget _buildSelectedCard(CaptureModel capture) {
     Widget imageThumbnail;
-    if (capture.photoObjectPath.isNotEmpty && File(capture.photoObjectPath).existsSync()) {
-      imageThumbnail = Image.file(
-        File(capture.photoObjectPath),
+    final photo = capture.photoObjectPath;
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      imageThumbnail = Image.network(
+        photo,
         width: 56,
         height: 56,
         fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: 56,
+          height: 56,
+          color: AppColors.surfaceContainerHigh,
+          child: const Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 28),
+        ),
+      );
+    } else if (photo.isNotEmpty && File(photo).existsSync()) {
+      imageThumbnail = Image.file(
+        File(photo),
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: 56,
+          height: 56,
+          color: AppColors.surfaceContainerHigh,
+          child: const Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 28),
+        ),
+      );
+    } else if (photo.startsWith('assets/')) {
+      imageThumbnail = Image.asset(
+        photo,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: 56,
+          height: 56,
+          color: AppColors.surfaceContainerHigh,
+          child: const Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 28),
+        ),
       );
     } else {
       imageThumbnail = Container(
         width: 56,
         height: 56,
-        color: AppColors.sageMuda,
+        color: AppColors.surfaceContainerHigh,
         child: const Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 28),
       );
     }
@@ -330,16 +364,16 @@ class _CollectionMapViewState extends State<CollectionMapView> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: AppColors.teksGelap.withValues(alpha: 0.12),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.4), width: 1),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
       ),
       child: Row(
         children: [
@@ -363,9 +397,8 @@ class _CollectionMapViewState extends State<CollectionMapView> {
                       ),
                       child: Text(
                         '#${capture.seq}',
-                        style: const TextStyle(
+                        style: AppTypography.labelProminent(
                           fontSize: 10,
-                          fontWeight: FontWeight.w800,
                           color: AppColors.teksGelap,
                         ),
                       ),
@@ -374,7 +407,7 @@ class _CollectionMapViewState extends State<CollectionMapView> {
                     Expanded(
                       child: Text(
                         capture.speciesName,
-                        style: const TextStyle(
+                        style: AppTypography.headlineSpecies(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.teksGelap,
@@ -389,11 +422,9 @@ class _CollectionMapViewState extends State<CollectionMapView> {
                   const SizedBox(height: 2),
                   Text(
                     capture.category!,
-                    style: const TextStyle(
+                    style: AppTypography.subheadSpecies(
                       fontSize: 11,
-                      fontStyle: FontStyle.italic,
                       color: AppColors.emasTua,
-                      fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -406,9 +437,9 @@ class _CollectionMapViewState extends State<CollectionMapView> {
                     const SizedBox(width: 3),
                     Text(
                       '${capture.latitude!.toStringAsFixed(4)}, ${capture.longitude!.toStringAsFixed(4)}',
-                      style: TextStyle(
+                      style: AppTypography.labelCaption(
                         fontSize: 10,
-                        color: AppColors.teksGelap.withValues(alpha: 0.75),
+                        color: AppColors.onSurfaceVariant,
                       ),
                     ),
                   ],

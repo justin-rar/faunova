@@ -46,7 +46,20 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     super.initState();
     // Default aktif di tab 'Untuk Kamu' (index 1), persis seperti referensi desain
     _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    PostService.instance.onPostCreatedNotifier.addListener(_handleNewPostCreated);
     _loadFeed();
+  }
+
+  void _handleNewPostCreated() {
+    final newPost = PostService.instance.onPostCreatedNotifier.value;
+    if (newPost != null && mounted) {
+      setState(() {
+        _forYouPosts.removeWhere((p) => p.id == newPost.id);
+        _forYouPosts.insert(0, newPost);
+        _followingPosts.removeWhere((p) => p.id == newPost.id);
+        _followingPosts.insert(0, newPost);
+      });
+    }
   }
 
   Future<void> _loadFeed() async {
@@ -120,6 +133,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
+    PostService.instance.onPostCreatedNotifier.removeListener(_handleNewPostCreated);
     _tabController.dispose();
     super.dispose();
   }

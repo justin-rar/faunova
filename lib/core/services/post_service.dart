@@ -24,6 +24,7 @@ class PostService {
   PostService._internal();
 
   final List<PostModel> _demoPosts = [];
+  final ValueNotifier<PostModel?> onPostCreatedNotifier = ValueNotifier<PostModel?>(null);
 
   SupabaseClient? _getSupabaseClient() {
     try {
@@ -491,7 +492,7 @@ class PostService {
           : Map<String, dynamic>.from(response as Map);
 
       final now = DateTime.now();
-      return PostModel(
+      final newPost = PostModel(
         id: row['post_id'] ?? '',
         captureId: captureId,
         caption: row['caption'] ?? caption,
@@ -510,12 +511,32 @@ class PostService {
         authorName: 'Saya (Kolektor)',
         authorUsername: 'kolektor_saya',
       );
+      _demoPosts.insert(0, newPost);
+      onPostCreatedNotifier.value = newPost;
+      return newPost;
     } on PostgrestException catch (e) {
       debugPrint('createPost PostgrestException: ${e.message} (${e.code})');
       if (e.code == '23505') {
         throw const PostException(
           'Tangkapan ini sudah pernah Anda bagikan ke linimasa publik.',
           code: 'ALREADY_POSTED',
+        );
+      }
+      if (e.code == 'P0002') {
+        // Tangkapan lokal/luring belum terdaftar di remote Postgres
+        return _createDemoPost(
+          captureId: captureId,
+          caption: caption,
+          visibility: visibility,
+          areaLabel: areaLabel,
+          speciesName: demoSpeciesName,
+          category: demoCategory,
+          photoPath: demoPhotoPath,
+          blockSeq: demoBlockSeq,
+          blockHash: demoBlockHash,
+          photoSha256: demoPhotoSha256,
+          rawLat: demoRawLat,
+          rawLng: demoRawLng,
         );
       }
       throw PostException(e.message, code: e.code ?? 'DATABASE_ERROR');
@@ -648,6 +669,7 @@ class PostService {
     );
 
     _demoPosts.insert(0, newPost);
+    onPostCreatedNotifier.value = newPost;
     return newPost;
   }
 }

@@ -14,6 +14,8 @@ import '../../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../profile/presentation/public_profile_page.dart';
 import '../../models/post_model.dart';
 
+import '../../../../core/theme/app_typography.dart';
+
 class PostCard extends StatelessWidget {
   final PostModel post;
   final VoidCallback? onLike;
@@ -52,17 +54,17 @@ class PostCard extends StatelessWidget {
     return RepaintBoundary(
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.sageMuda,
-          borderRadius: BorderRadius.circular(18),
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppColors.sage.withValues(alpha: 0.35),
+            color: AppColors.surfaceContainerHighest,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: AppColors.teksGelap.withValues(alpha: 0.04),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -77,7 +79,7 @@ class PostCard extends StatelessWidget {
             _buildPhotoSurface(context),
 
             // 3. Taksonomi & Catatan Lapangan (Caption)
-            _buildBodyContent(),
+            _buildBodyContent(context),
 
             // 4. Tombol Aksi (Suka, Verifikasi Blok, Lokasi)
             _buildActionBar(context),
@@ -325,38 +327,6 @@ class PostCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Snapped Location Pill (Hanya jika coarse, jika hidden TIDAK ADA)
-            if (post.hasLocation)
-              Positioned(
-                bottom: 8,
-                left: 8,
-                child: GestureDetector(
-                  onTap: () => _openCoarseLocation(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.location_on_rounded, size: 12, color: AppColors.emas),
-                        const SizedBox(width: 4),
-                        Text(
-                          post.areaLabel ?? 'Area Perkiraan (Grid 0.01°)',
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -364,46 +334,75 @@ class PostCard extends StatelessWidget {
   );
 }
 
-  Widget _buildBodyContent() {
+  Widget _buildBodyContent(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Baris Taksonomi: Nama Satwa & Nama Latin
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 2,
             children: [
-              Expanded(
-                child: Text(
-                  post.speciesName,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.teksGelap,
-                  ),
+              Text(
+                post.speciesName,
+                style: AppTypography.headlineSpecies(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.teksGelap,
                 ),
               ),
+              if (post.category != null && post.category!.isNotEmpty)
+                Text(
+                  post.category!,
+                  style: AppTypography.subheadSpecies(
+                    fontSize: 13.5,
+                    color: AppColors.sageTua,
+                  ),
+                ),
             ],
           ),
-          if (post.category != null && post.category!.isNotEmpty) ...[
-            const SizedBox(height: 2),
+          if (post.caption.isNotEmpty) ...[
+            const SizedBox(height: 6),
             Text(
-              post.category!,
-              style: const TextStyle(
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontWeight: FontWeight.w600,
-                color: AppColors.emasTua,
+              post.caption,
+              style: AppTypography.bodyDefault(
+                fontSize: 13.5,
+                color: AppColors.onSurfaceVariant,
               ),
             ),
           ],
-          if (post.caption.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              post.caption,
-              style: TextStyle(
-                fontSize: 12.5,
-                height: 1.4,
-                color: AppColors.teksGelap.withValues(alpha: 0.9),
+          if (post.hasLocation) ...[
+            const SizedBox(height: 10),
+            InkWell(
+              onTap: () => _openCoarseLocation(context),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.location_on_rounded, size: 14, color: AppColors.emasTua),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        post.areaLabel ?? 'Area Kasar Terverifikasi (Grid)',
+                        style: AppTypography.labelCaption(
+                          color: AppColors.teksGelap,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -413,8 +412,16 @@ class PostCard extends StatelessWidget {
   }
 
   Widget _buildActionBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 4, 14, 12),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 14, 10),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: AppColors.surfaceContainerHighest,
+            width: 1.0,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           // Tombol Like
@@ -422,20 +429,18 @@ class PostCard extends StatelessWidget {
             onTap: isLiking ? null : onLike,
             borderRadius: BorderRadius.circular(10),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
                 children: [
                   Icon(
                     post.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    size: 20,
-                    color: post.isLikedByMe ? AppColors.merahStatus : AppColors.teksGelap,
+                    size: 21,
+                    color: post.isLikedByMe ? AppColors.merahStatus : AppColors.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                   Text(
                     '${post.likesCount}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                    style: AppTypography.labelProminent(
                       color: post.isLikedByMe ? AppColors.merahStatus : AppColors.teksGelap,
                     ),
                   ),

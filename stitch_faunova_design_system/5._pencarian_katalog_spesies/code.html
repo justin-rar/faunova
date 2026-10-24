@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Faunova - Katalog Spesies</title>
+<!-- Google Fonts: Plus Jakarta Sans & Fraunces -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Custom Config -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            faunova: {
+              ivory: '#F7F4ED',
+              'ivory-card': '#FCFBF8',
+              'sage-light': '#C7D3C0',
+              'sage-border': '#D8E2D2',
+              'sage-deep': '#5C7457',
+              'gold': '#C8A96B',
+              'gold-light': '#F4EDE0',
+              'dark-green': '#1F2A1E',
+              'red-badge': '#B3261E',
+              'red-bg': '#FDF0ED',
+              'orange-badge': '#C25E00',
+              'orange-bg': '#FEF4E8',
+              'muted-badge': '#566653',
+              'muted-bg': '#EBF0E8',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Fraunces"', 'serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 18px -2px rgba(31, 42, 30, 0.05)',
+            'float': '0 10px 25px -3px rgba(31, 42, 30, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
+<!-- Base Custom Styles -->
+<style data-purpose="custom-scrollbars">
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+  </style>
+<style data-purpose="component-tweaks">
+    body {
+      background-color: #E7ECE3;
+      color: #1F2A1E;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-0 sm:py-6 font-sans antialiased selection:bg-faunova-gold selection:text-faunova-dark-green">
+<!-- BEGIN: MobileContainer -->
+<!-- Constrained strictly to 390px native mobile profile -->
+<div class="relative w-full max-w-[390px] h-[844px] bg-faunova-ivory overflow-hidden sm:rounded-[44px] shadow-2xl flex flex-col border border-faunova-sage-border/50">
+<!-- BEGIN: StatusBar -->
+<!-- Native-style Android/iOS top status bar -->
+<div class="w-full pt-3 px-6 pb-1 flex justify-between items-center text-xs font-semibold text-faunova-dark-green z-20 select-none">
+<span class="tracking-tight font-medium text-[13px]">11:26</span>
+<div class="flex items-center space-x-2">
+<!-- Cellular Signal -->
+<svg class="w-3.5 h-3.5 fill-faunova-dark-green" viewbox="0 0 24 24">
+<path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9zm0 2c3.87 0 7 3.13 7 7 0 1.45-.44 2.8-1.19 3.92L12 19.35l-5.81-3.43C5.44 14.8 5 13.45 5 12c0-3.87 3.13-7 7-7z"></path>
+</svg>
+<!-- Wifi Signal -->
+<svg class="w-3.5 h-3.5 fill-faunova-dark-green" viewbox="0 0 24 24">
+<path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4zm0 3.22c3.78 0 7.22 1.46 9.78 3.86L12 18.91 2.22 11.08C4.78 8.68 8.22 7.22 12 7.22z"></path>
+</svg>
+<!-- Battery Icon -->
+<div class="w-5 h-2.5 border border-faunova-dark-green rounded-sm p-[1px] flex items-center">
+<div class="h-full w-3/4 bg-faunova-dark-green rounded-[1px]"></div>
+</div>
+</div>
+</div>
+<!-- END: StatusBar -->
+<!-- BEGIN: TopNavigationTabs -->
+<!-- Header Segmented Navigation -->
+<header class="pt-2 px-5 pb-2 bg-faunova-ivory select-none" data-purpose="top-header">
+<nav class="flex items-center justify-center space-x-6">
+<button class="pb-2 text-[15px] font-semibold text-faunova-dark-green/60 transition-colors hover:text-faunova-dark-green" type="button">
+          Akun Pengguna
+        </button>
+<div class="relative pb-2">
+<button class="text-[15px] font-bold text-faunova-dark-green tracking-tight" type="button">
+            Katalog Spesies
+          </button>
+<!-- Active Tab Underline Indicator -->
+<span class="absolute bottom-0 left-0 right-0 h-[3px] bg-faunova-sage-deep rounded-full"></span>
+</div>
+</nav>
+</header>
+<!-- END: TopNavigationTabs -->
+<!-- BEGIN: SearchAndFiltersSection -->
+<section class="px-4 pt-2 pb-3 space-y-3 z-10" data-purpose="search-and-filters">
+<!-- Search Input Container -->
+<div class="relative flex items-center">
+<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-faunova-dark-green/70">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
+<circle cx="11" cy="11" r="8"></circle>
+<path d="m21 21-4.3-4.3" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<input class="w-full h-11 pl-10 pr-9 bg-white text-xs placeholder:text-faunova-dark-green/50 text-faunova-dark-green border border-faunova-sage-light rounded-xl focus:outline-none focus:ring-1 focus:ring-faunova-sage-deep focus:border-faunova-sage-deep shadow-sm transition-all" placeholder="Cari nama lokal satwa atau nama binomial..." type="search"/>
+<button aria-label="Filter lanjutan" class="absolute inset-y-0 right-0 pr-3 flex items-center text-faunova-dark-green/60 hover:text-faunova-dark-green" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+<!-- Horizontal Scrollable Category Filter Chips -->
+<div class="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5" role="tablist">
+<!-- Active Filter Chip (Semua) -->
+<button class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-faunova-sage-deep text-white shadow-xs whitespace-nowrap active:scale-95 transition-transform">
+<svg class="w-3.5 h-3.5 stroke-white" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24">
+<polyline points="20 6 9 17 4 12"></polyline>
+</svg>
+<span>Semua</span>
+</button>
+<!-- Mamalia Chip -->
+<button class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium bg-white text-faunova-dark-green border border-faunova-sage-light whitespace-nowrap hover:bg-faunova-sage-light/20 transition-colors">
+          Mamalia
+        </button>
+<!-- Aves Chip -->
+<button class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium bg-white text-faunova-dark-green border border-faunova-sage-light whitespace-nowrap hover:bg-faunova-sage-light/20 transition-colors">
+          Aves (Burung)
+        </button>
+<!-- Reptilia Chip -->
+<button class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium bg-white text-faunova-dark-green border border-faunova-sage-light whitespace-nowrap hover:bg-faunova-sage-light/20 transition-colors">
+          Reptilia
+        </button>
+<!-- Amfibi Chip -->
+<button class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium bg-white text-faunova-dark-green border border-faunova-sage-light whitespace-nowrap hover:bg-faunova-sage-light/20 transition-colors">
+          Amfibi
+        </button>
+</div>
+</section>
+<!-- END: SearchAndFiltersSection -->
+<!-- BEGIN: SpeciesCatalogList -->
+<!-- Main scrollable feed containing Indonesian biodiversity fauna -->
+<main class="flex-1 overflow-y-auto px-4 space-y-3 pb-24 no-scrollbar" data-purpose="species-list-scroll">
+<!-- Species Card 1: Harimau Sumatera -->
+<article class="p-3 bg-faunova-ivory-card border border-faunova-sage-border rounded-2xl shadow-soft hover:shadow-md transition-all flex space-x-3.5 items-start">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-faunova-sage-light/30 border border-faunova-sage-border/60">
+<img alt="Harimau Sumatera" class="w-full h-full object-cover object-center" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyX_i3wXulfsVnyj5Xk4td-1GruLEg4EZHXNH4KUuVFbSogowh8JikWMNYxHVmraCBjIj1Ha5cZusjgNPC-29JH_DyUl3CcJLFUrpWdw3n-MeR9nnMEG_v9dXaJz49EiTAdCm48pQYqOpq9kSalkjxs2p3GhylvGHDrL9glc29ODNyrHknZx0FzdMdwSPipdlYazPtTkL7-teaJKsM9xD_Z4ZjaVXeHKScFXQN3RvcpDD_wiDWGPkB"/>
+</div>
+<div class="flex-1 min-w-0">
+<!-- Card Header: Title & Conservation Status -->
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-serif font-bold text-base text-faunova-dark-green leading-snug truncate">
+              Harimau Sumatera
+            </h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-tight bg-faunova-red-bg text-faunova-red-badge border border-faunova-red-badge/20 flex-shrink-0">
+              Kritis (CR)
+            </span>
+</div>
+<!-- Scientific Name -->
+<p class="font-serif italic text-xs text-faunova-dark-green/70 mb-1 leading-tight">
+            Panthera tigris sumatrae
+          </p>
+<!-- Brief Habitat / Eco Snippet -->
+<p class="text-[11px] leading-relaxed text-faunova-dark-green/75 line-clamp-2 mb-2 font-normal">
+            Subspesies harimau terakhir Indonesia dengan loreng paling rapat dan habitat alami di hutan hujan primer Sumatera.
+          </p>
+<!-- Card Metadata Footer -->
+<div class="flex items-center justify-between text-[11px] pt-1 border-t border-faunova-sage-border/40">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-faunova-sage-light/30 text-faunova-dark-green font-medium text-[10px]">
+              Mamalia
+            </span>
+<div class="flex items-center text-faunova-dark-green/70 space-x-1 font-medium">
+<svg class="w-3 h-3 text-faunova-sage-deep" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>1 observasi</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Species Card 2: Jalak Bali -->
+<article class="p-3 bg-faunova-ivory-card border border-faunova-sage-border rounded-2xl shadow-soft hover:shadow-md transition-all flex space-x-3.5 items-start">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-faunova-sage-light/30 border border-faunova-sage-border/60">
+<img alt="Jalak Bali" class="w-full h-full object-cover object-center" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZlyvrYv0gRxEnTJeznddwzje4FMgwcNqwT1V9552wJ0h7wh9RrIp4yEOZwWNZitxKpVZsmXJRUPxg2sgJ0jcOLrIfOd6Slm2m-Tde5V4sK4EDZ81KGcQFb-S2lgergjy5569Pu0vVgjT5ssIT5J407kbvDffNGJJiWCVsSQZmK8-KaRGvAOCzij_v_Sr92mPCtQ5G0Xtkmh3Yj2HvrLki5orRY2nzjI72QgsgQGXDIbTkPv25WMli"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-serif font-bold text-base text-faunova-dark-green leading-snug truncate">
+              Jalak Bali
+            </h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-tight bg-faunova-red-bg text-faunova-red-badge border border-faunova-red-badge/20 flex-shrink-0">
+              Kritis (CR)
+            </span>
+</div>
+<p class="font-serif italic text-xs text-faunova-dark-green/70 mb-1 leading-tight">
+            Leucopsar rothschildi
+          </p>
+<p class="text-[11px] leading-relaxed text-faunova-dark-green/75 line-clamp-2 mb-2 font-normal">
+            Burung pengicau endemik Pulau Bali bagian barat dengan jambul putih halus dan pelupuk mata biru cerah.
+          </p>
+<div class="flex items-center justify-between text-[11px] pt-1 border-t border-faunova-sage-border/40">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-faunova-sage-light/30 text-faunova-dark-green font-medium text-[10px]">
+              Aves
+            </span>
+<div class="flex items-center text-faunova-dark-green/70 space-x-1 font-medium">
+<svg class="w-3 h-3 text-faunova-sage-deep" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>1 observasi</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Species Card 3: Komodo -->
+<article class="p-3 bg-faunova-ivory-card border border-faunova-sage-border rounded-2xl shadow-soft hover:shadow-md transition-all flex space-x-3.5 items-start">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-faunova-sage-light/30 border border-faunova-sage-border/60">
+<img alt="Komodo" class="w-full h-full object-cover object-center" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHr6BCFnw9DsupcfricWgSzTJOVVkmiPls3miZ6Gi_QebG1J6EqFin53fvL8Z2GcmUk2Qxx6UA8bnyLvRq9dB-1oEAgjruXtVHgDcQPxlXmEB8UiJ2yop5oioNDSwwxgovQjyvOX0M0dRnXj8khBQ6rzRH_-4XqRZIhBLTqZsBT8ht8QDtddHjyb7xINWSEv6rmLiRz1NwLw1F3splzreLQY4jGE7XKoSH_63eLqmR9gHxntGR2ONC"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-serif font-bold text-base text-faunova-dark-green leading-snug truncate">
+              Komodo
+            </h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-tight bg-faunova-orange-bg text-faunova-orange-badge border border-faunova-orange-badge/20 flex-shrink-0">
+              Terancam (EN)
+            </span>
+</div>
+<p class="font-serif italic text-xs text-faunova-dark-green/70 mb-1 leading-tight">
+            Varanus komodoensis
+          </p>
+<p class="text-[11px] leading-relaxed text-faunova-dark-green/75 line-clamp-2 mb-2 font-normal">
+            Kadal terbesar di bumi peninggalan zaman purba, hanya hidup bebas di kepulauan savana Nusa Tenggara Timur.
+          </p>
+<div class="flex items-center justify-between text-[11px] pt-1 border-t border-faunova-sage-border/40">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-faunova-sage-light/30 text-faunova-dark-green font-medium text-[10px]">
+              Reptilia
+            </span>
+<div class="flex items-center text-faunova-dark-green/70 space-x-1 font-medium">
+<svg class="w-3 h-3 text-faunova-sage-deep" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>1 observasi</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Species Card 4: Kucing Congkok (Leopard Cat) -->
+<article class="p-3 bg-faunova-ivory-card border border-faunova-sage-border rounded-2xl shadow-soft hover:shadow-md transition-all flex space-x-3.5 items-start">
+<!-- Visual Wildlife Thumbnail -->
+<div class="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-faunova-sage-light/30 border border-faunova-sage-border/60">
+<img alt="Kucing Congkok" class="w-full h-full object-cover object-center" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNHRF-kgE9OG3491NMgpJJpuDs-BQC3Qqjz3sKBLWv0coJbI3K4e6PjgXGBjlU2HX67YMrj4Z1Ne0H7kBeKg9lM7hTPBeQNb7FJKp-26pojti8vnGq25akm_AY94dWq84XwO70iCfnYFnZITrs4MVB6SV0H7vo8jOLpdNiSJmvOJQCU5UTqgVXmxkWb-rSmGFfOn3CdShMCDHbHR0UQGfwf3s0sLAf65sZW2FPb7-umVmGtZGW-iZK"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-serif font-bold text-base text-faunova-dark-green leading-snug truncate">
+              Kucing Congkok
+            </h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-tight bg-faunova-muted-bg text-faunova-muted-badge border border-faunova-muted-badge/20 flex-shrink-0">
+              Terdata (LC)
+            </span>
+</div>
+<p class="font-serif italic text-xs text-faunova-dark-green/70 mb-1 leading-tight">
+            Prionailurus bengalensis
+          </p>
+<p class="text-[11px] leading-relaxed text-faunova-dark-green/75 line-clamp-2 mb-2 font-normal">
+            Kucing liar berukuran mungil dengan corak tutul eksotis, penjelajah aktif malam hari di belantara Nusantara.
+          </p>
+<div class="flex items-center justify-between text-[11px] pt-1 border-t border-faunova-sage-border/40">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-faunova-sage-light/30 text-faunova-dark-green font-medium text-[10px]">
+              Mamalia
+            </span>
+<div class="flex items-center text-faunova-dark-green/70 space-x-1 font-medium">
+<svg class="w-3 h-3 text-faunova-sage-deep" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>1 observasi</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Species Card 5: Cendrawasih Kuning Kecil -->
+<article class="p-3 bg-faunova-ivory-card border border-faunova-sage-border rounded-2xl shadow-soft hover:shadow-md transition-all flex space-x-3.5 items-start">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-faunova-sage-light/30 border border-faunova-sage-border/60">
+<img alt="Cendrawasih Kuning Kecil" class="w-full h-full object-cover object-center" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrIXz7PanUSQcsPk0tyWy5bO0rndgPtkmnUMKl8COxQIhZFgbET6wYLX3Hng9Zk_s2YDMsTRG-gu2zDlEdyEDeN4cZtFCyuKNB7wVXwgEbVc4crlk5gqvBoiB-SDqfAC-0pEodwwPY4wI-AoQElaL8TGXDLXLCEjAvRuOXY0WqPznZE1dB-tCn5jMkPjLvWAnV2nZK2P-yp9PrboJCrq0RRpRPasARukYfSxHSF07U2xZu_MFwAOGV"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-serif font-bold text-base text-faunova-dark-green leading-snug truncate">
+              Cendrawasih Kuning
+            </h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-tight bg-faunova-muted-bg text-faunova-muted-badge border border-faunova-muted-badge/20 flex-shrink-0">
+              Terdata (LC)
+            </span>
+</div>
+<p class="font-serif italic text-xs text-faunova-dark-green/70 mb-1 leading-tight">
+            Paradisaea minor
+          </p>
+<p class="text-[11px] leading-relaxed text-faunova-dark-green/75 line-clamp-2 mb-2 font-normal">
+            Burung surga berbulu kuning keemasan memukau dengan tarian pamer bulu di kanopi rimba Papua.
+          </p>
+<div class="flex items-center justify-between text-[11px] pt-1 border-t border-faunova-sage-border/40">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-faunova-sage-light/30 text-faunova-dark-green font-medium text-[10px]">
+              Aves
+            </span>
+<div class="flex items-center text-faunova-dark-green/70 space-x-1 font-medium">
+<svg class="w-3 h-3 text-faunova-sage-deep" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>1 observasi</span>
+</div>
+</div>
+</div>
+</article>
+</main>
+<!-- END: SpeciesCatalogList -->
+<!-- BEGIN: BottomNavigation -->
+<!-- Glassmorphic bottom navigation bar matching Faunova design -->
+<nav class="absolute bottom-0 left-0 right-0 bg-[#F7F4ED]/85 backdrop-blur-md border-t border-faunova-sage-border/80 px-2 pt-1.5 pb-5 z-30" data-purpose="bottom-bar">
+<div class="flex items-center justify-around relative">
+<!-- Tab: Beranda -->
+<button class="flex flex-col items-center justify-center w-14 py-1 text-faunova-dark-green/65 hover:text-faunova-dark-green transition-colors" type="button">
+<svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.9" viewbox="0 0 24 24">
+<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[10px] font-medium leading-none">Beranda</span>
+</button>
+<!-- Tab: Cari (Active with soft pill highlight) -->
+<button class="flex flex-col items-center justify-center w-14 py-1 text-faunova-dark-green" type="button">
+<div class="px-3 py-1 bg-faunova-sage-deep/15 rounded-full flex items-center justify-center mb-0.5">
+<svg class="w-4 h-4 stroke-faunova-dark-green" fill="none" stroke="currentColor" stroke-width="2.4" viewbox="0 0 24 24">
+<circle cx="11" cy="11" r="8"></circle>
+<path d="m21 21-4.3-4.3" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<span class="text-[10px] font-bold leading-none text-faunova-dark-green">Cari</span>
+</button>
+<!-- Floating Center Action: Kamera (Gold CTA with Dark Green text/icon) -->
+<div class="relative -top-3 flex flex-col items-center">
+<button aria-label="Identifikasi Spesies Lewat Kamera" class="w-13 h-13 p-3 bg-faunova-gold text-faunova-dark-green rounded-full shadow-float border-2 border-white flex items-center justify-center active:scale-95 transition-transform" type="button">
+<svg class="w-6 h-6 stroke-faunova-dark-green fill-none" stroke-width="2.2" viewbox="0 0 24 24">
+<path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<span class="text-[10px] font-semibold text-faunova-dark-green mt-1">Kamera</span>
+</div>
+<!-- Tab: Game -->
+<button class="flex flex-col items-center justify-center w-14 py-1 text-faunova-dark-green/65 hover:text-faunova-dark-green transition-colors" type="button">
+<svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.9" viewbox="0 0 24 24">
+<rect height="12" rx="4" width="20" x="2" y="6"></rect>
+<path d="M6 12h4m-2-2v4m7-2h.01m3 0h.01" stroke-linecap="round"></path>
+</svg>
+<span class="text-[10px] font-medium leading-none">Game</span>
+</button>
+<!-- Tab: Profil -->
+<button class="flex flex-col items-center justify-center w-14 py-1 text-faunova-dark-green/65 hover:text-faunova-dark-green transition-colors" type="button">
+<svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.9" viewbox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[10px] font-medium leading-none">Profil</span>
+</button>
+</div>
+<!-- Android Home Bar Indicator -->
+<div class="w-32 h-1 bg-faunova-dark-green/30 rounded-full mx-auto mt-2"></div>
+</nav>
+<!-- END: BottomNavigation -->
+</div>
+<!-- END: MobileContainer -->
+</body></html>

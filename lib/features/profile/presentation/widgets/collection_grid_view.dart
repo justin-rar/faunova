@@ -1,12 +1,7 @@
-// ==============================================================================
-// FAUNOVA WIDGET: CollectionGridView
-// Menampilkan daftar tangkapan satwa koleksi dalam format grid 2 kolom
-// Sesuai Plan 5.2, 5.3 & AGENTS.md (Sesi S8)
-// ==============================================================================
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../camera/models/capture_model.dart';
 import '../capture_detail_page.dart';
 
@@ -28,34 +23,32 @@ class CollectionGridView extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.sageMuda.withValues(alpha: 0.5),
+                color: AppColors.surfaceContainerLow,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.pets_rounded, size: 40, color: AppColors.sageTua),
             ),
             const SizedBox(height: 14),
-            const Text(
+            Text(
               'Koleksi Masih Kosong',
-              style: TextStyle(
+              style: AppTypography.titleUi(
                 fontSize: 16,
-                fontWeight: FontWeight.w700,
                 color: AppColors.teksGelap,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               'Anda belum memiliki tangkapan satwa yang tersimpan. Gunakan kamera untuk memindai fauna di sekitar Anda!',
-              style: TextStyle(
+              style: AppTypography.bodyCompact(
                 fontSize: 12.5,
-                color: AppColors.teksGelap.withValues(alpha: 0.7),
-                height: 1.4,
+                color: AppColors.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -64,11 +57,10 @@ class CollectionGridView extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onRefresh,
                 icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.sageTua),
-                label: const Text(
+                label: Text(
                   'Segarkan Koleksi',
-                  style: TextStyle(
+                  style: AppTypography.titleUi(
                     fontSize: 13,
-                    fontWeight: FontWeight.w700,
                     color: AppColors.sageTua,
                   ),
                 ),
@@ -91,7 +83,7 @@ class CollectionGridView extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.76,
+        childAspectRatio: 0.72,
       ),
       itemBuilder: (context, index) {
         final capture = captures[index];
@@ -111,9 +103,9 @@ class CollectionGridView extends StatelessWidget {
       );
     } else {
       imageWidget = Container(
-        color: AppColors.sageMuda,
+        color: AppColors.surfaceContainerHigh,
         child: const Center(
-          child: Icon(Icons.pets_rounded, size: 40, color: AppColors.sageTua),
+          child: Icon(Icons.pets_rounded, size: 36, color: AppColors.sageTua),
         ),
       );
     }
@@ -123,73 +115,94 @@ class CollectionGridView extends StatelessWidget {
     final dateStr = '${wib.day} ${_getNamaBulan(wib.month)} ${wib.year}';
 
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => CaptureDetailPage(capture: capture),
           ),
         );
+        onRefresh?.call();
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(15),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Bagian Foto + Badge Blok
+              // Bagian Foto + Badge Terverifikasi Stitch
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     imageWidget,
-                    // Gradient overlay di bagian atas foto
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 48,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.6),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Badge Nomor Blok Hash
+                    // Badge Terverifikasi Lapangan (Kiri Atas)
                     Positioned(
                       top: 8,
                       left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.sageTua.withValues(alpha: 0.95),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.emas.withValues(alpha: 0.7), width: 1),
+                          color: AppColors.surfaceContainerLowest.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 5,
+                              height: 5,
+                              decoration: const BoxDecoration(
+                                color: AppColors.sageTua,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Terverifikasi',
+                              style: AppTypography.labelCaption(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.teksGelap,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Badge Nomor Blok Hash (Kanan Atas)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '#${capture.seq}',
-                          style: const TextStyle(
+                          style: AppTypography.labelCaption(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -198,7 +211,7 @@ class CollectionGridView extends StatelessWidget {
                 ),
               ),
 
-              // Bagian Teks & Taksonomi
+              // Bagian Teks & Taksonomi Editorial
               Padding(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
@@ -206,9 +219,8 @@ class CollectionGridView extends StatelessWidget {
                   children: [
                     Text(
                       capture.speciesName,
-                      style: const TextStyle(
+                      style: AppTypography.headlineSpecies(
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
                         color: AppColors.teksGelap,
                       ),
                       maxLines: 1,
@@ -216,33 +228,22 @@ class CollectionGridView extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      capture.category ?? 'Fauna',
-                      style: const TextStyle(
+                      capture.category ?? 'Fauna Tropis',
+                      style: AppTypography.subheadSpecies(
                         fontSize: 11,
+                        color: AppColors.sageTua,
                         fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.emasTua,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          dateStr,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: AppColors.teksGelap.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.verified_rounded,
-                          size: 13,
-                          color: AppColors.sageTua,
-                        ),
-                      ],
+                    Text(
+                      dateStr,
+                      style: AppTypography.labelCaption(
+                        fontSize: 10,
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),

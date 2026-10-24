@@ -5,6 +5,7 @@ import '../../../core/services/shake_service.dart';
 import '../../../core/services/streak_service.dart';
 import '../../../core/services/timezone_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../models/daily_challenge_model.dart';
@@ -169,6 +170,7 @@ class _GamePageState extends State<GamePage> {
         );
       }
     } catch (e) {
+      debugPrint('Error in _handleClaimStreak: $e');
       if (mounted) {
         setState(() => _isClaimingStreak = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -195,7 +197,7 @@ class _GamePageState extends State<GamePage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(res.message),
+            content: Text(res.isCorrect == true ? 'Hebat! Kamu meraih +50 Poin.' : 'Hasil tersimpan. Cek pembahasannya di bawah!'),
             backgroundColor: res.isCorrect == true ? AppColors.sageTua : AppColors.merahStatus,
             behavior: SnackBarBehavior.floating,
           ),
@@ -309,9 +311,16 @@ class _GamePageState extends State<GamePage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
@@ -333,67 +342,79 @@ class _GamePageState extends State<GamePage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Angka streak besar + api
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$streak',
-                          style: const TextStyle(
-                            fontSize: 52,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            height: 1.0,
-                          ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Streak Observasi Harian',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
                         ),
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 6, left: 4),
-                          child: Text(
-                            '🔥',
-                            style: TextStyle(fontSize: 28),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Text(
-                      'Hari Berturut-turut',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white70,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$streak',
+                            style: const TextStyle(
+                              fontSize: 52,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              height: 1.0,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 6, left: 4),
+                            child: Text(
+                              '🔥',
+                              style: TextStyle(fontSize: 28),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        'Hari Berturut-turut',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 // Kanan: tombol klaim / sudah klaim + deadline
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     if (isClaimed) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white30),
+                      ElevatedButton.icon(
+                        key: const Key('btn-klaim-streak-claimed'),
+                        onPressed: null,
+                        icon: const Icon(Icons.check_circle_rounded, size: 16, color: Colors.white),
+                        label: const Text(
+                          'Sudah Klaim',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.check_circle_rounded, size: 16, color: Colors.white),
-                            SizedBox(width: 6),
-                            Text(
-                              'Sudah Klaim',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.18),
+                          disabledBackgroundColor: Colors.white.withValues(alpha: 0.18),
+                          disabledForegroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -407,6 +428,7 @@ class _GamePageState extends State<GamePage> {
                       ),
                     ] else ...[
                       ElevatedButton.icon(
+                        key: const Key('btn-klaim-streak'),
                         onPressed: _isClaimingStreak ? null : _handleClaimStreak,
                         icon: _isClaimingStreak
                             ? const SizedBox(
@@ -419,7 +441,7 @@ class _GamePageState extends State<GamePage> {
                               )
                             : const Icon(Icons.local_fire_department_rounded, size: 16),
                         label: Text(
-                          _isClaimingStreak ? 'Mengklaim...' : 'Klaim Streak!',
+                          _isClaimingStreak ? 'Mengklaim...' : 'Klaim',
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -656,9 +678,16 @@ class _GamePageState extends State<GamePage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -671,8 +700,7 @@ class _GamePageState extends State<GamePage> {
               Expanded(
                 child: Text(
                   'Tantangan Hari Ini ($category)',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                  style: AppTypography.titleUi(
                     fontSize: 13.5,
                     color: AppColors.teksGelap,
                   ),
@@ -885,9 +913,16 @@ class _GamePageState extends State<GamePage> {
   Widget _buildQuizArenaCard() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -896,11 +931,10 @@ class _GamePageState extends State<GamePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Arena Kuis Satwa Liar',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
+                  style: AppTypography.titleUi(
                     fontSize: 14,
                     color: AppColors.teksGelap,
                   ),
@@ -916,7 +950,7 @@ class _GamePageState extends State<GamePage> {
                 ),
                 child: Text(
                   'Skor Terbaik: ${QuizService.instance.getBestQuizScore() > 0 ? QuizService.instance.getBestQuizScore().toString() : 'Belum Ada'}',
-                  style: const TextStyle(
+                  style: AppTypography.labelCaption(
                     color: AppColors.teksPutih,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -926,9 +960,9 @@ class _GamePageState extends State<GamePage> {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '10 soal taksonomi • Timer 15 detik • 3 nyawa • Bonus kombo. Skor dihitung dan divalidasi langsung oleh server database.',
-            style: TextStyle(fontSize: 12, color: AppColors.teksGelap, height: 1.35),
+            style: AppTypography.bodyCompact(fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.35),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -952,9 +986,16 @@ class _GamePageState extends State<GamePage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sage,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sageTua.withValues(alpha: 0.3), width: 1),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,

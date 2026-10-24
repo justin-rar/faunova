@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><title>Faunova</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,600;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-surface": "#1c1c18", "on-tertiary": "#ffffff", "surface-container-high": "#ebe8e1", "tertiary-fixed-dim": "#b8ccb2", "inverse-on-surface": "#f3f0e9", "on-primary": "#ffffff", "surface-bright": "#fcf9f2", "on-primary-fixed": "#0b200a", "on-secondary-fixed-variant": "#5a430f", "on-secondary-container": "#785f29", "background": "#fcf9f2", "surface-dim": "#dcdad3", "surface": "#fcf9f2", "surface-variant": "#e5e2db", "outline-variant": "#c3c8be", "primary": "#445b40", "outline": "#747970", "surface-container-lowest": "#ffffff", "surface-container": "#f0eee7", "surface-container-low": "#f6f3ec", "secondary-fixed": "#ffdea0", "tertiary-fixed": "#d4e8ce", "on-error": "#ffffff", "on-tertiary-fixed-variant": "#3a4b38", "surface-tint": "#4d6449", "on-error-container": "#93000a", "on-background": "#1c1c18", "secondary": "#735b25", "inverse-surface": "#31312c", "primary-fixed-dim": "#b3ceac", "surface-container-highest": "#e5e2db", "error-container": "#ffdad6", "on-primary-container": "#def9d5", "on-tertiary-container": "#e3f7dc", "on-tertiary-fixed": "#101f0f", "primary-fixed": "#cfeac7", "on-surface-variant": "#434841", "inverse-primary": "#b3ceac", "error": "#ba1a1a", "secondary-fixed-dim": "#e3c282", "on-secondary": "#ffffff", "primary-container": "#5c7457", "on-primary-fixed-variant": "#364c32", "secondary-container": "#fedb99", "on-secondary-fixed": "#261a00", "tertiary": "#495a46", "tertiary-container": "#61735d" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-md": "1rem", "space-sm": "0.5rem", "gutter": "1rem", "margin": "1rem", "space-xs": "0.25rem", "space-lg": "1.5rem", "space-xl": "2rem" }, "fontFamily": { "body-compact": ["Plus Jakarta Sans"], "body-medium": ["Plus Jakarta Sans"], "label-prominent": ["Plus Jakarta Sans"], "headline-species": ["Noto Serif"], "subhead-species": ["Noto Serif"], "label-caption": ["Plus Jakarta Sans"], "display-editorial": ["Noto Serif"], "body-default": ["Plus Jakarta Sans"], "title-ui": ["Plus Jakarta Sans"] }, "fontSize": { "body-compact": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "body-medium": ["15px", { "lineHeight": "22px", "fontWeight": "500" }], "label-prominent": ["13px", { "lineHeight": "16px", "fontWeight": "600" }], "headline-species": ["22px", { "lineHeight": "28px", "fontWeight": "600" }], "subhead-species": ["16px", { "lineHeight": "22px", "fontWeight": "400" }], "label-caption": ["11px", { "lineHeight": "14px", "fontWeight": "500" }], "display-editorial": ["30px", { "lineHeight": "38px", "fontWeight": "600" }], "body-default": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "title-ui": ["18px", { "lineHeight": "24px", "fontWeight": "700" }] } } } };</script><style>@layer base { html, body { width: 100vw; margin: 0; padding: 0; } body { overscroll-behavior: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style></head><body class="bg-surface font-body-default text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Kembali" class="w-11 h-11 -ml-2 flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-ui text-title-ui text-on-surface tracking-tight truncate">Kamera</h1></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-safe bg-surface px-margin"><div class="flex flex-col w-full pb-10">
+<!-- Top Utility Bar: Quick Bookmark / Status feedback -->
+<div class="flex items-center justify-between py-space-xs mb-space-sm">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-caption text-label-caption uppercase tracking-wider">
+<span class="material-symbols-outlined text-[15px] text-primary">psychiatry</span>
+<span>Hasil Analisis Lapangan</span>
+</div>
+<button class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container transition-all active:scale-95 text-on-surface hover:text-primary" id="bookmarkBtn">
+<span class="material-symbols-outlined text-[20px]" id="bookmarkIcon">bookmark_border</span>
+</button>
+</div>
+<!-- 1. Foto Hasil Jepretan Kamera -->
+<div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-surface-container-high shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Close up macrophotography of an Asian giant centipede Scolopendra subspinipes crawling across damp jungle moss and decaying mahogany wood in a tropical Indonesian rainforest. Earthy deep reddish-brown banded exoskeleton, amber legs, macro lens focus with natural misty morning forest lighting, field notebook aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA72Z_sFlpO4j54hlP522mYxctnTWIeGHVcPDaGw79GC7N8v3_WoDI4vokwzWTPRsNgXeHT02pwl4DaMQWw8ZOFLmUK-GTDZ1dsAIen8nlP04i_HI46QtxvG3A-wHC8X3BaYgSs17cNUiRcshFhRsWPC_b07qC0fCytVNMxAtAMuymvzl95B6ipM3SwlpI8DhupciBWW8xNrsy7DZ_XAw4a4kYAJN9XOZcBWx6kJUhADS6YJD9RXfN-"/>
+<!-- Floating Tag: AI Detection Badge -->
+<div class="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1 bg-surface-bright/90 backdrop-blur-md rounded-full shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-caption text-label-caption text-primary font-semibold tracking-tight">Terdeteksi AI Faunova</span>
+</div>
+<!-- Pinned Taxonomy Index Badge (Top Left Corner of Photo) -->
+<div class="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 bg-inverse-surface/75 backdrop-blur-md rounded-lg text-inverse-on-surface">
+<span class="material-symbols-outlined text-[13px]">center_focus_strong</span>
+<span class="font-label-caption text-label-caption">Log #804-JAV</span>
+</div>
+</div>
+<!-- 2. Kartu Hasil Identifikasi Spesies -->
+<div class="mt-space-md p-4 rounded-2xl bg-surface-container-low shadow-sm">
+<!-- Header Spesies: Common & Scientific Name with Confidence Tag -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="min-w-0 flex-1">
+<h2 class="font-headline-species text-headline-species text-on-surface leading-tight">Kelabang Raksasa</h2>
+<p class="font-subhead-species text-subhead-species italic text-primary-container mt-0.5">Scolopendra subspinipes</p>
+</div>
+<div class="shrink-0 px-2.5 py-1 rounded-md bg-tertiary-fixed text-on-tertiary-fixed font-label-prominent text-label-caption">
+        Cukup yakin (94%)
+      </div>
+</div>
+<!-- Alert / Safety Warning Chip -->
+<div class="mt-space-sm inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-error-container text-on-error-container font-label-prominent text-label-caption">
+<span class="material-symbols-outlined text-[14px] shrink-0">warning</span>
+<span>Berbahaya jika digigit</span>
+</div>
+<!-- Divider Bar -->
+<div class="h-px w-full bg-surface-variant my-3"></div>
+<!-- Deskripsi Spesies -->
+<p class="font-body-compact text-body-compact text-on-surface-variant leading-relaxed">
+      Artropoda karnivora nokturnal bertubuh pipih beruas. Kerap dijumpai di balik batu basah atau serasah hutan hujan tropis Jawa. Memiliki bisa pertahanan yang cukup menyakitkan.
+    </p>
+<!-- Micro-Telemetry Badges -->
+<div class="mt-3.5 flex items-center gap-2 pt-2 text-on-surface-variant font-label-caption text-label-caption">
+<div class="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-secondary">explore</span>
+<span>Hutan Dataran Rendah</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-secondary">nights_stay</span>
+<span>Nokturnal</span>
+</div>
+</div>
+</div>
+<!-- 3. Kotak Tanya Jawab AI ("Tanya soal hewan ini") -->
+<div class="mt-space-md p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-2.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">forum</span>
+<h3 class="font-title-ui text-body-medium font-bold text-on-surface">Tanya soal hewan ini</h3>
+</div>
+<span class="font-label-caption text-label-caption text-on-surface-variant">Model Taksonomi</span>
+</div>
+<!-- Quick Prompts (Pill Chips) -->
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface font-body-compact text-body-compact transition-colors flex items-center gap-1 text-left" onclick="fillQuestion(this)">
+<span>Apakah beracun?</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">north_east</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface font-body-compact text-body-compact transition-colors flex items-center gap-1 text-left" onclick="fillQuestion(this)">
+<span>Di mana habitatnya?</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">north_east</span>
+</button>
+</div>
+<!-- Live Dynamic Answer Bubble (Hidden by default, expands on inquiry) -->
+<div class="hidden mt-1 p-2.5 rounded-lg bg-surface-container-high transition-all duration-300" id="aiResponseContainer">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-[16px] shrink-0 mt-0.5">neurology</span>
+<div class="flex-1 min-w-0">
+<p class="font-body-compact text-body-compact text-on-surface leading-snug" id="aiResponseText"></p>
+</div>
+</div>
+</div>
+<!-- Interactive Query Input Field -->
+<form class="relative flex items-center mt-1" id="aiPromptForm" onsubmit="handleAiQuery(event)">
+<input class="w-full h-11 pl-3.5 pr-11 bg-surface-container rounded-xl text-on-surface placeholder:text-on-surface-variant font-body-compact text-body-compact focus:outline-none focus:bg-surface-container-high transition-all" id="aiPromptInput" placeholder="Ketik pertanyaanmu..." type="text"/>
+<button aria-label="Kirim Pertanyaan" class="absolute right-1 w-9 h-9 flex items-center justify-center rounded-lg bg-primary-container text-on-primary transition-all active:scale-95 shadow-sm" type="submit">
+<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+</button>
+</form>
+</div>
+<!-- 4. Tombol Aksi di Bawah -->
+<div class="mt-space-lg flex flex-col gap-2">
+<!-- Primary CTA: Accent Gold -->
+<button class="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-secondary-container text-on-secondary-fixed font-title-ui text-body-medium font-bold transition-all active:scale-[0.98] shadow-sm hover:opacity-95" id="saveButton" onclick="handleSaveCollection()">
+<span class="material-symbols-outlined text-[20px]" id="saveIcon">library_add</span>
+<span id="saveText">Simpan ke Koleksi</span>
+</button>
+<!-- Secondary CTA: Text Retake -->
+<button class="w-full py-2.5 text-center font-body-medium text-body-medium font-semibold text-on-surface hover:text-primary transition-colors underline underline-offset-4 decoration-outline-variant" onclick="window.history.back()">
+      Foto ulang
+    </button>
+</div>
+</div>
+<script>
+  function fillQuestion(buttonElement) {
+    const text = buttonElement.querySelector('span').innerText.trim();
+    const input = document.getElementById('aiPromptInput');
+    input.value = text;
+    triggerSimulatedAi(text);
+  }
+
+  function handleAiQuery(e) {
+    e.preventDefault();
+    const input = document.getElementById('aiPromptInput');
+    const query = input.value.trim();
+    if (!query) return;
+    triggerSimulatedAi(query);
+  }
+
+  function triggerSimulatedAi(query) {
+    const container = document.getElementById('aiResponseContainer');
+    const textNode = document.getElementById('aiResponseText');
+    
+    container.classList.remove('hidden');
+    textNode.innerText = 'Menganalisis basis taksonomi...';
+
+    setTimeout(() => {
+      const lower = query.toLowerCase();
+      if (lower.includes('racun') || lower.includes('bisa') || lower.includes('gigit')) {
+        textNode.innerText = 'Ya, kelabang ini memiliki forcipules (cakar bisa) berbisa kuat. Gigitannya memicu nyeri menusuk hebat dan pembengkakan, namun jarang berakibat fatal bagi manusia dewasa sehat.';
+      } else if (lower.includes('habitat') || lower.includes('tinggal') || lower.includes('di mana')) {
+        textNode.innerText = 'Menyukai mikroklimat lembap dengan naungan rapat. Bersembunyi di rongga kayu lapuk, tumpukan dedaunan basah, atau liang bebatuan di hutan tropis.';
+      } else {
+        textNode.innerText = 'Spesies ini aktif berburu pada malam hari dengan mengandalkan antena sensitif terhadap getaran serangga, cacing, dan vertebrata kecil.';
+      }
+    }, 400);
+  }
+
+  // Quick Bookmark toggle
+  const bookmarkBtn = document.getElementById('bookmarkBtn');
+  const bookmarkIcon = document.getElementById('bookmarkIcon');
+  let isBookmarked = false;
+
+  bookmarkBtn.addEventListener('click', () => {
+    isBookmarked = !isBookmarked;
+    if (isBookmarked) {
+      bookmarkIcon.innerText = 'bookmark';
+      bookmarkIcon.style.fontVariationSettings = "'FILL' 1";
+      bookmarkBtn.classList.add('text-primary');
+    } else {
+      bookmarkIcon.innerText = 'bookmark_border';
+      bookmarkIcon.style.fontVariationSettings = "'FILL' 0";
+      bookmarkBtn.classList.remove('text-primary');
+    }
+  });
+
+  // Save to collection button interaction
+  function handleSaveCollection() {
+    const saveBtn = document.getElementById('saveButton');
+    const saveIcon = document.getElementById('saveIcon');
+    const saveText = document.getElementById('saveText');
+
+    saveIcon.innerText = 'check_circle';
+    saveText.innerText = 'Tersimpan di Jurnal Lapangan';
+    saveBtn.classList.remove('bg-secondary-container', 'text-on-secondary-fixed');
+    saveBtn.classList.add('bg-tertiary-fixed', 'text-on-tertiary-fixed');
+
+    setTimeout(() => {
+      saveIcon.innerText = 'collections_bookmark';
+      saveText.innerText = 'Buka Jurnal Koleksi';
+    }, 1800);
+  }
+</script></main></body></html>

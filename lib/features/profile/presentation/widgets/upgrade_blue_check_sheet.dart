@@ -8,6 +8,7 @@ import '../../../../core/services/currency_service.dart';
 import '../../../../core/services/payment_service.dart';
 import '../../../../core/services/profile_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../midtrans_snap_webview_page.dart';
 import '../../models/payment_transaction_model.dart';
 
@@ -367,11 +368,18 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
     required String description,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sageMuda.withValues(alpha: 0.7)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,18 +399,17 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: AppTypography.titleUi(
                     fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
                     color: AppColors.teksGelap,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: TextStyle(
+                  style: AppTypography.bodyCompact(
                     fontSize: 11,
-                    color: AppColors.teksGelap.withValues(alpha: 0.75),
+                    color: AppColors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -425,9 +432,9 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
           children: [
             Icon(Icons.receipt_long_rounded, size: 48, color: AppColors.sage.withValues(alpha: 0.5)),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Belum ada riwayat pembayaran.',
-              style: TextStyle(fontSize: 13, color: AppColors.teksGelap),
+              style: AppTypography.bodyMedium(fontSize: 13, color: AppColors.onSurfaceVariant),
             ),
           ],
         ),
@@ -445,9 +452,16 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.sageMuda.withValues(alpha: 0.8)),
+            border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,9 +473,8 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
                     child: Text(
                       tx.orderId,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: AppTypography.titleUi(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
                         color: AppColors.teksGelap,
                       ),
                     ),

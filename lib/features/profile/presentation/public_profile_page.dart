@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
@@ -279,24 +280,31 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.sageMuda.withValues(alpha: 0.6)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Avatar profil
-          AppAvatar(
-            avatarPath: p.avatarPath,
-            displayName: p.displayName,
-            radius: 38,
+          // Avatar profil dengan ring sage
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.sageTua, width: 2),
+            ),
+            child: AppAvatar(
+              avatarPath: p.avatarPath,
+              displayName: p.displayName,
+              radius: 38,
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -307,9 +315,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               Flexible(
                 child: Text(
                   p.displayName,
-                  style: const TextStyle(
+                  style: AppTypography.headlineSpecies(
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
                     color: AppColors.teksGelap,
                   ),
                   textAlign: TextAlign.center,
@@ -331,10 +338,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           // Username
           Text(
             '@${p.username}',
-            style: TextStyle(
+            style: AppTypography.labelCaption(
               fontSize: 13,
-              color: AppColors.teksGelap.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w500,
+              color: AppColors.onSurfaceVariant,
             ),
           ),
 
@@ -343,17 +349,16 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.gading,
+                color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
               ),
               child: Text(
                 p.bio,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: AppTypography.bodyCompact(
                   fontSize: 13,
                   color: AppColors.teksGelap,
-                  fontStyle: FontStyle.italic,
-                  height: 1.3,
                 ),
               ),
             ),
@@ -371,8 +376,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.sageMuda.withValues(alpha: 0.5),
+                  color: AppColors.secondaryContainer.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -385,7 +391,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     const SizedBox(width: 4),
                     Text(
                       '${p.streakCount} Hari',
-                      style: const TextStyle(
+                      style: AppTypography.labelCaption(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.teksGelap,
@@ -401,8 +407,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.sageMuda.withValues(alpha: 0.5),
+                  color: AppColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -415,7 +422,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     const SizedBox(width: 4),
                     Text(
                       'Skor ${p.bestQuizScore}',
-                      style: const TextStyle(
+                      style: AppTypography.labelCaption(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.teksGelap,
@@ -435,15 +442,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.sageMuda.withValues(alpha: 0.6)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildStatColumn('Observasi', p.capturesCount.toString()),
-          Container(height: 28, width: 1, color: AppColors.sageMuda),
+          Container(height: 28, width: 1, color: AppColors.surfaceContainerHighest),
           _buildStatColumn(
             'Pengikut',
             p.followersCount.toString(),
@@ -458,7 +472,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               );
             },
           ),
-          Container(height: 28, width: 1, color: AppColors.sageMuda),
+          Container(height: 28, width: 1, color: AppColors.surfaceContainerHighest),
           _buildStatColumn(
             'Mengikuti',
             p.followingCount.toString(),
@@ -484,19 +498,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
+          style: AppTypography.titleUi(
+            fontSize: 18,
             color: AppColors.teksGelap,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(
+          style: AppTypography.labelCaption(
             fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.teksGelap.withValues(alpha: 0.65),
+            color: AppColors.onSurfaceVariant,
           ),
         ),
       ],

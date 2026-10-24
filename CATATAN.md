@@ -1471,3 +1471,89 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 3. Langkah Berikutnya
 - Melanjutkan pengujian interaktif pada emulator/HP fisik via `flutter run`.
 
+---
+
+## Perbaikan Validasi Non-Satwa (Kopi/Flora & Manusia) dan Tab Postingan Publik Profil — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Resolusi Penolakan Objek Bukan Satwa (Flora, Kopi, Manusia)**:
+  - **Akar Masalah**:
+    1. Template prompt Edge Function `ai-gateway` sebelumnya mencantumkan `"isAnimal": true` secara literal sebagai contoh skema JSON, sehingga model AI (Gemini) bias dan mereproduksi nilai `true` meskipun mengenali objek sebagai tanaman atau bukan satwa.
+    2. Secara biologi murni, manusia (*Homo sapiens*) diklasifikasikan ke dalam Kingdom Animalia / Mamalia, sehingga Gemini meloloskan foto manusia sebagai "Orang Indonesia (*Homo sapiens sapiens*)".
+  - **Perbaikan Prompt & Backend (`ai-gateway/index.ts`)**:
+    - Menetapkan aturan taksonomi ketat: HANYA fauna/satwa liar non-manusia.
+    - Menambahkan aturan larangan tegas untuk objek non-satwa (kopi, tanaman, makanan, benda mati) dan **Larangan Khusus Manusia (*Homo sapiens*)**.
+    - Menambahkan sanitasi di server: jika respons mendeteksi tanaman, memuat teks *"Foto ini tidak memuat satwa"*, atau mendeteksi *Homo sapiens*, server langsung memaksa `isAnimal: false` dan status `rejected_not_animal`.
+  - **Perbaikan Klien (`scan_result_model.dart`)**:
+    - Menambahkan deteksi cerdas untuk membatalkan `isAnimal = true` jika objek terdeteksi adalah *Homo sapiens*, manusia, atau tanaman/kopi (dengan tetap memastikan satwa liar seperti *Orangutan* tetap lolos).
+    - Menampilkan badge merah **"BUKAN SATWA"** dan kartu penolakan verifikasi AI.
+- **Resolusi Tab "Postingan Publik" di Profil Kolektor (`ProfilePage`)**:
+  - **Akar Masalah**:
+    - Tab "Postingan Publik" di `ProfilePage` sebelumnya hanya memuat widget statis placeholder (*"Belum Ada Postingan Publik"*) tanpa variabel state atau pemanggilan data postingan publik milik pengguna. Akibatnya, meskipun observasi telah dibagikan ke linimasa, tab di profil tetap kosong.
+  - **Solusi & Implementasi**:
+    - Mengintegrasikan `_myPosts` dan `_loadMyPosts()` di `ProfilePage` menggunakan `SocialService.instance.fetchUserPublicPosts(resolvedId)`.
+    - Tab "Postingan Publik" kini menampilkan daftar postingan publik dinamis via `PostCard`, tombol segarkan (*refresh*), dan *state empty* yang informatif jika belum ada postingan.
+    - Pada `CreatePostSheet`, takarir (*caption*) kini terisi otomatis dengan takarir ramah pengguna sehingga pengguna tidak terhambat validasi catatan kosong.
+    - `CollectionGridView` kini secara otomatis menyegarkan data saat kembali dari `CaptureDetailPage`.
+- **Verifikasi**:
+  - `flutter analyze`: **0 issues (bersih)**.
+  - `flutter test test/security_and_rls_test.dart`: **8/8 lulus 100% (termasuk unit test penolakan manusia dan kopi)**.
+  - `flutter test test/widget_test.dart --name "ProfilePage"`: **6/6 widget tests lulus 100%**.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- Pengujian interaksi kamera nirkabel secara langsung di HP fisik pengguna.
+
+### 3. Langkah Berikutnya
+- Konfirmasi penayangan postingan publik dan penolakan foto non-satwa pada HP fisik pengguna.
+
+---
+
+## Sesi Penyelarasan Sistem Desain Stitch & Resolusi Bug Publikasi Feed — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Penyelarasan Menyeluruh Sistem Desain Stitch (`stitch_faunova_design_system`)**:
+  - **Fondasi Tipografi Editorial (`app_typography.dart`)**:
+    - Tipografi Noto Serif untuk display editorial, nama satwa/spesies, dan nama latin ilmiah italic (`displayEditorial`, `headlineSpecies`, `subheadSpecies`).
+    - Tipografi Plus Jakarta Sans untuk UI, navigasi, metrik, dan takarir (`titleUi`, `bodyDefault`, `bodyMedium`, `bodyCompact`, `labelProminent`, `labelCaption`).
+    - Penambahan parameter opsional `letterSpacing` dan `height` pada helper tipografi.
+  - **Token Warna Stitch Naturalis (`app_colors.dart`)**:
+    - Integrasi token kontainer bertingkat: `surfaceContainerLowest` (putih solid), `surfaceContainerLow`, `surfaceContainer`, `surfaceContainerHigh`, `surfaceContainerHighest` (border 1px netral), `outlineVariant`, `onSurfaceVariant`, `errorContainer`, `onErrorContainer`, `tertiaryFixed`, `onTertiaryFixed`.
+    - Ketaatan penuh aturan keras visual `AGENTS.md`: latar gading `#F7F4ED`, sage tua `#5C7457`, emas `#C8A96B`, emas tua `#7F6326`, teks gelap `#1F2A1E`, teks putih hanya di atas sage tua, efek blur kaca hanya pada floating bottom bar.
+  - **Layar Beranda Linimasa (`feed_page.dart` & `post_card.dart`)**:
+    - Kartu feed putih solid ber-border 1px `surfaceContainerHighest`, nama satwa Noto Serif, taksonomi latin miring, pill lokasi snapped grid yang aman terhadap overflow pada layar kecil.
+  - **Layar Hasil Identifikasi Scan AI (`scan_result_page.dart` & `scan_chat_page.dart`)**:
+    - Kartu taksonomi satwa, badge keyakinan AI chip, micro-telemetry sensor (heading, elevasi, akurasi GPS), dan pill pertanyaan cepat.
+  - **Layar Profil & Detail Spesimen (`profile_page.dart`, `capture_detail_page.dart`, `public_profile_page.dart`)**:
+    - Hero card profil penjelajah naturalis, rak lencana pencapaian MVP, panel audit hash-chain SHA-256, dan strip dekoratif editorial.
+  - **Layar Kuis, Gamifikasi, dan Pencarian (`quiz_arena_page.dart`, `game_page.dart`, `search_page.dart`, `upgrade_blue_check_sheet.dart`)**:
+    - Penyelarasan arena kuis biologi, streak tracker card gradient sage tua dengan day dots, pencarian katalog spesies & akun, serta lembar pembayaran QRIS Midtrans.
+- **Penyelarasan Layar/Komponen yang Belum Masuk Rancangan Eksplisit Stitch**:
+  - **Form Publikasi Observasi (`create_post_sheet.dart`)**:
+    - Redesain modal publikasi bergaya naturalis editorial Stitch.
+    - Penanganan thumbnail universal (`http://`, `https://`, `File`, `assets/`, fallback icon) mencegah blank thumbnail.
+    - Card preview spesimen `surfaceContainerLowest` dengan border 1px `surfaceContainerHighest`, judul taksonomi Noto Serif, textarea naturalis, dan pilihan privasi lokasi (Area Kasar vs Sembunyikan).
+  - **Layar Autentikasi (`login_page.dart`, `register_page.dart`, `forgot_password_page.dart`, `verify_email_page.dart`)**:
+    - Menggantikan tampilan lama gradien hutan gelap + blur menjadi tampilan naturalis berlatar gading solid `#F7F4ED`, kartu solid `surfaceContainerLowest` dengan border 1px `surfaceContainerHighest`, emblem satwa sage tua, dan judul megah Noto Serif.
+    - Menjaga keutuhan seluruh validasi formulir dan dukungan biometrik sidik jari (Plan 74).
+  - **Layar Pengaturan & Peta (`edit_profile_sheet.dart`, `collection_map_view.dart`, `app_settings_sheet.dart`)**:
+    - Penyelarasan popup pin OpenStreetMap, input nama tampilan & bio, dan opsi preset satwa endemik.
+- **Resolusi Bug Publikasi Observasi ke Linimasa Publik**:
+  - **Akar Masalah**:
+    - Sebelumnya, ketika pengguna membagikan tangkapan dari lembar detail koleksi, `FeedPage` yang berada di dalam `IndexedStack` tidak me-refresh dirinya karena hanya memuat data di `initState()`. Akibatnya postingan baru tidak langsung muncul saat pengguna kembali ke tab Beranda.
+    - Selain itu, tangkapan baru yang belum tersinkron ke Postgres server dapat memicu error `P0002` (tangkapan tidak ditemukan di DB remote).
+  - **Solusi & Implementasi**:
+    - Ditambahkan notifikasi reaktif `onPostCreatedNotifier` pada `PostService`.
+    - `FeedPage` kini mendengarkan `onPostCreatedNotifier` secara real-time dan langsung menyisipkan postingan baru ke barisan paling atas tab "Untuk Kamu" dan "Mengikuti" tanpa perlu muat ulang manual.
+    - Ditambahkan penanganan graceful di `PostService.createPost` untuk tangkapan lokal/offline agar postingan tetap tersimpan dan tertampil mulus di feed.
+- **Verifikasi**:
+  - `flutter analyze`: **0 issues (bersih sempurna tanpa warning/error lint)**.
+  - Seluruh rangkaian pengujian widget (`test/widget_test.dart`): **100% Lulus (S1 s.d S23)**.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- Pengujian interaksi real-time di HP fisik Android saat beralih tab setelah membagikan tangkapan langsung dari kamera lapangan.
+
+### 3. Langkah Berikutnya
+- Melanjutkan pengujian langsung pada perangkat fisik melalui Wi-Fi (`flutter run`).
+
+
+

@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../models/quiz_result_model.dart';
 import '../models/quiz_session_model.dart';
@@ -281,12 +282,12 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+            border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
             boxShadow: [
               BoxShadow(
-                color: AppColors.sageTua.withValues(alpha: 0.06),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -303,7 +304,7 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                     padding: const EdgeInsets.only(right: 4),
                     child: Icon(
                       isAlive ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: isAlive ? AppColors.merahStatus : AppColors.sage.withValues(alpha: 0.5),
+                      color: isAlive ? AppColors.merahStatus : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
                       size: 22,
                     ),
                   );
@@ -324,7 +325,7 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                       const SizedBox(width: 4),
                       Text(
                         'Combo x$_combo',
-                        style: const TextStyle(
+                        style: AppTypography.labelCaption(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: AppColors.teksGelap,
@@ -338,12 +339,13 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.sageMuda.withValues(alpha: 0.5),
+                  color: AppColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.surfaceContainerHighest, width: 0.8),
                 ),
                 child: Text(
                   '$_accumulatedScore Poin',
-                  style: const TextStyle(
+                  style: AppTypography.labelCaption(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.teksGelap,
@@ -382,7 +384,7 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
           child: LinearProgressIndicator(
             value: timerProgress.clamp(0.0, 1.0),
             minHeight: 6,
-            backgroundColor: AppColors.sageMuda.withValues(alpha: 0.4),
+            backgroundColor: AppColors.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation<Color>(
               isCriticalTime ? AppColors.merahStatus : AppColors.sageTua,
             ),
@@ -395,14 +397,14 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
             boxShadow: [
               BoxShadow(
-                color: AppColors.sageTua.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
-                offset: const Offset(0, 3),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -412,26 +414,24 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.sageMuda,
+                  color: AppColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.surfaceContainerHighest, width: 0.8),
                 ),
                 child: Text(
                   currentQ.category.toUpperCase(),
-                  style: const TextStyle(
+                  style: AppTypography.labelCaption(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: AppColors.teksGelap,
+                    color: AppColors.sageTua,
                   ),
                 ),
               ),
               const SizedBox(height: 14),
               Text(
                 currentQ.question,
-                style: const TextStyle(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w700,
-                  height: 1.45,
+                style: AppTypography.headlineSpecies(
+                  fontSize: 16.5,
                   color: AppColors.teksGelap,
                 ),
               ),
@@ -455,17 +455,17 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.emas : Colors.white,
+                  color: isSelected ? AppColors.emas : AppColors.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
                         ? AppColors.emasTua
-                        : AppColors.sage.withValues(alpha: 0.35),
-                    width: isSelected ? 2.0 : 1.0,
+                        : AppColors.surfaceContainerHighest,
+                    width: isSelected ? 1.8 : 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.sageTua.withValues(alpha: isSelected ? 0.12 : 0.04),
+                      color: Colors.black.withValues(alpha: isSelected ? 0.06 : 0.02),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -477,8 +477,12 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.teksGelap : AppColors.sageMuda,
+                        color: isSelected ? AppColors.teksGelap : AppColors.surfaceContainer,
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? AppColors.teksGelap : AppColors.surfaceContainerHighest,
+                          width: 0.8,
+                        ),
                       ),
                       child: Center(
                         child: Text(
@@ -495,11 +499,10 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                     Expanded(
                       child: Text(
                         optionText,
-                        style: TextStyle(
+                        style: AppTypography.bodyMedium(
                           fontSize: 13.5,
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: AppColors.teksGelap,
-                          height: 1.35,
                         ),
                       ),
                     ),

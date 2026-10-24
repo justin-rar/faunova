@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/profile_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../models/public_profile_model.dart';
 
@@ -436,11 +437,11 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
               children: [
                 const Icon(Icons.badge_rounded, color: AppColors.sageTua, size: 22),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Edit Profil Kolektor',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
+                  style: AppTypography.headlineSpecies(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.teksGelap,
                   ),
                 ),
@@ -493,11 +494,10 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                   TextButton.icon(
                     onPressed: _showAvatarOptionsModal,
                     icon: const Icon(Icons.edit_rounded, size: 15, color: AppColors.sageTua),
-                    label: const Text(
+                    label: Text(
                       'Ubah Foto / Avatar Satwa',
-                      style: TextStyle(
+                      style: AppTypography.labelProminent(
                         color: AppColors.sageTua,
-                        fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
@@ -511,18 +511,18 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.merahStatus.withValues(alpha: 0.12),
+                  color: AppColors.errorContainer,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.merahStatus.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.merahStatus),
+                    const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.onErrorContainer),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.merahStatus),
+                        style: AppTypography.bodyCompact(fontSize: 12, color: AppColors.onErrorContainer),
                       ),
                     ),
                   ],
@@ -532,28 +532,30 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
             ],
 
             // Input Nama Tampilan
-            const Text(
+            Text(
               'Nama Tampilan',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
+              style: AppTypography.labelProminent(fontSize: 12.5, color: AppColors.teksGelap),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _nameController,
               onChanged: (_) => setState(() {}),
               maxLength: 60,
+              style: AppTypography.bodyMedium(fontSize: 14, color: AppColors.teksGelap),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: AppColors.surfaceContainerLowest,
                 hintText: 'Nama lengkap Anda',
+                hintStyle: AppTypography.bodyMedium(fontSize: 13, color: AppColors.onSurfaceVariant),
                 counterText: '',
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.sageMuda),
+                  borderSide: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.sageMuda.withValues(alpha: 0.8)),
+                  borderSide: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -564,26 +566,25 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
             const SizedBox(height: 14),
 
             // Username (Read-only dengan penjelasan)
-            const Text(
+            Text(
               'Nama Pengguna (@username)',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
+              style: AppTypography.labelProminent(fontSize: 12.5, color: AppColors.teksGelap),
             ),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.sageMuda.withValues(alpha: 0.6)),
+                border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
               ),
               child: Row(
                 children: [
                   Text(
                     '@${widget.initialProfile.username}',
-                    style: TextStyle(
+                    style: AppTypography.labelProminent(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.teksGelap.withValues(alpha: 0.65),
+                      color: AppColors.onSurfaceVariant,
                     ),
                   ),
                   const Spacer(),
@@ -594,32 +595,34 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
             const SizedBox(height: 4),
             Text(
               'Nama pengguna permanen demi validitas riwayat hash rantai observasi.',
-              style: TextStyle(fontSize: 11, color: AppColors.teksGelap.withValues(alpha: 0.6)),
+              style: AppTypography.bodyCompact(fontSize: 11, color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 14),
 
             // Input Bio / Catatan Lapangan
-            const Text(
+            Text(
               'Bio / Minat Satwa',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
+              style: AppTypography.labelProminent(fontSize: 12.5, color: AppColors.teksGelap),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _bioController,
               maxLines: 3,
               maxLength: 300,
+              style: AppTypography.bodyMedium(fontSize: 13, color: AppColors.teksGelap),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: AppColors.surfaceContainerLowest,
                 hintText: 'Tuliskan sedikit tentang minat konservasi atau observasi Anda...',
+                hintStyle: AppTypography.bodyMedium(fontSize: 12.5, color: AppColors.onSurfaceVariant),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.sageMuda),
+                  borderSide: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.sageMuda.withValues(alpha: 0.8)),
+                  borderSide: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -643,11 +646,11 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                   ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.teksGelap),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teksGelap),
                     )
-                  : const Text(
+                  : Text(
                       'Simpan Perubahan',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+                      style: AppTypography.labelProminent(fontSize: 14, color: AppColors.teksGelap),
                     ),
             ),
           ],

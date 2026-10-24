@@ -440,17 +440,31 @@ serve(async (req: Request) => {
       // Hitung SHA-256 byte foto
       const photoSha256 = await calculateSha256(imageBase64);
 
-      // Prompt identifikasi satwa Faunova
+      // Prompt identifikasi satwa Faunova (Validasi Ketat Fauna / Animalia Non-Manusia)
       const prompt =
-        "Kamu adalah pakar zoologi dan taksonomi fauna Indonesia untuk aplikasi Faunova. " +
-        "Analisis gambar berikut secara cermat. Tentukan apakah gambar ini menampilkan satwa/hewan nyata atau bukan. " +
-        "Kembalikan jawaban HANYA berupa JSON valid sesuai skema berikut tanpa teks pembuka atau penutup:\n" +
+        "Kamu adalah pakar zoologi dan taksonomi fauna Indonesia untuk aplikasi Faunova.\n" +
+        "TUGAS UTAMA: Tentukan apakah gambar ini memuat satwa/hewan nyata (Kingdom Animalia NON-MANUSIA) hidup atau BUKAN.\n\n" +
+        "ATURAN KLASIFIKASI KETAT:\n" +
+        "1. Objek berikut BUKAN HEWAN/SATWA: tanaman, pohon, kopi, teh, bunga, daun, buah, sayuran, makanan, minuman, benda mati, perabotan, kendaraan, mainan/boneka, gambar kartun/sketsa/logo, kemasan, atau foto layar.\n" +
+        "2. LARANGAN KERAS MANUSIA: Manusia (Homo sapiens, orang, wajah manusia, selfie, tubuh manusia) DILARANG KERAS diidentifikasi sebagai satwa Faunova! Meskipun secara biologi manusia termasuk mamalia/Animalia, aplikasi Faunova HANYA untuk satwa/fauna liar atau peliharaan non-manusia. Jika gambar memuat manusia atau wajah manusia, kamu WAJIB menetapkan \"isAnimal\": false, \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\": \"Foto memuat manusia (Homo sapiens). Faunova khusus untuk satwa liar dan fauna non-manusia.\"\n" +
+        "3. Jika gambar adalah objek BUKAN HEWAN di atas (misal: kopi/minuman/tanaman/benda mati/manusia), kamu WAJIB menetapkan \"isAnimal\": false, \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\": \"Foto ini tidak memuat satwa\". DILARANG MENGISI nama tanaman/benda/manusia ke kolom name!\n" +
+        "4. HANYA jika gambar BENAR-BENAR MENAMPILKAN HEWAN NYATA NON-MANUSIA (mamalia non-manusia, burung, reptil, amfibi, ikan, serangga, arachnida, moluska), tetapkan \"isAnimal\": true, isi nama umum satwa, nama ilmiah latin, deskripsi, dan fakta uniknya.\n\n" +
+        "Format respon JSON:\n" +
+        "Jika BUKAN satwa / Manusia:\n" +
+        "{\n" +
+        '  "isAnimal": false,\n' +
+        '  "name": null,\n' +
+        '  "categoryOrSpecies": null,\n' +
+        '  "description": null,\n' +
+        '  "additionalFact": "Foto ini tidak memuat satwa"\n' +
+        "}\n" +
+        "Jika SATWA NON-MANUSIA:\n" +
         "{\n" +
         '  "isAnimal": true,\n' +
-        '  "name": "Nama umum satwa dalam bahasa Indonesia (atau null jika bukan hewan)",\n' +
-        '  "categoryOrSpecies": "Nama ilmiah / taksonomi genus & spesies (atau null jika bukan hewan)",\n' +
-        '  "description": "Deskripsi singkat ciri fisik, habitat, dan status konservasi (atau null jika bukan hewan)",\n' +
-        '  "additionalFact": "Fakta unik satwa ini (atau pesan: Foto ini tidak memuat satwa)"\n' +
+        '  "name": "Nama satwa dalam bahasa Indonesia",\n' +
+        '  "categoryOrSpecies": "Nama ilmiah latin (Genus species)",\n' +
+        '  "description": "Deskripsi singkat ciri fisik, habitat, dan status konservasi",\n' +
+        '  "additionalFact": "Fakta unik satwa ini"\n' +
         "}";
 
       let parsedResult: any = null;
@@ -532,6 +546,56 @@ serve(async (req: Request) => {
         parsedResult = extractCleanJson(rawJsonText);
       }
 
+      // Sanitasi & Validasi ketat hasil isAnimal di sisi server
+      let isAnimal = parsedResult?.isAnimal === true;
+      const additionalFactStr = String(parsedResult?.additionalFact || "").toLowerCase();
+      const descStr = String(parsedResult?.description || "").toLowerCase();
+      const nameStr = String(parsedResult?.name || "").toLowerCase();
+      const speciesStr = String(parsedResult?.categoryOrSpecies || "").toLowerCase();
+
+      // Periksa manusia (Homo sapiens, orang, selfie)
+      const isHuman =
+        speciesStr.includes("homo sapiens") ||
+        speciesStr.startsWith("homo ") ||
+        nameStr.includes("manusia") ||
+        (nameStr.includes("orang") && !nameStr.includes("utan") && !nameStr.includes("hutan")) ||
+        descStr.includes("spesies manusia") ||
+        descStr.includes("manusia modern") ||
+        descStr.includes("homo sapiens");
+
+      // Periksa flora / tanaman / makanan
+      const isFlora =
+        descStr.includes("tanaman") ||
+        descStr.includes("tumbuhan") ||
+        nameStr.includes("kopi") ||
+        nameStr.includes("teh") ||
+        speciesStr.includes("coffea");
+
+      // Periksa penolakan eksplisit dari AI
+      const isExplicitlyRejected =
+        additionalFactStr.includes("tidak memuat satwa") ||
+        additionalFactStr.includes("bukan satwa") ||
+        additionalFactStr.includes("bukan hewan") ||
+        !parsedResult?.name ||
+        nameStr === "null";
+
+      if (isHuman || isFlora || isExplicitlyRejected) {
+        isAnimal = false;
+        if (parsedResult) {
+          parsedResult.isAnimal = false;
+          parsedResult.name = null;
+          parsedResult.categoryOrSpecies = null;
+          parsedResult.description = null;
+          if (isHuman) {
+            parsedResult.additionalFact = "Foto memuat manusia (Homo sapiens). Faunova khusus untuk katalog satwa dan fauna non-manusia.";
+          } else if (isFlora) {
+            parsedResult.additionalFact = "Foto memuat flora/tanaman atau makanan/minuman, bukan satwa.";
+          } else {
+            parsedResult.additionalFact = "Foto ini tidak memuat satwa.";
+          }
+        }
+      }
+
       // Jika tidak menggunakan RPC reservation, update counter sekarang
       if (!usedRpcReservation) {
         await adminClient.from("daily_scan_usage").upsert(
@@ -553,7 +617,7 @@ serve(async (req: Request) => {
           ? "reported_not_mock"
           : "unknown";
 
-      const scanStatus = parsedResult.isAnimal
+      const scanStatus = isAnimal
         ? "completed"
         : "rejected_not_animal";
 
@@ -563,7 +627,7 @@ serve(async (req: Request) => {
           user_id: user.id,
           request_id: requestId || crypto.randomUUID(),
           status: scanStatus,
-          is_animal: parsedResult.isAnimal,
+          is_animal: isAnimal,
           result: parsedResult,
           photo_sha256: photoSha256,
           latitude: latitude ?? null,
@@ -592,7 +656,7 @@ serve(async (req: Request) => {
         JSON.stringify({
           scanId: newScan.id,
           status: scanStatus,
-          isAnimal: parsedResult.isAnimal,
+          isAnimal: isAnimal,
           result: parsedResult,
           photoSha256: photoSha256,
           quotaUsed: currentCount + 1,

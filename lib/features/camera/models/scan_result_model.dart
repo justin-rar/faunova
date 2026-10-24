@@ -55,17 +55,73 @@ class ScanResultModel {
         ? json['result'] as Map<String, dynamic>
         : <String, dynamic>{};
 
-    final isAnimalValue = json['isAnimal'] == true || resultObj['isAnimal'] == true;
+    final rawFact = (resultObj['additionalFact'] ?? json['additionalFact'])
+            ?.toString()
+            .toLowerCase() ??
+        '';
+    final rawDesc = (resultObj['description'] ?? json['description'])
+            ?.toString()
+            .toLowerCase() ??
+        '';
+    final rawName = (resultObj['name'] ?? json['name'])
+            ?.toString()
+            .toLowerCase() ??
+        '';
+    final rawSpecies = (resultObj['categoryOrSpecies'] ?? json['categoryOrSpecies'])
+            ?.toString()
+            .toLowerCase() ??
+        '';
+
+    // Filter anti-salah klasifikasi:
+    // 1. Manusia (Homo sapiens, orang, wajah manusia, selfie)
+    final isHuman = rawSpecies.contains('homo sapiens') ||
+        rawSpecies.contains('homo sapiens sapiens') ||
+        rawSpecies.startsWith('homo ') ||
+        rawName.contains('manusia') ||
+        (rawName.contains('orang') && !rawName.contains('utan') && !rawName.contains('hutan')) ||
+        rawDesc.contains('spesies manusia') ||
+        rawDesc.contains('manusia modern') ||
+        rawDesc.contains('homo sapiens');
+
+    // 2. Tanaman / flora / makanan / minuman
+    final isFloraOrItem = rawDesc.contains('tanaman') ||
+        rawDesc.contains('tumbuhan') ||
+        rawName.contains('kopi') ||
+        rawName.contains('teh') ||
+        rawSpecies.contains('coffea');
+
+    // 3. Teks penolakan eksplisit dari AI
+    final isExplicitlyRejected = rawFact.contains('tidak memuat satwa') ||
+        rawFact.contains('bukan satwa') ||
+        rawFact.contains('bukan hewan');
+
+    final isExplicitlyNonAnimal = isHuman || isFloraOrItem || isExplicitlyRejected;
+
+    final isAnimalValue = !isExplicitlyNonAnimal &&
+        (json['isAnimal'] == true || resultObj['isAnimal'] == true);
+
+    final statusValue = isAnimalValue
+        ? (json['status']?.toString() ?? 'completed')
+        : 'rejected_not_animal';
+
+    String? finalFact = resultObj['additionalFact']?.toString() ?? json['additionalFact']?.toString();
+    if (isHuman) {
+      finalFact = 'Objek terdeteksi adalah manusia (Homo sapiens). Aplikasi Faunova khusus untuk katalog satwa dan fauna non-manusia.';
+    } else if (isFloraOrItem && (finalFact == null || !finalFact.toLowerCase().contains('bukan satwa'))) {
+      finalFact = 'Objek terdeteksi berupa flora, makanan/minuman, atau benda mati, bukan satwa/hewan nyata.';
+    }
 
     return ScanResultModel(
       scanId: json['scanId']?.toString() ?? '',
       requestId: requestId ?? json['requestId']?.toString() ?? '',
-      status: json['status']?.toString() ?? (isAnimalValue ? 'completed' : 'rejected_not_animal'),
+      status: statusValue,
       isAnimal: isAnimalValue,
-      name: resultObj['name']?.toString() ?? json['name']?.toString(),
-      categoryOrSpecies: resultObj['categoryOrSpecies']?.toString() ?? json['categoryOrSpecies']?.toString(),
-      description: resultObj['description']?.toString() ?? json['description']?.toString(),
-      additionalFact: resultObj['additionalFact']?.toString() ?? json['additionalFact']?.toString(),
+      name: isAnimalValue ? (resultObj['name']?.toString() ?? json['name']?.toString()) : null,
+      categoryOrSpecies: isAnimalValue ? (resultObj['categoryOrSpecies']?.toString() ?? json['categoryOrSpecies']?.toString()) : null,
+      description: isAnimalValue
+          ? (resultObj['description']?.toString() ?? json['description']?.toString())
+          : (isHuman ? 'Verifikasi ditolak: Objek foto adalah manusia. Silakan arahkan kamera ke satwa liar atau hewan peliharaan.' : (resultObj['description']?.toString() ?? 'Objek bukan satwa.')),
+      additionalFact: finalFact,
       photoSha256: json['photoSha256']?.toString(),
       latitude: latitude ?? (json['latitude'] != null ? (json['latitude'] as num).toDouble() : null),
       longitude: longitude ?? (json['longitude'] != null ? (json['longitude'] as num).toDouble() : null),

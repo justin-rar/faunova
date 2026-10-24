@@ -3,12 +3,16 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/badge_service.dart';
 import '../../../core/services/capture_service.dart';
 import '../../../core/services/profile_service.dart';
+import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
+import '../../feed/models/post_model.dart';
+import '../../feed/presentation/widgets/post_card.dart';
 import '../models/badge_model.dart';
 import '../models/public_profile_model.dart';
 import 'widgets/badge_celebration_dialog.dart';
@@ -37,8 +41,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   List<CaptureModel> _captures = [];
   PublicProfileModel? _myProfile;
   List<BadgeModel> _badges = [];
+  List<PostModel> _myPosts = [];
   bool _isLoadingCaptures = false;
   bool _isLoadingBadges = false;
+  bool _isLoadingPosts = false;
   String? _capturesError;
   int _collectionMode = 0; // 0: Grid Koleksi, 1: Peta Persebaran
   bool _isVerifyingChain = false;
@@ -50,11 +56,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
+        if (_tabController.index == 0) {
+          _loadMyPosts();
+        }
       }
     });
     _loadCaptures();
     _loadProfile();
     _loadBadges();
+    _loadMyPosts();
   }
 
   Future<void> _loadBadges() async {
@@ -89,8 +99,36 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         setState(() {
           _myProfile = p;
         });
+        _loadMyPosts();
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadMyPosts() async {
+    String? resolvedId = _myProfile?.id;
+    if (resolvedId == null) {
+      try {
+        final p = await ProfileService.instance.getMyProfile();
+        resolvedId = p.id;
+      } catch (_) {
+        resolvedId = '00000000-0000-0000-0000-000000000001';
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoadingPosts = true);
+
+    try {
+      final posts = await SocialService.instance.fetchUserPublicPosts(resolvedId);
+      if (mounted) {
+        setState(() {
+          _myPosts = posts;
+          _isLoadingPosts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingPosts = false);
+    }
   }
 
   void _showEditProfileSheet() {
@@ -344,6 +382,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _loadCaptures();
           _loadProfile();
           _loadBadges();
+          _loadMyPosts();
         },
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
@@ -391,9 +430,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -401,10 +447,17 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         children: [
           Row(
             children: [
-              AppAvatar(
-                avatarPath: _myProfile?.avatarPath,
-                displayName: displayName,
-                radius: 34,
+              Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: const BoxDecoration(
+                  color: AppColors.sageTua,
+                  shape: BoxShape.circle,
+                ),
+                child: AppAvatar(
+                  avatarPath: _myProfile?.avatarPath,
+                  displayName: displayName,
+                  radius: 32,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -416,9 +469,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                         Flexible(
                           child: Text(
                             displayName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                            style: AppTypography.headlineSpecies(
+                              fontSize: 17,
                               color: AppColors.teksGelap,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -430,14 +482,23 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                         ],
                       ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       '@$username',
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.teksGelap, fontWeight: FontWeight.w500),
+                      style: AppTypography.bodyCompact(
+                        fontSize: 12.5,
+                        color: AppColors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 3),
-                    const Text(
-                      'Kolektor Satwa Wallacea',
-                      style: TextStyle(fontSize: 11.5, color: AppColors.emasTua, fontWeight: FontWeight.w600),
+                    Text(
+                      'Naturalis Lapangan Indonesia',
+                      style: AppTypography.labelCaption(
+                        fontSize: 11,
+                        color: AppColors.emasTua,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -447,68 +508,80 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           const SizedBox(height: 12),
           Text(
             bioText,
-            style: TextStyle(
+            style: AppTypography.bodyCompact(
               fontSize: 12.5,
-              height: 1.4,
-              color: AppColors.teksGelap.withValues(alpha: 0.9),
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _showEditProfileSheet,
-            icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.teksGelap),
-            label: const Text(
-              'Edit Profil',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.teksGelap),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.sage, width: 1.2),
-              backgroundColor: Colors.white.withValues(alpha: 0.6),
-              minimumSize: const Size(double.infinity, 36),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              color: AppColors.teksGelap,
             ),
           ),
           const SizedBox(height: 14),
-          const Divider(height: 1, color: AppColors.sage),
+          // Baris 4 Metrik Taktis
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _MetricItem(label: 'Koleksi', value: '${_captures.length}'),
+                _MetricItem(label: 'Postingan', value: '${_myProfile?.postsCount ?? 0}'),
+                _MetricItem(
+                  label: 'Pengikut',
+                  value: '${_myProfile?.followersCount ?? 0}',
+                  onTap: () {
+                    final p = _myProfile;
+                    if (p == null) return;
+                    FollowListSheet.show(
+                      context,
+                      userId: p.id,
+                      displayName: displayName,
+                      username: username,
+                      initialTab: FollowTab.followers,
+                      onFollowStatusChanged: _loadProfile,
+                    );
+                  },
+                ),
+                _MetricItem(
+                  label: 'Mengikuti',
+                  value: '${_myProfile?.followingCount ?? 0}',
+                  onTap: () {
+                    final p = _myProfile;
+                    if (p == null) return;
+                    FollowListSheet.show(
+                      context,
+                      userId: p.id,
+                      displayName: displayName,
+                      username: username,
+                      initialTab: FollowTab.following,
+                      onFollowStatusChanged: _loadProfile,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _MetricItem(label: 'Koleksi', value: '${_captures.length}'),
-              _MetricItem(label: 'Postingan', value: '${_myProfile?.postsCount ?? 0}'),
-              _MetricItem(
-                label: 'Pengikut',
-                value: '${_myProfile?.followersCount ?? 0}',
-                onTap: () {
-                  final p = _myProfile;
-                  if (p == null) return;
-                  FollowListSheet.show(
-                    context,
-                    userId: p.id,
-                    displayName: displayName,
-                    username: username,
-                    initialTab: FollowTab.followers,
-                    onFollowStatusChanged: _loadProfile,
-                  );
-                },
+          SizedBox(
+            width: double.infinity,
+            height: 38,
+            child: OutlinedButton.icon(
+              onPressed: _showEditProfileSheet,
+              icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.teksGelap),
+              label: Text(
+                'Edit Profil',
+                style: AppTypography.titleUi(
+                  fontSize: 12.5,
+                  color: AppColors.teksGelap,
+                ),
               ),
-              _MetricItem(
-                label: 'Mengikuti',
-                value: '${_myProfile?.followingCount ?? 0}',
-                onTap: () {
-                  final p = _myProfile;
-                  if (p == null) return;
-                  FollowListSheet.show(
-                    context,
-                    userId: p.id,
-                    displayName: displayName,
-                    username: username,
-                    initialTab: FollowTab.following,
-                    onFollowStatusChanged: _loadProfile,
-                  );
-                },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1),
+                backgroundColor: AppColors.surfaceContainer,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -607,9 +680,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -618,12 +698,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Lencana Gelar Pencapaian (MVP)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
+                  style: AppTypography.titleUi(
+                    fontSize: 14,
                     color: AppColors.teksGelap,
                   ),
                 ),
@@ -631,22 +710,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.gading,
+                  color: AppColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.emas.withValues(alpha: 0.5), width: 1),
+                  border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
                 ),
                 child: Text(
-                  '$unlockedCount / ${_badges.length} Terbuka',
-                  style: const TextStyle(
+                  '$unlockedCount dari ${_badges.length} Terbuka',
+                  style: AppTypography.labelCaption(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.emasTua,
+                    color: AppColors.onSurfaceVariant,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           if (_badges.isEmpty && _isLoadingBadges)
             const Center(
@@ -689,73 +768,80 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: badge.isUnlocked ? AppColors.sageTua : AppColors.gading,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: badge.isUnlocked ? AppColors.emas : AppColors.sage.withValues(alpha: 0.35),
-                    width: 1.8,
-                  ),
-                  boxShadow: badge.isUnlocked
-                      ? [
-                          BoxShadow(
-                            color: AppColors.emas.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Icon(
-                  badge.isUnlocked ? iconData : Icons.lock_outline_rounded,
-                  size: 22,
-                  color: badge.isUnlocked ? AppColors.emas : AppColors.sage,
-                ),
-              ),
-              if (!badge.isUnlocked)
-                Positioned(
-                  bottom: -2,
-                  right: -2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.teksGelap,
-                      borderRadius: BorderRadius.circular(6),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: badge.isUnlocked
+                        ? AppColors.secondaryContainer
+                        : AppColors.surfaceContainer,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: badge.isUnlocked
+                          ? AppColors.emas
+                          : AppColors.surfaceContainerHighest,
+                      width: 1.5,
                     ),
-                    child: Text(
-                      '${badge.currentProgress}/${badge.targetCount}',
-                      style: const TextStyle(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                    boxShadow: badge.isUnlocked
+                        ? [
+                            BoxShadow(
+                              color: AppColors.emas.withValues(alpha: 0.25),
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      badge.isUnlocked ? iconData : Icons.lock_outline_rounded,
+                      size: 22,
+                      color: badge.isUnlocked
+                          ? AppColors.onSecondaryFixed
+                          : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                if (!badge.isUnlocked)
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${badge.currentProgress}/${badge.targetCount}',
+                        style: AppTypography.labelCaption(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.teksGelap,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            badge.name,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: badge.isUnlocked ? FontWeight.w700 : FontWeight.w500,
-              color: badge.isUnlocked ? AppColors.teksGelap : AppColors.sage,
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              badge.name,
+              style: AppTypography.labelCaption(
+                fontSize: 10,
+                color: badge.isUnlocked ? AppColors.teksGelap : AppColors.onSurfaceVariant,
+                fontWeight: badge.isUnlocked ? FontWeight.w700 : FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
 }
 
   Future<void> _loadCaptures() async {
@@ -981,25 +1067,57 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   Widget _buildSubTabsSection() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TabBar(
-            controller: _tabController,
-            indicatorColor: AppColors.sageTua,
-            indicatorWeight: 3,
-            labelColor: AppColors.teksGelap,
-            unselectedLabelColor: AppColors.sage,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-            tabs: const [
-              Tab(text: 'Postingan Publik'),
-              Tab(text: 'Koleksi & Peta'),
-            ],
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              labelColor: AppColors.teksGelap,
+              unselectedLabelColor: AppColors.onSurfaceVariant,
+              labelStyle: AppTypography.titleUi(
+                fontSize: 12.5,
+                color: AppColors.teksGelap,
+              ),
+              unselectedLabelStyle: AppTypography.bodyCompact(
+                fontSize: 12.5,
+                color: AppColors.onSurfaceVariant,
+              ),
+              tabs: const [
+                Tab(text: 'Postingan Publik'),
+                Tab(text: 'Koleksi & Peta'),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -1014,43 +1132,89 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   Widget _buildPublicPostsTab() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
-      decoration: BoxDecoration(
-        color: AppColors.gading,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.sageMuda.withValues(alpha: 0.5),
-              shape: BoxShape.circle,
+    if (_isLoadingPosts && _myPosts.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(color: AppColors.sageTua),
+      );
+    }
+
+    if (_myPosts.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+        decoration: BoxDecoration(
+          color: AppColors.gading,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.sageMuda.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.dynamic_feed_rounded, size: 36, color: AppColors.sageTua),
             ),
-            child: const Icon(Icons.dynamic_feed_rounded, size: 36, color: AppColors.sageTua),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Belum Ada Postingan Publik',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.teksGelap,
+            const SizedBox(height: 12),
+            const Text(
+              'Belum Ada Postingan Publik',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.teksGelap,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Bagikan tangkapan dari koleksi pribadi Anda ke linimasa publik Faunova melalui tombol Bagikan di detail blok koleksi.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.teksGelap.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Observasi Dipublikasikan (${_myPosts.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.teksGelap,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 18, color: AppColors.sageTua),
+              tooltip: 'Perbarui Postingan',
+              onPressed: _loadMyPosts,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ..._myPosts.map(
+          (post) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: PostCard(
+              post: post,
+              onLike: () {
+                _loadMyPosts();
+              },
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Bagikan tangkapan dari koleksi pribadi Anda ke linimasa publik Faunova di Sesi S9.',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.teksGelap.withValues(alpha: 0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

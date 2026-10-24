@@ -250,6 +250,54 @@ void main() {
       );
 
       expect(nonAnimalResult.isAnimal, isFalse);
+
+      // Uji jika AI mengembalikan Homo sapiens dengan isAnimal: true
+      final humanJson = {
+        'scanId': 'scan-human-1',
+        'isAnimal': true,
+        'result': {
+          'isAnimal': true,
+          'name': 'Orang Indonesia',
+          'categoryOrSpecies': 'Homo sapiens sapiens',
+          'description': 'Homo sapiens sapiens adalah spesies manusia modern...',
+          'additionalFact': 'Foto ini memuat satwa yang paling berbahaya di dunia.',
+        },
+      };
+      final humanResult = ScanResultModel.fromJson(humanJson);
+      expect(humanResult.isAnimal, isFalse);
+      expect(humanResult.status, 'rejected_not_animal');
+
+      // Uji jika AI mengembalikan Tanaman Kopi dengan isAnimal: true
+      final coffeeJson = {
+        'scanId': 'scan-coffee-1',
+        'isAnimal': true,
+        'result': {
+          'isAnimal': true,
+          'name': 'Kopi',
+          'categoryOrSpecies': 'Coffea arabica',
+          'description': 'Kopi adalah tanaman perdu yang berasal dari Afrika Timur.',
+          'additionalFact': 'Foto ini tidak memuat satwa',
+        },
+      };
+      final coffeeResult = ScanResultModel.fromJson(coffeeJson);
+      expect(coffeeResult.isAnimal, isFalse);
+      expect(coffeeResult.status, 'rejected_not_animal');
+
+      // Pastikan Orangutan (bukan manusia) tetap lolos
+      final orangutanJson = {
+        'scanId': 'scan-orangutan-1',
+        'isAnimal': true,
+        'result': {
+          'isAnimal': true,
+          'name': 'Orangutan Kalimantan',
+          'categoryOrSpecies': 'Pongo pygmaeus',
+          'description': 'Spesies kera besar endemik pulau Kalimantan.',
+          'additionalFact': 'Memiliki kecerdasan tinggi dan pembuat sarang pohon.',
+        },
+      };
+      final orangutanResult = ScanResultModel.fromJson(orangutanJson);
+      expect(orangutanResult.isAnimal, isTrue);
+      expect(orangutanResult.name, 'Orangutan Kalimantan');
     });
 
     // -------------------------------------------------------------------------

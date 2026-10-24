@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><title>Faunova</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,600;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-surface": "#1c1c18", "on-tertiary": "#ffffff", "surface-container-high": "#ebe8e1", "tertiary-fixed-dim": "#b8ccb2", "inverse-on-surface": "#f3f0e9", "on-primary": "#ffffff", "surface-bright": "#fcf9f2", "on-primary-fixed": "#0b200a", "on-secondary-fixed-variant": "#5a430f", "on-secondary-container": "#785f29", "background": "#fcf9f2", "surface-dim": "#dcdad3", "surface": "#fcf9f2", "surface-variant": "#e5e2db", "outline-variant": "#c3c8be", "primary": "#445b40", "outline": "#747970", "surface-container-lowest": "#ffffff", "surface-container": "#f0eee7", "surface-container-low": "#f6f3ec", "secondary-fixed": "#ffdea0", "tertiary-fixed": "#d4e8ce", "on-error": "#ffffff", "on-tertiary-fixed-variant": "#3a4b38", "surface-tint": "#4d6449", "on-error-container": "#93000a", "on-background": "#1c1c18", "secondary": "#735b25", "inverse-surface": "#31312c", "primary-fixed-dim": "#b3ceac", "surface-container-highest": "#e5e2db", "error-container": "#ffdad6", "on-primary-container": "#def9d5", "on-tertiary-container": "#e3f7dc", "on-tertiary-fixed": "#101f0f", "primary-fixed": "#cfeac7", "on-surface-variant": "#434841", "inverse-primary": "#b3ceac", "error": "#ba1a1a", "secondary-fixed-dim": "#e3c282", "on-secondary": "#ffffff", "primary-container": "#5c7457", "on-primary-fixed-variant": "#364c32", "secondary-container": "#fedb99", "on-secondary-fixed": "#261a00", "tertiary": "#495a46", "tertiary-container": "#61735d" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-md": "1rem", "space-sm": "0.5rem", "gutter": "1rem", "margin": "1rem", "space-xs": "0.25rem", "space-lg": "1.5rem", "space-xl": "2rem" }, "fontFamily": { "body-compact": ["Plus Jakarta Sans"], "body-medium": ["Plus Jakarta Sans"], "label-prominent": ["Plus Jakarta Sans"], "headline-species": ["Noto Serif"], "subhead-species": ["Noto Serif"], "label-caption": ["Plus Jakarta Sans"], "display-editorial": ["Noto Serif"], "body-default": ["Plus Jakarta Sans"], "title-ui": ["Plus Jakarta Sans"] }, "fontSize": { "body-compact": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "body-medium": ["15px", { "lineHeight": "22px", "fontWeight": "500" }], "label-prominent": ["13px", { "lineHeight": "16px", "fontWeight": "600" }], "headline-species": ["22px", { "lineHeight": "28px", "fontWeight": "600" }], "subhead-species": ["16px", { "lineHeight": "22px", "fontWeight": "400" }], "label-caption": ["11px", { "lineHeight": "14px", "fontWeight": "500" }], "display-editorial": ["30px", { "lineHeight": "38px", "fontWeight": "600" }], "body-default": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "title-ui": ["18px", { "lineHeight": "24px", "fontWeight": "700" }] } } } };</script><style>@layer base { html, body { width: 100vw; margin: 0; padding: 0; } body { overscroll-behavior: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style></head><body class="bg-surface font-body-default text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary text-[22px]">eco</span><span class="font-title-ui text-title-ui text-on-surface tracking-tight">Profil</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-28 bg-surface px-margin"><div class="flex flex-col w-full relative">
+<!-- Sub-header Profil / Koleksi -->
+<div class="flex items-center justify-between py-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-ui text-title-ui text-primary">Koleksi Saya</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<div class="flex items-center gap-space-xs">
+<!-- Tombol Peta Koleksi -->
+<button class="flex items-center gap-1 bg-surface-container-high text-on-surface px-2.5 py-1.5 rounded-lg border border-outline-variant/40 transition-colors active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">location_on</span>
+<span class="font-label-caption text-label-caption font-semibold">Peta</span>
+</button>
+<!-- Tombol Verifikasi Rantai -->
+<button class="flex items-center gap-1 bg-surface-container-lowest text-on-surface px-2.5 py-1.5 rounded-lg border border-outline-variant/50 transition-colors active:scale-95 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label-caption text-label-caption font-medium">Verifikasi</span>
+</button>
+</div>
+</div>
+<!-- Segmented Control Switcher -->
+<div class="mt-space-sm p-1 rounded-xl bg-surface-container flex items-center justify-between">
+<button class="flex-1 py-1.5 text-center rounded-lg font-body-compact text-body-compact text-on-surface-variant/70 transition-all" type="button">
+      Postingan
+    </button>
+<button class="flex-1 py-1.5 text-center rounded-lg font-label-prominent text-label-prominent bg-primary-container text-on-primary shadow-sm transition-all flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[15px]">auto_stories</span>
+<span>Koleksi</span>
+</button>
+</div>
+<!-- Statistik Ringkas Field Note -->
+<div class="flex items-center justify-between my-space-sm px-1">
+<div class="flex items-center gap-2">
+<span class="font-label-prominent text-label-prominent text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">compost</span> 34 Spesies Terdata
+      </span>
+<span class="text-outline-variant text-[12px]">•</span>
+<span class="font-label-caption text-label-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">near_me</span> 28 Titik Jawa
+      </span>
+</div>
+<span class="font-label-caption text-label-caption text-secondary font-semibold bg-secondary-container/50 px-2 py-0.5 rounded-full">
+      Arsip Privat
+    </span>
+</div>
+<!-- 2-Column Grid Koleksi Masonry-like -->
+<div class="grid grid-cols-2 gap-space-sm mb-space-lg">
+<!-- Card 1: Bunglon Surai -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 shadow-sm transition-transform active:scale-[0.98]">
+<div class="relative w-full aspect-[4/5] overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A macro photo of an emerald green crested lizard Bronchocela jubata resting on a wild mossy branch in Mount Merapi forest, warm dappled natural sunlight, soft natural bokeh, organic field-guide photograph" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNsjnF9gmAgq077W1W8-eAl1mG-CFrbSpa8IFwNbi5HsOeVtc26GWtfrC7iOxts6jGKT-22pflg1gbbLl-8e25_9FtPKwCVjMbZ6x3qVknbxpAG8t1m5ePLaejbcdrmNDlGjzyz6tK6lMbFMIn8lC4UTLR_uYQyahyYJ5boFoHZZOzB2WZ4cplXs_tZSOEeHkujj48RT149gs0rxe07dLdyVSS_UNd5uTFIJZrJxLqZrlDCSP0yDRW"/>
+<div class="absolute top-2 left-2 bg-surface/85 backdrop-blur-sm px-2 py-0.5 rounded-md text-[10px] font-label-caption text-on-surface font-semibold flex items-center gap-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Terverifikasi
+        </div>
+</div>
+<div class="p-2.5 flex flex-col justify-between">
+<div>
+<h4 class="font-headline-species text-[13px] leading-tight text-on-surface font-bold truncate">Bunglon Surai</h4>
+<p class="font-subhead-species text-[11px] text-primary italic truncate">Bronchocela jubata</p>
+</div>
+<p class="font-label-caption text-label-caption text-outline mt-1.5">14 Mei 2024</p>
+</div>
+</div>
+<!-- Card 2: Kupu Sayap Renda -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 shadow-sm transition-transform active:scale-[0.98]">
+<div class="relative w-full aspect-[4/5] overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Close-up macro photography of Malay Lacewing butterfly Cethosia hypsea with vibrant orange and intricate black-white filigree wing patterns on a tropical forest blossom in West Java, high botanical clarity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQjjjtCXKS4pBbtBqciWaM1NFuCBQX1KUU5r9yxYYWk-Co9U7tN4AwMVRtUX6KqMEMRYW82-zp8c-FC6mk59xqOso6zVuOzCjIBUl64WZ1mTn3onREPxmWZsm8z8DvbhYU-PRSlHXg7xe4Yde1DNhCg4pP_DyqRtefCMPaAdmklSqs_58j_wWGdf5IdJ7LgdPXPfKNiEpZtRt4x8h1SorOb3vT0n3fNVe4F8T_CPNe4ggvL1elUqJn"/>
+<div class="absolute top-2 right-2 bg-surface/85 backdrop-blur-sm p-1 rounded-md text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[13px] text-secondary">lock</span>
+</div>
+</div>
+<div class="p-2.5 flex flex-col justify-between">
+<div>
+<h4 class="font-headline-species text-[13px] leading-tight text-on-surface font-bold truncate">Kupu Sayap Renda</h4>
+<p class="font-subhead-species text-[11px] text-primary italic truncate">Cethosia hypsea</p>
+</div>
+<p class="font-label-caption text-label-caption text-outline mt-1.5">12 Mei 2024</p>
+</div>
+</div>
+<!-- Card 3: Katak Pohon Jawa -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 shadow-sm transition-transform active:scale-[0.98]">
+<div class="relative w-full aspect-[4/5] overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A delicate striped tree frog Polypedates leucomystax clinging to a moist bamboo shoot in rain-soaked undergrowth of Mount Lawu, dew drops, warm diffused lighting, natural history journal aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBd6zsMqgurKnw9tgupvvGBjCUoV68wESVDWttpEefw0-QDVV54Be7ZNCGiSt6vtfx5INvgJ8Hz1aUgkpnzh0EcLg8AKkQZOLUAUO3a8Utcu54TPoOoE85LyPhNuWxiXJ-dsegmarZbuj4W5rS6bb5Vm91-w0dgESnix4trzR8KqCnRSogXFTJaIuAKc0ZapBYBTFqeTtqOGHLTobzvPxjKeWyRcagAy4WI04tFip_QbkMB5O6DNq0y"/>
+</div>
+<div class="p-2.5 flex flex-col justify-between">
+<div>
+<h4 class="font-headline-species text-[13px] leading-tight text-on-surface font-bold truncate">Katak Pohon Jawa</h4>
+<p class="font-subhead-species text-[11px] text-primary italic truncate">Polypedates leucomystax</p>
+</div>
+<p class="font-label-caption text-label-caption text-outline mt-1.5">8 Mei 2024</p>
+</div>
+</div>
+<!-- Card 4: Belalang Sembah -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 shadow-sm transition-transform active:scale-[0.98]">
+<div class="relative w-full aspect-[4/5] overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Magnified nature photo of praying mantis leaf mimic in defensive posture on lush tropical fern leaf in Ujung Kulon rainforest, rich chlorophyll tones and soft sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8h0pgJs8HwsxhNJhWvMwomaT5tqjyKjVWxbjJODpuoczc7ej7bZZgK-JsJTl-ZsqxQei18B99UtBFfkekv82xo1Jnz0MaHdz7ubwvpOcDPPXIhAkVGP8EJJpmBU6wM4fSd8QcZxExgl8em26_xNrBmpqluwvEdczxGFRr0eOgfYjYh-gJNEGVYcjv9kVfCdk-xMmAxakBX2vSBSlmB4ijw2V_iy3tXEyD1CTN85VparGQNZ6tf89M"/>
+</div>
+<div class="p-2.5 flex flex-col justify-between">
+<div>
+<h4 class="font-headline-species text-[13px] leading-tight text-on-surface font-bold truncate">Belalang Sembah</h4>
+<p class="font-subhead-species text-[11px] text-primary italic truncate">Mantis religiosa</p>
+</div>
+<p class="font-label-caption text-label-caption text-outline mt-1.5">2 Mei 2024</p>
+</div>
+</div>
+</div>
+<!-- DETAIL ITEM TERTAP: Modal / Bottom Sheet Card -->
+<div class="w-full bg-surface-container-low rounded-3xl p-4 border border-outline-variant/40 shadow-md relative overflow-hidden mb-space-md">
+<!-- Decorative Journal Edge Strip -->
+<div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-secondary-container to-primary"></div>
+<!-- Top Action Bar inside Sheet -->
+<div class="flex items-center justify-between mb-3 pt-1">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-caption text-label-caption text-on-surface-variant font-bold uppercase tracking-wider">Detail Temuan Lapangan</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/30 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px] text-primary">fingerprint</span>
+<span>ID #FN-8832</span>
+</div>
+</div>
+<!-- Foto & Binomial Spesies terpilih (Kelabang Raksasa) -->
+<div class="flex gap-3 items-center">
+<div class="w-20 h-20 rounded-2xl overflow-hidden shrink-0 border border-outline-variant/40 relative">
+<img class="w-full h-full object-cover" data-alt="High-detail macro photo of a giant Asian forest centipede Scolopendra subspinipes moving across damp dark volcanic stones in Merapi foothills, glossy amber carapaces, editorial field photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb7bWtsCBN7ILBRtAWXInpFgU_DLxh_PNogna4M9dl6ujjIxgkRmZXSl-il1ZHnbSmepDUSmxBMj9f7iPJwyUvTbnr3SVaJFs2DcGCV5wnfNB_g0QYMVj1PJ458aIw7-gRv0H1oa0jC6zpNDW00hmDYQMnqDkb2nlQsPQ0PRAXPde20ylIsPtTfmKFryWpBpw8zBmnhD8tvLJ73Qu8iRrwUYgjHtUYZvJy0HHEu-XYvUvAzSJXufyr"/>
+<div class="absolute inset-0 bg-primary/10 mix-blend-multiply pointer-events-none"></div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-caption text-label-caption text-secondary font-semibold bg-secondary-container/40 px-2 py-0.5 rounded">Arthropoda • Chilopoda</span>
+<span class="material-symbols-outlined text-outline text-[18px]">bookmark_added</span>
+</div>
+<h3 class="font-headline-species text-headline-species text-on-surface font-bold leading-tight mt-0.5 truncate">
+          Kelabang Raksasa
+        </h3>
+<p class="font-subhead-species text-subhead-species text-primary italic truncate">
+          Scolopendra subspinipes
+        </p>
+</div>
+</div>
+<!-- Metadata: Waktu Penemuan Multi-Zona -->
+<div class="mt-3.5 p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex flex-col gap-1">
+<div class="flex items-center gap-1.5 text-on-surface font-body-compact text-body-compact">
+<span class="material-symbols-outlined text-[16px] text-primary">schedule</span>
+<span class="font-semibold text-on-surface">Waktu Pengambilan: 14:22 WIB</span>
+</div>
+<p class="font-label-caption text-label-caption text-on-surface-variant/80 pl-5 leading-relaxed">
+        (15:22 WITA • 16:22 WIT • 07:22 London)
+      </p>
+</div>
+<!-- Compass & Orientation Header -->
+<div class="mt-2.5 flex items-center justify-between flex-wrap gap-2">
+<div class="flex items-center gap-1.5 bg-surface-container px-2.5 py-1.5 rounded-lg border border-outline-variant/30">
+<span class="material-symbols-outlined text-[16px] text-primary">explore</span>
+<span class="font-label-caption text-label-caption text-on-surface font-medium">Arah hadap: <strong>Barat Laut (315°)</strong></span>
+</div>
+<div class="flex items-center gap-1 text-[11px] font-label-caption text-primary">
+<span class="material-symbols-outlined text-[14px]">altitude</span>
+<span>Elevasi 640 mdpl</span>
+</div>
+</div>
+<!-- Mini Map Topografi Sleman / Merapi with Privacy Radius Ring -->
+<div class="mt-3 relative rounded-2xl overflow-hidden border border-outline-variant/30 h-28 w-full">
+<div class="w-full h-full bg-cover bg-center" data-location="Sleman, Yogyakarta, Indonesia" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD5-GdtNWSS1f5tLM41qGhmnNGAn1rWc5b2UStjDvi6mr6KigDED5Is1zIDOspPW6swJa9qD-7jijgOjqdcqOBiOihTX3D8cjKOb7JHWFAXjPXSE8CUPMzzF5xnZMxGLRtzuP0KWB_IIDgCc6aIpky3uMjQf8Xuoi4XGi5GVhDjgtBSQHLVGfeTcESpVeKSdfroHDOkaP2rdyMK-bAaGWDgLln0Tr3nS8DyzmiXIOvAzNhckUYSjtkw')"></div>
+<!-- Privacy Circle & Center Marker overlay -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<!-- Lingkaran Privasi Samar -->
+<div class="w-20 h-20 rounded-full border-2 border-primary/40 bg-primary/10 backdrop-blur-[1px] flex items-center justify-center animate-pulse">
+<!-- Pin Lokasi Deep Sage -->
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-md">
+<span class="material-symbols-outlined text-[14px]">pin_drop</span>
+</div>
+</div>
+</div>
+<!-- Pill Label Lokasi Privasi -->
+<div class="absolute bottom-2 left-2 bg-surface/90 backdrop-blur-md px-2 py-0.5 rounded-md border border-outline-variant/30 flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[12px] text-secondary">shield</span>
+<span class="font-label-caption text-label-caption text-on-surface font-semibold">Radius Terlindungi (Sleman, DI Yogyakarta)</span>
+</div>
+</div>
+<!-- Footer Action Buttons inside card -->
+<div class="mt-3.5 flex items-center gap-2">
+<button class="flex-1 h-10 rounded-xl bg-primary text-on-primary font-label-prominent text-label-prominent flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Buka Lembar Lapangan</span>
+</button>
+<button class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-on-surface border border-outline-variant/40 active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+</div>
+</div>
+</div></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.05)]" data-active-classes="text-primary font-label-prominent"><div class="h-[72px] px-space-xs flex items-center justify-between relative max-w-[390px] mx-auto"><a class="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant/70 hover:text-on-surface transition-colors" data-path="beranda" href="#"><span class="material-symbols-outlined text-[24px]">cottage</span><span class="font-label-caption text-label-caption">Beranda</span></a><a class="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant/70 hover:text-on-surface transition-colors" data-path="cari" href="#"><span class="material-symbols-outlined text-[24px]">explore</span><span class="font-label-caption text-label-caption">Cari</span></a><div class="flex-1 flex items-center justify-center relative"><a class="w-14 h-14 -mt-5 rounded-full bg-secondary-container shadow-[0px_4px_16px_rgba(200,169,107,0.35)] flex items-center justify-center text-on-secondary-fixed transition-transform active:scale-95" data-path="kamera" href="#"><span class="material-symbols-outlined text-[28px]">photo_camera</span></a></div><a class="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant/70 hover:text-on-surface transition-colors" data-path="game" href="#"><span class="material-symbols-outlined text-[24px]">sports_esports</span><span class="font-label-caption text-label-caption">Game</span></a><a aria-current="page" class="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors text-primary font-label-prominent" data-path="profil" href="#"><span class="material-symbols-outlined text-[24px]">person</span><span class="font-label-caption text-label-caption">Profil</span></a></div></nav></body></html>

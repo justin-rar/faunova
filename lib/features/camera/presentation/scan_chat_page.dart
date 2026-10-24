@@ -9,10 +9,12 @@ import '../models/scan_result_model.dart';
 
 class ScanChatPage extends StatefulWidget {
   final ScanResultModel scanResult;
+  final String? initialQuery;
 
   const ScanChatPage({
     super.key,
     required this.scanResult,
+    this.initialQuery,
   });
 
   @override
@@ -77,6 +79,16 @@ class _ScanChatPageState extends State<ScanChatPage> {
           _isLoadingHistory = false;
         });
         _scrollToBottom();
+
+        if (widget.initialQuery != null &&
+            widget.initialQuery!.trim().isNotEmpty &&
+            _chatCount < _chatLimit) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _handleSendMessage(widget.initialQuery!.trim());
+            }
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

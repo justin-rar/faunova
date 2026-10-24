@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/services/search_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/full_screen_image_viewer.dart';
@@ -190,28 +191,28 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   Widget _buildSearchInput() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: TextField(
         controller: _searchController,
         onChanged: _onQueryChanged,
-        style: const TextStyle(fontSize: 14, color: AppColors.teksGelap, fontWeight: FontWeight.w500),
+        style: AppTypography.bodyMedium(fontSize: 14, color: AppColors.teksGelap),
         decoration: InputDecoration(
           hintText: _tabController.index == 0
               ? 'Cari nama kolektor atau @username...'
               : 'Cari nama lokal satwa atau nama binomial...',
-          hintStyle: TextStyle(
+          hintStyle: AppTypography.bodyCompact(
             fontSize: 13,
-            color: AppColors.teksGelap.withValues(alpha: 0.5),
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
           ),
           prefixIcon: const Icon(Icons.search_rounded, color: AppColors.sageTua, size: 22),
           suffixIcon: _searchController.text.isNotEmpty
@@ -313,18 +314,19 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   Widget _buildAccountCard(PublicProfileModel account) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: account.isVerifiedActive
-              ? const Color(0xFF1E88E5).withValues(alpha: 0.35)
-              : AppColors.sage.withValues(alpha: 0.25),
+              ? const Color(0xFF1E88E5).withValues(alpha: 0.45)
+              : AppColors.surfaceContainerHighest,
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 6,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -348,11 +350,21 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                AppAvatar(
-                  avatarPath: account.avatarPath,
-                  displayName: account.displayName,
-                  radius: 24,
-                  backgroundColor: account.isVerifiedActive ? AppColors.sageTua : AppColors.sage,
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: account.isVerifiedActive ? const Color(0xFF1E88E5) : AppColors.sageTua,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: AppAvatar(
+                    avatarPath: account.avatarPath,
+                    displayName: account.displayName,
+                    radius: 22,
+                    backgroundColor: account.isVerifiedActive ? AppColors.sageTua : AppColors.sage,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -364,8 +376,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                           Expanded(
                             child: Text(
                               account.displayName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                              style: AppTypography.titleUi(
                                 fontSize: 14,
                                 color: AppColors.teksGelap,
                               ),
@@ -385,10 +396,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       const SizedBox(height: 2),
                       Text(
                         '@${account.username}',
-                        style: TextStyle(
+                        style: AppTypography.labelCaption(
                           fontSize: 12,
-                          color: AppColors.teksGelap.withValues(alpha: 0.65),
-                          fontWeight: FontWeight.w500,
+                          color: AppColors.onSurfaceVariant,
                         ),
                       ),
                       if (account.bio.isNotEmpty) ...[
@@ -397,10 +407,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                           account.bio,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: AppTypography.bodyCompact(
                             fontSize: 11.5,
-                            color: AppColors.teksGelap.withValues(alpha: 0.8),
-                            fontStyle: FontStyle.italic,
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.85),
                           ),
                         ),
                       ],
@@ -414,12 +423,13 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.sageMuda.withValues(alpha: 0.6),
+                        color: AppColors.surfaceContainer,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
                       ),
                       child: Text(
                         '${account.capturesCount} Obs',
-                        style: const TextStyle(
+                        style: AppTypography.labelCaption(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.teksGelap,
@@ -429,9 +439,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                     const SizedBox(height: 4),
                     Text(
                       '${account.followersCount} pengikut',
-                      style: TextStyle(
+                      style: AppTypography.labelCaption(
                         fontSize: 10.5,
-                        color: AppColors.teksGelap.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -614,14 +624,14 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   Widget _buildSpeciesCard(SpeciesCatalogModel sp) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 6,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -647,9 +657,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                           Expanded(
                             child: Text(
                               sp.speciesName,
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800,
+                              style: AppTypography.headlineSpecies(
+                                fontSize: 15,
                                 color: AppColors.teksGelap,
                               ),
                             ),
@@ -662,7 +671,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                             ),
                             child: Text(
                               sp.conservationStatus,
-                              style: TextStyle(
+                              style: AppTypography.labelCaption(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
                                 color: _getConservationBadgeColor(sp.conservationStatus),
@@ -674,10 +683,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       const SizedBox(height: 2),
                       Text(
                         sp.scientificName,
-                        style: TextStyle(
+                        style: AppTypography.subheadSpecies(
                           fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                          color: AppColors.teksGelap.withValues(alpha: 0.75),
+                          color: AppColors.sageTua,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -685,24 +693,24 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                         sp.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: AppTypography.bodyCompact(
                           fontSize: 11.5,
-                          height: 1.3,
-                          color: AppColors.teksGelap.withValues(alpha: 0.8),
+                          color: AppColors.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.gading,
+                              color: AppColors.surfaceContainer,
                               borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.surfaceContainerHighest, width: 0.8),
                             ),
                             child: Text(
                               sp.taxonomyClass,
-                              style: const TextStyle(
+                              style: AppTypography.labelCaption(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.sageTua,
@@ -712,10 +720,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                           const Spacer(),
                           Text(
                             '${sp.observationsCount} observasi',
-                            style: TextStyle(
+                            style: AppTypography.labelCaption(
                               fontSize: 10.5,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.teksGelap.withValues(alpha: 0.6),
+                              color: AppColors.onSurfaceVariant,
                             ),
                           ),
                         ],

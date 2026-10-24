@@ -5,6 +5,7 @@ import '../../../core/services/capture_service.dart';
 import '../../../core/services/compass_heading_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import '../../../core/theme/app_typography.dart';
 import '../models/capture_model.dart';
 import '../models/scan_result_model.dart';
 import 'scan_chat_page.dart';
@@ -40,8 +41,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
         centerTitle: true,
         title: Text(
           scanResult.isAnimal ? 'Hasil Identifikasi Satwa' : 'Verifikasi AI Ditolak',
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
+          style: AppTypography.titleUi(
             fontSize: 16,
             color: AppColors.teksPutih,
           ),
@@ -55,7 +55,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
           40,
         ),
         children: [
-          // 1. Kartu Foto Satwa
+          // 1. Kartu Foto Satwa (Aspect Ratio 4:3 Field Journal)
           _buildPhotoCard(),
           const SizedBox(height: 16),
 
@@ -63,16 +63,11 @@ class _ScanResultPageState extends State<ScanResultPage> {
           if (scanResult.isAnimal) ...[
             _buildAnimalHeaderCard(),
             const SizedBox(height: 14),
-            _buildDescriptionCard(),
-            const SizedBox(height: 14),
-            if (scanResult.additionalFact != null &&
-                scanResult.additionalFact!.isNotEmpty) ...[
-              _buildFactCard(),
-              const SizedBox(height: 14),
-            ],
-            _buildMetadataVerificationCard(),
-            const SizedBox(height: 24),
+            _buildQuickAiInquiryCard(context),
+            const SizedBox(height: 16),
             _buildAnimalActions(context),
+            const SizedBox(height: 16),
+            _buildMetadataVerificationCard(),
           ] else ...[
             _buildNonAnimalRejectionCard(),
             const SizedBox(height: 24),
@@ -91,7 +86,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
         File(scanResult.localPhotoPath!),
         fit: BoxFit.cover,
         width: double.infinity,
-        height: 260,
       );
     } else if (scanResult.imageBase64 != null &&
         scanResult.imageBase64!.isNotEmpty) {
@@ -99,11 +93,9 @@ class _ScanResultPageState extends State<ScanResultPage> {
         base64Decode(scanResult.imageBase64!),
         fit: BoxFit.cover,
         width: double.infinity,
-        height: 260,
       );
     } else {
       imageWidget = Container(
-        height: 260,
         color: AppColors.sageMuda,
         child: const Center(
           child: Icon(Icons.pets_rounded, size: 64, color: AppColors.sageTua),
@@ -111,134 +103,353 @@ class _ScanResultPageState extends State<ScanResultPage> {
       );
     }
 
+    final logId = scanResult.scanId.length >= 8
+        ? scanResult.scanId.substring(0, 8).toUpperCase()
+        : (scanResult.scanId.isNotEmpty ? scanResult.scanId.toUpperCase() : '804-JAV');
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: scanResult.isAnimal
-              ? AppColors.sage.withValues(alpha: 0.5)
-              : AppColors.merahStatus.withValues(alpha: 0.6),
-          width: 2,
+              ? AppColors.surfaceContainerHighest
+              : AppColors.merahStatus.withValues(alpha: 0.5),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            imageWidget,
-            // Tag Status di atas foto
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: scanResult.isAnimal
-                      ? AppColors.sageTua.withValues(alpha: 0.92)
-                      : AppColors.merahStatus.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    width: 1,
+        borderRadius: BorderRadius.circular(19),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 250),
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                imageWidget,
+              // Pinned Taxonomy Index Badge (Top Left Corner of Photo)
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.center_focus_strong,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Log #$logId',
+                        style: AppTypography.labelCaption(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      scanResult.isAnimal
-                          ? Icons.verified_rounded
-                          : Icons.cancel_rounded,
-                      size: 14,
-                      color: AppColors.teksPutih,
+              ),
+              // Status Badge (Top Right Corner of Photo)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: scanResult.isAnimal
+                        ? AppColors.sageTua.withValues(alpha: 0.92)
+                        : AppColors.merahStatus.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      scanResult.isAnimal ? 'TERVERIFIKASI SATWA' : 'BUKAN SATWA',
-                      style: const TextStyle(
-                        color: AppColors.teksPutih,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        scanResult.isAnimal
+                            ? Icons.verified_rounded
+                            : Icons.cancel_rounded,
+                        size: 13,
+                        color: Colors.white,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 5),
+                      Text(
+                        scanResult.isAnimal ? 'TERVERIFIKASI SATWA' : 'BUKAN SATWA',
+                        style: AppTypography.labelCaption(
+                          fontSize: 10.5,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              // Floating Tag: AI Detection Badge (Bottom Right Corner)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: scanResult.isAnimal
+                              ? AppColors.sageTua
+                              : AppColors.merahStatus,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        scanResult.isAnimal
+                            ? 'Terdeteksi AI Faunova'
+                            : 'AI: Bukan Satwa',
+                        style: AppTypography.labelCaption(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: scanResult.isAnimal
+                              ? AppColors.sageTua
+                              : AppColors.merahStatus,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
       ),
     );
   }
 
   Widget _buildAnimalHeaderCard() {
+    final name = scanResult.name ?? 'Satwa Ditemukan';
+    final species = scanResult.categoryOrSpecies ?? 'Fauna Tropis';
+    final desc = scanResult.description ?? 'Belum ada catatan deskripsi lapangan.';
+    final isDangerous = desc.toLowerCase().contains('bisa') ||
+        desc.toLowerCase().contains('racun') ||
+        desc.toLowerCase().contains('gigit') ||
+        desc.toLowerCase().contains('bahaya') ||
+        name.toLowerCase().contains('kelabang') ||
+        name.toLowerCase().contains('ular');
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Spesies: Common & Scientific Name with Confidence Tag
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.emas,
-                  borderRadius: BorderRadius.circular(6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: AppTypography.headlineSpecies(
+                        fontSize: 22,
+                        color: AppColors.teksGelap,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      species,
+                      style: AppTypography.subheadSpecies(
+                        fontSize: 15,
+                        color: AppColors.sageTua,
+                      ),
+                    ),
+                  ],
                 ),
-                child: const Text(
-                  'FAUNA TERDETEKSI',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.teksGelap,
-                    letterSpacing: 0.5,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.tertiaryFixed,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Cukup yakin (94%)',
+                  style: AppTypography.labelCaption(
+                    fontSize: 11,
+                    color: AppColors.onTertiaryFixed,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const Spacer(),
-              const Icon(Icons.auto_awesome, size: 16, color: AppColors.emasTua),
-              const SizedBox(width: 4),
-              const Text(
-                'Gemini AI',
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.emasTua,
-                ),
+            ],
+          ),
+
+          // Alert / Safety Warning Chip
+          if (isDangerous) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 15,
+                    color: AppColors.onErrorContainer,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Waspada: Memiliki bisa/pertahanan menyengat',
+                    style: AppTypography.labelCaption(
+                      fontSize: 11,
+                      color: AppColors.onErrorContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Divider Bar
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1, thickness: 1, color: AppColors.surfaceContainerHighest),
+          ),
+
+          // Deskripsi Spesies
+          Text(
+            desc,
+            style: AppTypography.bodyCompact(
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+
+          if (scanResult.additionalFact != null &&
+              scanResult.additionalFact!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lightbulb_outline_rounded, size: 16, color: AppColors.emasTua),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      scanResult.additionalFact!,
+                      style: AppTypography.bodyCompact(
+                        fontSize: 12,
+                        color: AppColors.teksGelap,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Micro-Telemetry Badges
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _buildMicroTelemetryBadge(
+                Icons.explore_outlined,
+                'Hutan Dataran Rendah',
+              ),
+              _buildMicroTelemetryBadge(
+                desc.toLowerCase().contains('malam') || isDangerous
+                    ? Icons.nights_stay_outlined
+                    : Icons.wb_sunny_outlined,
+                desc.toLowerCase().contains('malam') ? 'Nokturnal' : 'Spesimen Lapangan',
               ),
             ],
           ),
-          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMicroTelemetryBadge(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.emasTua),
+          const SizedBox(width: 5),
           Text(
-            scanResult.name ?? 'Satwa Tidak Dikenal',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.teksGelap,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            scanResult.categoryOrSpecies ?? 'Spesies belum terklasifikasi',
-            style: TextStyle(
-              fontSize: 14,
-              fontStyle: FontStyle.italic,
-              color: AppColors.teksGelap.withValues(alpha: 0.75),
-              fontWeight: FontWeight.w600,
+            label,
+            style: AppTypography.labelCaption(
+              fontSize: 11,
+              color: AppColors.onSurfaceVariant,
             ),
           ),
         ],
@@ -246,38 +457,121 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  Widget _buildDescriptionCard() {
+  Widget _buildQuickAiInquiryCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.notes_rounded, size: 18, color: AppColors.sageTua),
-              SizedBox(width: 8),
-              Text(
-                'Karakteristik & Ciri Lapangan',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13.5,
-                  color: AppColors.teksGelap,
+          InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ScanChatPage(scanResult: scanResult),
                 ),
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                const Icon(Icons.forum_outlined, size: 18, color: AppColors.sageTua),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tanya Soal Satwa Ini',
+                    style: AppTypography.titleUi(
+                      fontSize: 14.5,
+                      color: AppColors.teksGelap,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Model Taksonomi',
+                  style: AppTypography.labelCaption(
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.sageTua),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Pill Prompt Suggestions
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildInquiryPill(
+                context,
+                'Apakah beracun?',
+              ),
+              _buildInquiryPill(
+                context,
+                'Di mana habitatnya?',
+              ),
+              _buildInquiryPill(
+                context,
+                'Status kelestarian?',
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            scanResult.description ?? 'Deskripsi tidak tersedia.',
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: AppColors.teksGelap,
+          const SizedBox(height: 12),
+          // Interactive Tap Target Input Field
+          InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ScanChatPage(scanResult: scanResult),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Ketik pertanyaanmu seputar satwa...',
+                      style: AppTypography.bodyCompact(
+                        fontSize: 13,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.sageTua,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.arrow_upward_rounded, size: 16, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -285,41 +579,40 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  Widget _buildFactCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.lightbulb_outline_rounded, size: 18, color: AppColors.emasTua),
-              SizedBox(width: 8),
-              Text(
-                'Fakta Unik Lapangan',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13.5,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            scanResult.additionalFact!,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: AppColors.teksGelap,
+  Widget _buildInquiryPill(BuildContext context, String question) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ScanChatPage(
+              scanResult: scanResult,
+              initialQuery: question,
             ),
           ),
-        ],
+        );
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              question,
+              style: AppTypography.bodyCompact(
+                fontSize: 12,
+                color: AppColors.teksGelap,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.north_east_rounded, size: 13, color: AppColors.onSurfaceVariant),
+          ],
+        ),
       ),
     );
   }
@@ -338,20 +631,26 @@ class _ScanResultPageState extends State<ScanResultPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.shield_outlined, size: 18, color: AppColors.sageTua),
-              SizedBox(width: 8),
+              const Icon(Icons.shield_outlined, size: 18, color: AppColors.sageTua),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Metadata Verifikasi Lapangan (Server)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
+                  style: AppTypography.titleUi(
                     fontSize: 13,
                     color: AppColors.teksGelap,
                   ),
@@ -392,17 +691,16 @@ class _ScanResultPageState extends State<ScanResultPage> {
           width: 90,
           child: Text(
             label,
-            style: TextStyle(
+            style: AppTypography.bodyCompact(
               fontSize: 12,
-              color: AppColors.teksGelap.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w500,
+              color: AppColors.onSurfaceVariant,
             ),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: AppTypography.bodyCompact(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AppColors.teksGelap,
@@ -428,17 +726,16 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 ),
               );
             },
-            icon: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.teksGelap),
-            label: const Text(
+            icon: const Icon(Icons.forum_outlined, color: AppColors.teksGelap, size: 18),
+            label: Text(
               'Tanya AI Seputar Satwa',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: AppTypography.titleUi(
                 fontSize: 14,
                 color: AppColors.teksGelap,
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.emas,
+              backgroundColor: AppColors.surfaceContainerHigh,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
@@ -446,18 +743,17 @@ class _ScanResultPageState extends State<ScanResultPage> {
         ),
         const SizedBox(height: 10),
 
-        // Tombol Simpan ke Koleksi Kanonis (Sesi S7)
+        // Tombol Simpan ke Koleksi Kanonis (Primary CTA)
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: 50,
           child: _savedCapture != null
               ? ElevatedButton.icon(
                   onPressed: () => _showSaveSuccessDialog(_savedCapture!),
                   icon: const Icon(Icons.check_circle_rounded, color: Colors.white),
                   label: Text(
                     'Tersimpan di Koleksi (Blok #${_savedCapture!.seq})',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
+                    style: AppTypography.titleUi(
                       fontSize: 14,
                       color: Colors.white,
                     ),
@@ -468,40 +764,40 @@ class _ScanResultPageState extends State<ScanResultPage> {
                     elevation: 0,
                   ),
                 )
-              : OutlinedButton.icon(
+              : ElevatedButton.icon(
                   onPressed: _isSaving ? null : _onSaveToCollectionPressed,
                   icon: _isSaving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageTua),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teksGelap),
                         )
-                      : const Icon(Icons.bookmark_add_outlined, color: AppColors.sageTua),
+                      : const Icon(Icons.library_add_outlined, color: AppColors.teksGelap),
                   label: Text(
                     _isSaving ? 'Menghubungkan ke Rantai Kanonis...' : 'Simpan ke Koleksi Kanonis',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
+                    style: AppTypography.titleUi(
                       fontSize: 14,
                       color: AppColors.teksGelap,
                     ),
                   ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.sageTua, width: 1.5),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emas,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
                   ),
                 ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
 
-        // Tombol Pindai Ulang
+        // Tombol Sekunder: Foto Ulang / Pindai Satwa Lain
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(
+          child: Text(
             'Pindai Satwa Lain',
-            style: TextStyle(
-              color: AppColors.teksGelap,
+            style: AppTypography.bodyMedium(
+              fontSize: 13.5,
               fontWeight: FontWeight.w600,
-              fontSize: 13,
+              color: AppColors.teksGelap,
             ),
           ),
         ),

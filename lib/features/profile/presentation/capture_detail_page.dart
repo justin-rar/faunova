@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/capture_service.dart';
 import '../../../core/services/compass_heading_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
@@ -321,81 +322,102 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
 
   Widget _buildSpeciesHeaderCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      capture.speciesName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.teksGelap,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    if (capture.category != null && capture.category!.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        capture.category!,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.emasTua,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.sageTua,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified_rounded, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text(
-                      'Terkunci',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (capture.description.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              capture.description,
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.45,
-                color: AppColors.teksGelap,
+          // Decorative Naturalist Strip
+          Container(
+            height: 4,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.sageTua, AppColors.emas, AppColors.sage],
               ),
             ),
-          ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            capture.speciesName,
+                            style: AppTypography.headlineSpecies(
+                              fontSize: 20,
+                              color: AppColors.teksGelap,
+                            ),
+                          ),
+                          if (capture.category != null && capture.category!.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              capture.category!,
+                              style: AppTypography.subheadSpecies(
+                                fontSize: 13.5,
+                                color: AppColors.sageTua,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.verified_rounded, size: 14, color: AppColors.sageTua),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Terkunci',
+                            style: AppTypography.labelCaption(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.teksGelap,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (capture.description.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    capture.description,
+                    style: AppTypography.bodyMedium(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: AppColors.teksGelap,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -405,22 +427,28 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.shield_outlined, size: 20, color: AppColors.sageTua),
-              SizedBox(width: 8),
+              const Icon(Icons.shield_outlined, size: 20, color: AppColors.sageTua),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Audit Rantai Kriptografis (SHA-256)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                  style: AppTypography.titleUi(
                     fontSize: 14,
                     color: AppColors.teksGelap,
                   ),
@@ -431,9 +459,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           const SizedBox(height: 6),
           Text(
             'Integritas data dijamin menggunakan hash bersambung deterministik per Plan 5.2.',
-            style: TextStyle(
+            style: AppTypography.bodyCompact(
               fontSize: 11.5,
-              color: AppColors.teksGelap.withValues(alpha: 0.7),
+              color: AppColors.onSurfaceVariant,
               height: 1.35,
             ),
           ),
@@ -469,8 +497,8 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _blockVerification!.isValid
-                    ? AppColors.sageTua.withValues(alpha: 0.12)
-                    : AppColors.merahStatus.withValues(alpha: 0.12),
+                    ? AppColors.tertiaryFixed.withValues(alpha: 0.3)
+                    : AppColors.errorContainer,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: _blockVerification!.isValid
@@ -489,10 +517,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
                   Expanded(
                     child: Text(
                       _blockVerification!.message,
-                      style: TextStyle(
+                      style: AppTypography.labelProminent(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _blockVerification!.isValid ? AppColors.sageTua : AppColors.merahStatus,
+                        color: _blockVerification!.isValid ? AppColors.sageTua : AppColors.onErrorContainer,
                       ),
                     ),
                   ),
@@ -505,7 +532,7 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           // Tombol Uji Verifikasi Blok Ini
           SizedBox(
             width: double.infinity,
-            height: 42,
+            height: 44,
             child: OutlinedButton.icon(
               onPressed: _isVerifyingBlock ? null : _verifyCurrentBlock,
               icon: _isVerifyingBlock
@@ -517,8 +544,7 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
                   : const Icon(Icons.fingerprint_rounded, size: 18, color: AppColors.sageTua),
               label: Text(
                 _isVerifyingBlock ? 'Memverifikasi Integritas Blok...' : 'Uji Integritas Blok Ini (verify_block)',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
+                style: AppTypography.labelProminent(
                   fontSize: 12.5,
                   color: AppColors.teksGelap,
                 ),
@@ -549,25 +575,25 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
+                style: AppTypography.labelCaption(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.teksGelap.withValues(alpha: 0.75),
+                  color: AppColors.onSurfaceVariant,
                 ),
               ),
             ),
             InkWell(
               onTap: () => _copyToClipboard(label, hash),
               borderRadius: BorderRadius.circular(6),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 child: Row(
                   children: [
-                    Icon(Icons.copy_rounded, size: 13, color: AppColors.emasTua),
-                    SizedBox(width: 4),
+                    const Icon(Icons.copy_rounded, size: 13, color: AppColors.emasTua),
+                    const SizedBox(width: 4),
                     Text(
                       'Salin',
-                      style: TextStyle(
+                      style: AppTypography.labelCaption(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppColors.emasTua,
@@ -582,11 +608,11 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
         const SizedBox(height: 5),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.gading,
+            color: AppColors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.sage.withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
           ),
           child: Text(
             hash.isNotEmpty ? hash : '-',
@@ -619,17 +645,23 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Metadata Sensor & Waktu Penerimaan',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
+            style: AppTypography.titleUi(
               fontSize: 13,
               color: AppColors.teksGelap,
             ),
@@ -654,16 +686,16 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           width: 100,
           child: Text(
             label,
-            style: TextStyle(
+            style: AppTypography.bodyCompact(
               fontSize: 12,
-              color: AppColors.teksGelap.withValues(alpha: 0.7),
+              color: AppColors.onSurfaceVariant,
             ),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: AppTypography.bodyCompact(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AppColors.teksGelap,
@@ -686,10 +718,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
               CreatePostSheet.show(context, capture: capture);
             },
             icon: const Icon(Icons.share_rounded, color: AppColors.teksPutih),
-            label: const Text(
+            label: Text(
               'Bagikan ke Linimasa (create_post)',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: AppTypography.labelProminent(
                 fontSize: 14,
                 color: AppColors.teksPutih,
               ),
@@ -710,10 +741,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           child: ElevatedButton.icon(
             onPressed: _openGoogleMaps,
             icon: const Icon(Icons.map_rounded, color: AppColors.teksGelap),
-            label: const Text(
+            label: Text(
               'Buka Lokasi di Google Maps',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: AppTypography.labelProminent(
                 fontSize: 14,
                 color: AppColors.teksGelap,
               ),

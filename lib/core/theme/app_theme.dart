@@ -26,11 +26,11 @@ class AppTheme {
         foregroundColor: AppColors.teksPutih,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           color: AppColors.teksPutih,
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
         ),
         iconTheme: const IconThemeData(color: AppColors.teksPutih),
         systemOverlayStyle: const SystemUiOverlayStyle(
@@ -44,6 +44,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1.0),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -56,7 +57,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.poppins(
+          textStyle: GoogleFonts.plusJakartaSans(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: AppColors.teksGelap,
@@ -71,20 +72,20 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.poppins(
+          textStyle: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
       ),
-      fontFamily: GoogleFonts.poppins().fontFamily,
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
       textTheme: const TextTheme(
         displayLarge: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.bold),
         displayMedium: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.bold),
         displaySmall: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.bold),
         headlineMedium: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w500),
+        titleLarge: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w700),
+        titleMedium: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w600),
         titleSmall: TextStyle(color: AppColors.teksGelap, fontWeight: FontWeight.w500),
         bodyLarge: TextStyle(color: AppColors.teksGelap, fontSize: 16),
         bodyMedium: TextStyle(color: AppColors.teksGelap, fontSize: 14),

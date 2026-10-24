@@ -42,6 +42,8 @@ class StreakService {
     _demoStreakCount = streak;
     _demoLastClaimDate = lastClaimDate;
     _demoDailyChallengeLogs.clear();
+    EncryptedStorageService.instance.saveSetting('cached_streak_count', streak);
+    EncryptedStorageService.instance.saveSetting('cached_last_streak_claim', lastClaimDate);
   }
 
   // ============================================================================
