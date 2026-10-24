@@ -100,6 +100,9 @@ serve(async (req: Request) => {
         first_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "Kolektor",
         email: user.email,
       },
+      callbacks: {
+        finish: "https://app.sandbox.midtrans.com/snap/v2/vtweb/finish",
+      },
     };
 
     const midtransResp = await fetch(snapUrl, {

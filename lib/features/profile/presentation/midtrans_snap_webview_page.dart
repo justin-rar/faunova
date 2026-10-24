@@ -78,6 +78,24 @@ class _MidtransSnapWebViewPageState extends State<MidtransSnapWebViewPage> {
               }
             },
             onWebResourceError: (WebResourceError error) {
+              final errUrl = error.url?.toLowerCase() ?? '';
+              if (errUrl.startsWith('blob:') || errUrl.startsWith('data:')) {
+                // Abaikan error dari navigasi blob saat mengunduh gambar QRIS di webview
+                return;
+              }
+
+              // Jika error terjadi karena redirect URL Midtrans (misal http://example.com dengan status_code 200/settlement)
+              if (errUrl.contains('transaction_status=settlement') ||
+                  errUrl.contains('transaction_status=capture') ||
+                  errUrl.contains('status_code=200') ||
+                  errUrl.contains('success') ||
+                  errUrl.contains('finish') ||
+                  errUrl.contains('example.com')) {
+                debugPrint('Intercepted settlement redirect in web error: $errUrl');
+                _handlePaymentCompletion(true);
+                return;
+              }
+
               if (mounted) {
                 setState(() {
                   _errorMessage = error.description;
@@ -89,14 +107,33 @@ class _MidtransSnapWebViewPageState extends State<MidtransSnapWebViewPage> {
               final url = request.url.toLowerCase();
               debugPrint('Midtrans WebView navigating to: $url');
 
-              // Intersep redirect status dari Midtrans
-              if (url.contains('finish') ||
+              // Cegah navigasi ke blob: URL (misal tombol Download QRIS) agar WebView tidak memicu net::ERR_FILE_NOT_FOUND
+              if (url.startsWith('blob:') || url.startsWith('data:')) {
+                return NavigationDecision.prevent;
+              }
+
+              // Intersep redirect status penyelesaian pembayaran dari Midtrans
+              // Midtrans Sandbox sering me-redirect ke default http://example.com/?order_id=...&status_code=200&transaction_status=settlement
+              if (url.contains('transaction_status=settlement') ||
+                  url.contains('transaction_status=capture') ||
+                  url.contains('status_code=200') ||
+                  url.contains('finish') ||
                   url.contains('success') ||
                   url.contains('payment-success')) {
+                debugPrint('Intercepted payment success navigation: $url');
                 _handlePaymentCompletion(true);
                 return NavigationDecision.prevent;
-              } else if (url.contains('unfinish') || url.contains('cancel')) {
-                _handlePaymentCompletion(false, reason: 'Pembayaran belum diselesaikan.');
+              } else if (url.contains('unfinish') ||
+                         url.contains('transaction_status=deny') ||
+                         url.contains('transaction_status=expire') ||
+                         url.contains('transaction_status=cancel') ||
+                         url.contains('cancel')) {
+                _handlePaymentCompletion(false, reason: 'Pembayaran belum diselesaikan atau dibatalkan.');
+                return NavigationDecision.prevent;
+              } else if (url.contains('example.com')) {
+                // Default callback sandbox Midtrans
+                debugPrint('Intercepted example.com callback navigation: $url');
+                _handlePaymentCompletion(true);
                 return NavigationDecision.prevent;
               } else if (url.contains('error')) {
                 _handlePaymentCompletion(false, reason: 'Terjadi kendala pada gateway pembayaran.');
@@ -222,6 +259,63 @@ class _MidtransSnapWebViewPageState extends State<MidtransSnapWebViewPage> {
           ],
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: AppColors.gading,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Row(
+                    children: [
+                      Icon(Icons.bolt_rounded, color: AppColors.emasTua, size: 22),
+                      SizedBox(width: 8),
+                      Text(
+                        'Simulasi Bayar',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.teksGelap,
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: Text(
+                    'Simulasikan pembayaran sukses untuk pesanan ${widget.orderId}? Server Supabase akan memproses transaksi ini via RPC settlement.',
+                    style: const TextStyle(fontSize: 12.5, color: AppColors.teksGelap),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Batal'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.emas,
+                        foregroundColor: AppColors.teksGelap,
+                      ),
+                      child: const Text('Bayar Sukses'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                await PaymentService.instance.simulateWebhookSettlement(widget.orderId);
+                _handlePaymentCompletion(true);
+              }
+            },
+            icon: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.emas),
+            label: const Text(
+              'Simulasi',
+              style: TextStyle(
+                color: AppColors.emas,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.close_rounded, size: 22),
             onPressed: () => Navigator.of(context).pop(false),
