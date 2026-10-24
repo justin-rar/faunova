@@ -1181,8 +1181,10 @@ void main() {
       // Pindah ke sub-tab 'Koleksi & Peta'
       final collectionTab = find.text('Koleksi & Peta');
       await tester.scrollUntilVisible(collectionTab, 300.0, scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(collectionTab);
+      await tester.pumpAndSettle();
       expect(collectionTab, findsOneWidget);
-      await tester.tap(collectionTab);
+      await tester.tap(collectionTab, warnIfMissed: false);
       await tester.pumpAndSettle();
 
       // Banner Integritas Buku Besar harus tampil

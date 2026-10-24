@@ -22,12 +22,24 @@ class FeedPage extends StatefulWidget {
 
 class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  AppViewStatus _currentStatus = AppViewStatus.content;
-
   List<PostModel> _forYouPosts = [];
   List<PostModel> _followingPosts = [];
   bool _isLoadingFeed = false;
   String? _feedError;
+
+  AppViewStatus get _followingFeedStatus {
+    if (_isLoadingFeed && _followingPosts.isEmpty) return AppViewStatus.loading;
+    if (_feedError != null && _followingPosts.isEmpty) return AppViewStatus.error;
+    if (!_isLoadingFeed && _followingPosts.isEmpty) return AppViewStatus.empty;
+    return AppViewStatus.content;
+  }
+
+  AppViewStatus get _forYouFeedStatus {
+    if (_isLoadingFeed && _forYouPosts.isEmpty) return AppViewStatus.loading;
+    if (_feedError != null && _forYouPosts.isEmpty) return AppViewStatus.error;
+    if (!_isLoadingFeed && _forYouPosts.isEmpty) return AppViewStatus.empty;
+    return AppViewStatus.content;
+  }
 
   @override
   void initState() {
@@ -197,7 +209,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   Widget _buildFollowingFeed() {
     final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
     return AppStateView(
-      status: _currentStatus,
+      status: _followingFeedStatus,
       loadingMessage: 'Sinkronisasi feed akun yang diikuti...',
       emptyTitle: 'Belum Mengikuti Penjelajah',
       emptyMessage: 'Cari kolektor satwa dan ikuti jurnal observasi lapangan mereka!',
@@ -210,8 +222,6 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
-            _buildStateSwitcherCard(),
-            const SizedBox(height: 16),
             if (_isLoadingFeed && _followingPosts.isEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 40),
@@ -307,7 +317,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   Widget _buildForYouFeed() {
     final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
     return AppStateView(
-      status: _currentStatus,
+      status: _forYouFeedStatus,
       loadingMessage: 'Sinkronisasi feed observasi satwa...',
       emptyTitle: 'Belum Ada Observasi',
       emptyMessage: 'Ikuti penjelajah lain atau potret satwa liar pertamamu untuk memulai rantai!',
@@ -320,8 +330,6 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
-            _buildStateSwitcherCard(),
-            const SizedBox(height: 16),
             if (_isLoadingFeed && _forYouPosts.isEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 40),
@@ -396,70 +404,6 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStateSwitcherCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
-              SizedBox(width: 8),
-              Text(
-                'Pengujian State Fitur (AGENTS.md)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildStateChip('Normal', AppViewStatus.content),
-              _buildStateChip('Memuat', AppViewStatus.loading),
-              _buildStateChip('Kosong', AppViewStatus.empty),
-              _buildStateChip('Galat', AppViewStatus.error),
-              _buildStateChip('Luring', AppViewStatus.offline),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStateChip(String label, AppViewStatus status) {
-    final isSelected = _currentStatus == status;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _currentStatus = status;
-        });
-      },
-      selectedColor: AppColors.sageTua,
-      backgroundColor: AppColors.gading,
-      labelStyle: TextStyle(
-        fontSize: 11,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        color: isSelected ? AppColors.teksPutih : AppColors.teksGelap,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      visualDensity: VisualDensity.compact,
     );
   }
 }

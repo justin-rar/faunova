@@ -22,7 +22,6 @@ class GamePage extends StatefulWidget {
 }
 
 class _GamePageState extends State<GamePage> {
-  AppViewStatus _currentStatus = AppViewStatus.content;
   bool _isStartingQuiz = false;
 
   StreakStatusModel? _streakStatus;
@@ -262,24 +261,16 @@ class _GamePageState extends State<GamePage> {
         ),
       ),
       body: AppStateView(
-        status: _currentStatus,
+        status: AppViewStatus.content,
         loadingMessage: 'Menyiapkan bank soal dan status streak server...',
         emptyTitle: 'Sesi Belum Tersedia',
         emptyMessage: 'Tidak ada sesi kuis aktif saat ini. Tantangan baru diperbarui setiap 00:00 WIB.',
         errorMessage: 'Gagal menghubungkan ke server game. Periksa sambungan data.',
         offlineMessage: 'Mode luring. Kuis dengan skor tervalidasi server memerlukan internet.',
-        onRetry: () {
-          setState(() {
-            _currentStatus = AppViewStatus.content;
-          });
-          _loadGameData();
-        },
+        onRetry: _loadGameData,
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
-            _buildStateSwitcherCard(),
-            const SizedBox(height: 14),
-
             // 1. Streak Card with Day Dots
             _buildStreakTrackerCard(),
             const SizedBox(height: 14),
@@ -300,69 +291,7 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
-  Widget _buildStateSwitcherCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
-              SizedBox(width: 8),
-              Text(
-                'Simulasi State (AGENTS.md)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildStateChip('Normal', AppViewStatus.content),
-              _buildStateChip('Memuat', AppViewStatus.loading),
-              _buildStateChip('Kosong', AppViewStatus.empty),
-              _buildStateChip('Galat', AppViewStatus.error),
-              _buildStateChip('Luring', AppViewStatus.offline),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStateChip(String label, AppViewStatus status) {
-    final isSelected = _currentStatus == status;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _currentStatus = status;
-        });
-      },
-      selectedColor: AppColors.sageTua,
-      backgroundColor: AppColors.gading,
-      labelStyle: TextStyle(
-        fontSize: 11,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        color: isSelected ? AppColors.teksPutih : AppColors.teksGelap,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      visualDensity: VisualDensity.compact,
-    );
-  }
 
   Widget _buildStreakTrackerCard() {
     final streak = _streakStatus?.streakCount ?? 5;

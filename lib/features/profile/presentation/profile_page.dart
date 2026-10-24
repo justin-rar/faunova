@@ -33,7 +33,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  AppViewStatus _currentStatus = AppViewStatus.content;
 
   List<CaptureModel> _captures = [];
   PublicProfileModel? _myProfile;
@@ -335,23 +334,20 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         ],
       ),
       body: AppStateView(
-        status: _currentStatus,
+        status: AppViewStatus.content,
         loadingMessage: 'Memuat data portofolio koleksi...',
         emptyTitle: 'Profil Belum Terdaftar',
         emptyMessage: 'Silakan masuk atau buat akun baru untuk melihat portofolio Anda.',
         errorMessage: 'Gagal memuat profil pengguna dari server.',
         offlineMessage: 'Mode luring. Memuat data profil dari cache lokal terenkripsi.',
         onRetry: () {
-          setState(() {
-            _currentStatus = AppViewStatus.content;
-          });
+          _loadCaptures();
+          _loadProfile();
+          _loadBadges();
         },
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
           children: [
-            _buildStateSwitcherCard(),
-            const SizedBox(height: 14),
-
             // 1. Profile Header Card
             _buildProfileHeroCard(),
             const SizedBox(height: 14),
@@ -383,69 +379,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildStateSwitcherCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
-              SizedBox(width: 8),
-              Text(
-                'Simulasi State (AGENTS.md)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildStateChip('Normal', AppViewStatus.content),
-              _buildStateChip('Memuat', AppViewStatus.loading),
-              _buildStateChip('Kosong', AppViewStatus.empty),
-              _buildStateChip('Galat', AppViewStatus.error),
-              _buildStateChip('Luring', AppViewStatus.offline),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStateChip(String label, AppViewStatus status) {
-    final isSelected = _currentStatus == status;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _currentStatus = status;
-        });
-      },
-      selectedColor: AppColors.sageTua,
-      backgroundColor: AppColors.gading,
-      labelStyle: TextStyle(
-        fontSize: 11,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        color: isSelected ? AppColors.teksPutih : AppColors.teksGelap,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      visualDensity: VisualDensity.compact,
-    );
-  }
 
   Widget _buildProfileHeroCard() {
     final displayName = _myProfile?.displayName ?? 'Arya Wicaksana';

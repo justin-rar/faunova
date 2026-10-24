@@ -27,9 +27,15 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  AppViewStatus _currentStatus = AppViewStatus.content;
   String _selectedCategory = 'Semua';
   Timer? _debounceTimer;
+
+  AppViewStatus get _searchStatus {
+    if (_searchError != null && _searchedAccounts.isEmpty && _searchedSpecies.isEmpty) {
+      return AppViewStatus.error;
+    }
+    return AppViewStatus.content;
+  }
 
   List<PublicProfileModel> _searchedAccounts = [];
   List<SpeciesCatalogModel> _searchedSpecies = [];
@@ -151,7 +157,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
         ),
       ),
       body: AppStateView(
-        status: _currentStatus,
+        status: _searchStatus,
         loadingMessage: 'Mencari entri dalam basis data...',
         emptyTitle: 'Hasil Tidak Ditemukan',
         emptyMessage: 'Coba gunakan kata kunci lain atau periksa ejaan.',
@@ -279,8 +285,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
       children: [
-        _buildStateSwitcherCard(),
-        const SizedBox(height: 12),
         const Row(
           children: [
             Icon(Icons.verified_rounded, size: 16, color: Color(0xFF1E88E5)),
@@ -474,8 +478,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
                       children: [
-                        _buildStateSwitcherCard(),
-                        const SizedBox(height: 10),
                         ..._searchedSpecies.map((species) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _buildSpeciesCard(species),
@@ -1024,69 +1026,5 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       return AppColors.emasTua;
     }
     return AppColors.sageTua;
-  }
-
-  Widget _buildStateSwitcherCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.tune_rounded, size: 15, color: AppColors.teksGelap),
-              SizedBox(width: 8),
-              Text(
-                'Pengujian State Fitur (AGENTS.md)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildStateChip('Normal', AppViewStatus.content),
-              _buildStateChip('Memuat', AppViewStatus.loading),
-              _buildStateChip('Kosong', AppViewStatus.empty),
-              _buildStateChip('Galat', AppViewStatus.error),
-              _buildStateChip('Luring', AppViewStatus.offline),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStateChip(String label, AppViewStatus status) {
-    final isSelected = _currentStatus == status;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _currentStatus = status;
-        });
-      },
-      selectedColor: AppColors.sageTua,
-      backgroundColor: AppColors.gading,
-      labelStyle: TextStyle(
-        fontSize: 11,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        color: isSelected ? AppColors.teksPutih : AppColors.teksGelap,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      visualDensity: VisualDensity.compact,
-    );
   }
 }
