@@ -587,12 +587,16 @@ class PostService {
     }
   }
 
+  bool _isUuid(String id) {
+    return RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(id);
+  }
+
   /// Toggle suka / batal suka postingan
   Future<Map<String, dynamic>> togglePostLike(String postId) async {
     final client = _getSupabaseClient();
     final userId = _getCurrentUserId();
 
-    if (AppConfig.isDemoMode || client == null || userId == null) {
+    if (AppConfig.isDemoMode || client == null || userId == null || !_isUuid(postId)) {
       final idx = _demoPosts.indexWhere((p) => p.id == postId);
       if (idx != -1) {
         final current = _demoPosts[idx];
@@ -617,7 +621,18 @@ class PostService {
         params: {'p_post_id': postId},
       );
 
-      return Map<String, dynamic>.from(response as Map);
+      final resultMap = Map<String, dynamic>.from(response as Map);
+
+      // Sinkronkan juga pada _demoPosts jika postingan tersebut ada di memori
+      final idx = _demoPosts.indexWhere((p) => p.id == postId);
+      if (idx != -1) {
+        _demoPosts[idx] = _demoPosts[idx].copyWith(
+          isLikedByMe: resultMap['is_liked'] == true,
+          likesCount: (resultMap['likes_count'] as num?)?.toInt() ?? _demoPosts[idx].likesCount,
+        );
+      }
+
+      return resultMap;
     } catch (e) {
       debugPrint('togglePostLike error: $e');
       throw PostException('Gagal mengubah status suka: ${e.toString()}');

@@ -94,7 +94,19 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   Future<void> _toggleLike(PostModel post) async {
     final postId = post.id;
 
-    // Temukan index saat ini menggunakan post.id (bukan indeks stale)
+    // Ambil data terbaru dari list aktif, bukan dari snapshot parameter yang mungkin out-of-date
+    PostModel? currentPost;
+    final wi = _followingPosts.indexWhere((p) => p.id == postId);
+    if (wi != -1) {
+      currentPost = _followingPosts[wi];
+    } else {
+      final fi = _forYouPosts.indexWhere((p) => p.id == postId);
+      if (fi != -1) {
+        currentPost = _forYouPosts[fi];
+      }
+    }
+    currentPost ??= post;
+
     void applyLikeState(bool liked, int count) {
       if (!mounted) return;
       setState(() {
@@ -109,10 +121,9 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
       });
     }
 
-    // Ambil state saat ini dari list (bukan dari snapshot yang mungkin stale)
-    final currentLiked = post.isLikedByMe;
+    final currentLiked = currentPost.isLikedByMe;
     final newLiked = !currentLiked;
-    final newCount = newLiked ? post.likesCount + 1 : (post.likesCount > 0 ? post.likesCount - 1 : 0);
+    final newCount = newLiked ? currentPost.likesCount + 1 : (currentPost.likesCount > 0 ? currentPost.likesCount - 1 : 0);
 
     // Optimistic update
     applyLikeState(newLiked, newCount);
@@ -124,9 +135,10 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
         final serverCount = (result['likes_count'] as num).toInt();
         applyLikeState(serverLiked, serverCount);
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error toggling like in feed: $e');
       // Rollback ke state sebelumnya
-      applyLikeState(currentLiked, post.likesCount);
+      applyLikeState(currentLiked, currentPost.likesCount);
     }
   }
 
@@ -293,6 +305,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
                 Builder(builder: (context) {
                   final post = _followingPosts[i];
                   return PostCard(
+                    key: ValueKey('following_${post.id}'),
                     post: post,
                     onLike: () => _toggleLike(post),
                   );
@@ -389,6 +402,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
                 Builder(builder: (context) {
                   final post = _forYouPosts[i];
                   return PostCard(
+                    key: ValueKey('foryou_${post.id}'),
                     post: post,
                     onLike: () => _toggleLike(post),
                   );
