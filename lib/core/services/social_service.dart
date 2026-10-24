@@ -75,7 +75,7 @@ class SocialService {
       bestQuizScore: 92,
       createdAt: now.subtract(const Duration(days: 90)),
       capturesCount: 18,
-      postsCount: 5,
+      postsCount: 3,
       followersCount: 142,
       followingCount: 38,
       isFollowedByMe: true,
@@ -93,7 +93,7 @@ class SocialService {
       bestQuizScore: 98,
       createdAt: now.subtract(const Duration(days: 120)),
       capturesCount: 24,
-      postsCount: 8,
+      postsCount: 3,
       followersCount: 230,
       followingCount: 56,
       isFollowedByMe: false,
@@ -111,7 +111,7 @@ class SocialService {
       bestQuizScore: 85,
       createdAt: now.subtract(const Duration(days: 45)),
       capturesCount: 9,
-      postsCount: 3,
+      postsCount: 2,
       followersCount: 88,
       followingCount: 42,
       isFollowedByMe: false,
@@ -120,16 +120,16 @@ class SocialService {
 
     _demoProfiles['user-wayan'] = PublicProfileModel(
       id: 'user-wayan',
-      username: 'wayan_herpetologi',
-      displayName: 'Dr. Wayan Sudarma',
+      username: 'wayan_bali',
+      displayName: 'Dr. Wayan Suastika, M.Si',
       avatarPath: null,
-      bio: 'Peneliti herpetofauna & konservasi amfibi reptil Bali-Nusa Tenggara.',
+      bio: 'Dokter satwa & ranger Pulau Komodo. Mengamati keanekaragaman reptil purba nusantara.',
       isVerified: true,
       streakCount: 35,
       bestQuizScore: 100,
       createdAt: now.subtract(const Duration(days: 180)),
       capturesCount: 42,
-      postsCount: 12,
+      postsCount: 3,
       followersCount: 312,
       followingCount: 78,
       isFollowedByMe: false,
@@ -147,7 +147,7 @@ class SocialService {
       bestQuizScore: 91,
       createdAt: now.subtract(const Duration(days: 75)),
       capturesCount: 15,
-      postsCount: 6,
+      postsCount: 0,
       followersCount: 174,
       followingCount: 49,
       isFollowedByMe: false,
@@ -165,9 +165,45 @@ class SocialService {
       bestQuizScore: 88,
       createdAt: now.subtract(const Duration(days: 60)),
       capturesCount: 22,
-      postsCount: 7,
+      postsCount: 0,
       followersCount: 129,
       followingCount: 34,
+      isFollowedByMe: false,
+      isMyProfile: false,
+    );
+
+    _demoProfiles['user-borneo'] = PublicProfileModel(
+      id: 'user-borneo',
+      username: 'borneo_wildlife',
+      displayName: 'Dedi Pratama',
+      avatarPath: null,
+      bio: 'Pemantau satwa liar Kalimantan sejak 2012. Fokus pada mamalia riparian & pesut sungai.',
+      isVerified: false,
+      streakCount: 9,
+      bestQuizScore: 83,
+      createdAt: now.subtract(const Duration(days: 200)),
+      capturesCount: 28,
+      postsCount: 2,
+      followersCount: 198,
+      followingCount: 61,
+      isFollowedByMe: false,
+      isMyProfile: false,
+    );
+
+    _demoProfiles['user-faiz'] = PublicProfileModel(
+      id: 'user-faiz',
+      username: 'faiz_ocean',
+      displayName: 'Faiz Alamsyah',
+      avatarPath: null,
+      bio: 'Freediver & naturalis bawah laut. Mendokumentasikan megafauna laut nusantara sejak 2018.',
+      isVerified: true,
+      streakCount: 22,
+      bestQuizScore: 95,
+      createdAt: now.subtract(const Duration(days: 150)),
+      capturesCount: 35,
+      postsCount: 3,
+      followersCount: 445,
+      followingCount: 73,
       isFollowedByMe: false,
       isMyProfile: false,
     );
@@ -316,12 +352,36 @@ class SocialService {
     final client = _getSupabaseClient();
     final myId = _getCurrentUserId();
 
-    if (AppConfig.isDemoMode || client == null || myId == null) {
+    if (AppConfig.isDemoMode || client == null || myId == null || !_isUuid(targetUserId)) {
       if (_demoProfiles.containsKey(targetUserId)) {
         final profile = _demoProfiles[targetUserId]!;
         return profile.copyWith(
           isFollowedByMe: _followingUserIds.contains(targetUserId),
           isMyProfile: targetUserId == (myId ?? 'my-user-id'),
+        );
+      }
+
+      // Cari dari data postingan demo jika profil belum terdaftar
+      final demoPosts = PostService.instance.demoPosts;
+      final matchingPost = demoPosts.where((p) => p.authorId == targetUserId).toList();
+      if (matchingPost.isNotEmpty) {
+        final p = matchingPost.first;
+        return PublicProfileModel(
+          id: targetUserId,
+          username: p.authorUsername,
+          displayName: p.authorName,
+          avatarPath: null,
+          bio: 'Penjelajah & pengamat keanekaragaman hayati nusantara.',
+          isVerified: p.authorVerifiedUntil != null && p.authorVerifiedUntil!.isAfter(DateTime.now()),
+          streakCount: 5,
+          bestQuizScore: 75,
+          createdAt: DateTime.now().subtract(const Duration(days: 60)),
+          capturesCount: matchingPost.length * 3,
+          postsCount: matchingPost.length,
+          followersCount: matchingPost.fold(0, (sum, post) => sum + post.likesCount) ~/ 10,
+          followingCount: 20,
+          isFollowedByMe: _followingUserIds.contains(targetUserId),
+          isMyProfile: false,
         );
       }
 
@@ -336,7 +396,7 @@ class SocialService {
         bestQuizScore: 70,
         createdAt: DateTime.now().subtract(const Duration(days: 30)),
         capturesCount: 5,
-        postsCount: 2,
+        postsCount: 0,
         followersCount: 15,
         followingCount: 12,
         isFollowedByMe: _followingUserIds.contains(targetUserId),
@@ -370,7 +430,7 @@ class SocialService {
     final client = _getSupabaseClient();
     final myId = _getCurrentUserId();
 
-    if (AppConfig.isDemoMode || client == null || myId == null) {
+    if (AppConfig.isDemoMode || client == null || myId == null || !_isUuid(targetUserId)) {
       if (PostService.instance.demoPosts.isEmpty) {
         PostService.instance.initMockDemoPosts();
       }
