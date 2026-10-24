@@ -1587,5 +1587,45 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 3. Langkah Berikutnya
 - Menjalankan kembali aplikasi via `flutter run` di perangkat fisik untuk pengujian alur observasi dan chat satwa di lapangan.
 
+---
+
+## Sesi Perbaikan Pembayaran Midtrans Sandbox, Webhook Settlement, & Riwayat Centang Biru — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Identifikasi Masalah (*Root Cause*)**:
+  - Transaksi Midtrans Sandbox yang berhasil dibayar (misal via Virtual Account BCA Sandbox) belum muncul di riwayat transaksi karena baris `pending` di tabel `public.transactions` sebelumnya terblokir RLS saat Edge Function `create-payment` dipanggil tanpa token service role.
+  - Saat webhook Midtrans mengirimkan notifikasi `settlement`, RPC `process_midtrans_settlement` sebelumnya menolak transaksi dengan `ORDER_NOT_FOUND` jika baris pending belum ada.
+  - Pengalihan URL (*redirect*) Midtrans Sandbox memicu `ERR_CLEARTEXT_NOT_PERMITTED` pada Android WebView karena diarahkan ke `http://example.com/` dan penanganan tombol unduh QRIS (`blob:`) menyebabkan `ERR_FILE_NOT_FOUND`.
+- **Perbaikan Skema Database & RLS (`019_fix_midtrans_settlement_and_rls.sql`)**:
+  - Menambahkan policy `Users can insert own pending transactions` pada tabel `public.transactions` untuk authenticated users.
+  - Memperbarui RPC `process_midtrans_settlement`:
+    - Ekstraksi user ID otomatis dari pola `FAUNOVA-CB-{user_prefix}-{timestamp}` jika baris transaksi belum ada di database lokal.
+    - Mencatat transaksi secara otomatis dengan status `settlement` dan nominal yang valid.
+    - Menghitung perpanjangan masa aktif Centang Biru secara kumulatif: `verified_until = GREATEST(COALESCE(verified_until, now()), now()) + INTERVAL '30 days'`.
+    - Idempoten: Transaksi yang sudah `settlement` tidak akan memicu penambahan ganda.
+  - Migrasi telah dieksekusi dan aktif di database live Supabase remote.
+- **Peningkatan WebView Midtrans (`midtrans_snap_webview_page.dart`)**:
+  - Menambahkan `android:usesCleartextTraffic="true"` di `AndroidManifest.xml`.
+  - Mencegat URL redirect Midtrans (`status_code=200`, `transaction_status=settlement`, atau `example.com`) langsung di `onNavigationRequest` dan `onWebResourceError` tanpa menampilkan halaman error ke pengguna.
+  - Memfilter skema URL `blob:` dan `data:` agar tidak memicu `ERR_FILE_NOT_FOUND`.
+  - Menambahkan tombol bantuan `⚡ Simulasi` di AppBar untuk kemudahan verifikasi sandbox.
+- **Penyelarasan Antarmuka Pengguna (`upgrade_blue_check_sheet.dart` & `profile_page.dart`)**:
+  - Menghubungkan parameter `isVerified` dan `verifiedUntil` dari profil ke `UpgradeBlueCheckSheet`.
+  - Banner status Centang Biru dinamis: Menampilkan `Aktif s/d {tanggal} • Midtrans` jika sudah aktif.
+  - Kartu informasi perpanjangan: Menjelaskan bahwa Centang Biru sudah aktif dan pembayaran berikutnya akan menambahkan +30 hari kumulatif.
+  - Label tombol berubah dari `Bayar Rp 15.000` menjadi `Perpanjang 30 Hari (Rp 15.000)`.
+  - Tab "Riwayat Pembayaran" dilengkapi tombol `Muat Ulang Riwayat` dan `RefreshIndicator` (tarik ke bawah untuk refresh).
+  - Sinkronisasi otomatis: Pemanggilan `_loadHistory()` sekaligus memuat profil terbaru sehingga masa aktif langsung sinkron.
+- **Verifikasi Kualitas Kode**:
+  - `flutter analyze`: **0 issues / No issues found**.
+  - `flutter test test/security_and_rls_test.dart`: **All tests passed (100% lulus)**.
+
+### 2. Belum Teruji / Membutuhkan HP Fisik
+- Pengujian notifikasi push saat masa aktif langganan mendekati kadaluwarsa (memerlukan integrasi cron FCM terjadwal).
+
+### 3. Langkah Berikutnya
+- Melakukan Hot Reload / Hot Restart pada `flutter run` di perangkat untuk memverifikasi tampilan riwayat transaksi dan tombol perpanjangan.
+
+
 
 

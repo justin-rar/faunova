@@ -14,23 +14,33 @@ import '../../models/payment_transaction_model.dart';
 
 class UpgradeBlueCheckSheet extends StatefulWidget {
   final VoidCallback? onSubscriptionUpdated;
+  final bool isVerified;
+  final DateTime? verifiedUntil;
 
   const UpgradeBlueCheckSheet({
     super.key,
     this.onSubscriptionUpdated,
+    this.isVerified = false,
+    this.verifiedUntil,
   });
 
   static Future<void> show(
     BuildContext context, {
     VoidCallback? onSubscriptionUpdated,
     VoidCallback? onUpdated,
+    bool isVerified = false,
+    DateTime? verifiedUntil,
   }) async {
     final callback = onSubscriptionUpdated ?? onUpdated;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => UpgradeBlueCheckSheet(onSubscriptionUpdated: callback),
+      builder: (_) => UpgradeBlueCheckSheet(
+        onSubscriptionUpdated: callback,
+        isVerified: isVerified,
+        verifiedUntil: verifiedUntil,
+      ),
     );
   }
 
@@ -44,10 +54,14 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
   bool _isLoadingPayment = false;
   List<PaymentTransactionModel> _transactions = [];
   bool _isLoadingHistory = false;
+  late bool _isVerified;
+  DateTime? _verifiedUntil;
 
   @override
   void initState() {
     super.initState();
+    _isVerified = widget.isVerified;
+    _verifiedUntil = widget.verifiedUntil;
     _tabController = TabController(length: 2, vsync: this);
     _loadHistory();
   }
@@ -58,13 +72,33 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
     super.dispose();
   }
 
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '-';
+    final wib = dt.toUtc().add(const Duration(hours: 7));
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${wib.day} ${months[wib.month - 1]} ${wib.year}';
+  }
+
   Future<void> _loadHistory() async {
     setState(() => _isLoadingHistory = true);
     final history = await PaymentService.instance.getMyTransactions();
+    final profile = await ProfileService.instance.getMyProfile();
     if (mounted) {
       setState(() {
         _transactions = history;
         _isLoadingHistory = false;
+        if (profile.isVerifiedActive) {
+          _isVerified = true;
+          _verifiedUntil = profile.verifiedUntil;
+        } else {
+          final hasActiveSettlement = history.any((t) => t.isSuccess);
+          if (hasActiveSettlement) {
+            _isVerified = true;
+          }
+        }
       });
     }
   }
@@ -236,11 +270,11 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
                     child: const Icon(Icons.verified_rounded, color: Color(0xFF64B5F6), size: 28),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Kolektor Terverifikasi',
                           style: TextStyle(
                             color: Colors.white,
@@ -249,8 +283,10 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
                           ),
                         ),
                         Text(
-                          'Langganan Bulanan (Midtrans Sandbox)',
-                          style: TextStyle(color: Color(0xFFC7D3C0), fontSize: 11),
+                          _isVerified
+                              ? 'Aktif s/d ${_formatDate(_verifiedUntil)} • Midtrans'
+                              : 'Langganan Bulanan (Midtrans Sandbox)',
+                          style: const TextStyle(color: Color(0xFFC7D3C0), fontSize: 11),
                         ),
                       ],
                     ),
@@ -323,9 +359,33 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
           title: 'Prioritas Pencarian Kolektor Teratas',
           description: 'Profil Anda diprioritaskan di barisan teratas direktori pencarian akun Faunova.',
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-        // Tombol Bayar
+        // Info jika sudah aktif
+        if (_isVerified)
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.sageMuda.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.sageTua.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.sageTua),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Centang Biru Anda aktif s/d ${_formatDate(_verifiedUntil)}. Membayar lagi akan menambahkan +30 hari perpanjangan kumulatif.',
+                    style: const TextStyle(fontSize: 11.5, color: AppColors.teksGelap, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Tombol Bayar / Perpanjang
         SizedBox(
           width: double.infinity,
           height: 48,
@@ -339,7 +399,9 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
                   )
                 : const Icon(Icons.payment_rounded, size: 20),
             label: Text(
-              _isLoadingPayment ? 'Membuat Transaksi...' : 'Bayar Rp 15.000 (Midtrans Sandbox)',
+              _isLoadingPayment
+                  ? 'Membuat Transaksi...'
+                  : (_isVerified ? 'Perpanjang 30 Hari ($idrFormatted)' : 'Bayar $idrFormatted (Midtrans Sandbox)'),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
             ),
             style: ElevatedButton.styleFrom(
@@ -368,15 +430,15 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
     required String description,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
@@ -427,105 +489,123 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
 
     if (_transactions.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long_rounded, size: 48, color: AppColors.sage.withValues(alpha: 0.5)),
-            const SizedBox(height: 12),
-            Text(
-              'Belum ada riwayat pembayaran.',
-              style: AppTypography.bodyMedium(fontSize: 13, color: AppColors.onSurfaceVariant),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.receipt_long_rounded, size: 48, color: AppColors.sage.withValues(alpha: 0.5)),
+              const SizedBox(height: 12),
+              Text(
+                'Belum ada riwayat pembayaran.',
+                style: AppTypography.bodyMedium(fontSize: 13, color: AppColors.onSurfaceVariant),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _loadHistory,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Muat Ulang Riwayat'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.sageTua,
+                  side: const BorderSide(color: AppColors.sageTua),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _transactions.length,
-      itemBuilder: (context, index) {
-        final tx = _transactions[index];
-        final isSuccess = tx.isSuccess;
+    return RefreshIndicator(
+      onRefresh: _loadHistory,
+      color: AppColors.sageTua,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _transactions.length,
+        itemBuilder: (context, index) {
+          final tx = _transactions[index];
+          final isSuccess = tx.isSuccess;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      tx.orderId,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.titleUi(
-                        fontSize: 12,
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        tx.orderId,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleUi(
+                          fontSize: 12,
+                          color: AppColors.teksGelap,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isSuccess
+                            ? AppColors.sageTua.withValues(alpha: 0.15)
+                            : const Color(0xFFFF8A80).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        tx.statusLabel,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: isSuccess ? AppColors.sageTua : AppColors.merahStatus,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Rp ${tx.amountIdr.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.teksGelap,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isSuccess
-                          ? AppColors.sageTua.withValues(alpha: 0.15)
-                          : const Color(0xFFFF8A80).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      tx.statusLabel,
+                    Text(
+                      tx.createdAt != null
+                          ? '${tx.createdAt!.day}/${tx.createdAt!.month}/${tx.createdAt!.year}'
+                          : '-',
                       style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        color: isSuccess ? AppColors.sageTua : AppColors.merahStatus,
+                        fontSize: 11,
+                        color: AppColors.teksGelap.withValues(alpha: 0.6),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Rp ${tx.amountIdr.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.teksGelap,
-                    ),
-                  ),
-                  Text(
-                    tx.createdAt != null
-                        ? '${tx.createdAt!.day}/${tx.createdAt!.month}/${tx.createdAt!.year}'
-                        : '-',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.teksGelap.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

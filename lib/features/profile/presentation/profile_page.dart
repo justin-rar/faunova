@@ -233,6 +233,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       UpgradeBlueCheckSheet.show(
                         context,
                         onSubscriptionUpdated: () => _loadProfile(),
+                        isVerified: _myProfile?.isVerifiedActive ?? false,
+                        verifiedUntil: _myProfile?.verifiedUntil,
                       );
                     } else if (value == 'saran_kesan') {
                       Navigator.of(context).push(
@@ -605,6 +607,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         UpgradeBlueCheckSheet.show(
           context,
           onSubscriptionUpdated: () => _loadProfile(),
+          isVerified: isVerified,
+          verifiedUntil: verifiedUntil,
         );
       },
       borderRadius: BorderRadius.circular(18),
@@ -658,6 +662,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 UpgradeBlueCheckSheet.show(
                   context,
                   onSubscriptionUpdated: () => _loadProfile(),
+                  isVerified: isVerified,
+                  verifiedUntil: verifiedUntil,
                 );
               },
               style: ElevatedButton.styleFrom(
