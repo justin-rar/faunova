@@ -294,9 +294,18 @@ class _GamePageState extends State<GamePage> {
 
 
   Widget _buildStreakTrackerCard() {
-    final streak = _streakStatus?.streakCount ?? 5;
+    final streak = _streakStatus?.streakCount ?? 0;
     final isClaimed = _streakStatus?.isClaimedToday ?? false;
-    final currentWibWeekday = TimeZoneService.getCurrentDateWib().weekday; // 1 = Mon, 7 = Sun
+
+    // Hitung jam tersisa sebelum streak reset (tengah malam WIB)
+    final now = TimeZoneService.toWib(DateTime.now());
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    final hoursLeft = midnight.difference(now).inHours;
+    final minutesLeft = midnight.difference(now).inMinutes % 60;
+
+    // Milestone streak
+    final milestones = [7, 30, 100, 365];
+    final nextMilestone = milestones.firstWhere((m) => streak < m, orElse: () => 365);
 
     return Container(
       decoration: BoxDecoration(
@@ -304,139 +313,330 @@ class _GamePageState extends State<GamePage> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
       ),
-      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.hardEdge,
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: AppColors.sageTua,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.local_fire_department_rounded,
-                  color: AppColors.teksPutih,
-                  size: 26,
-                ),
+          // ── Header dengan angka streak besar ──
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isClaimed
+                    ? [AppColors.sageTua, const Color(0xFF3D5C39)]
+                    : [const Color(0xFFB85A00), const Color(0xFFE07B00)],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Angka streak besar + api
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '$streak',
+                          style: const TextStyle(
+                            fontSize: 52,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            height: 1.0,
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 6, left: 4),
+                          child: Text(
+                            '🔥',
+                            style: TextStyle(fontSize: 28),
+                          ),
+                        ),
+                      ],
+                    ),
                     const Text(
-                      'Streak Observasi Harian',
+                      'Hari Berturut-turut',
                       style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                // Kanan: tombol klaim / sudah klaim + deadline
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (isClaimed) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white30),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, size: 16, color: Colors.white),
+                            SizedBox(width: 6),
+                            Text(
+                              'Sudah Klaim',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Kembali besok untuk\nmempertahankan streak',
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ] else ...[
+                      ElevatedButton.icon(
+                        onPressed: _isClaimingStreak ? null : _handleClaimStreak,
+                        icon: _isClaimingStreak
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.teksGelap,
+                                ),
+                              )
+                            : const Icon(Icons.local_fire_department_rounded, size: 16),
+                        label: Text(
+                          _isClaimingStreak ? 'Mengklaim...' : 'Klaim Streak!',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFFB85A00),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Countdown reset
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.timer_outlined, size: 11, color: Colors.white.withValues(alpha: 0.8)),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Reset dalam ${hoursLeft}j ${minutesLeft}m',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: Colors.white.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── 7 dot hari (mencerminkan streak modulo 7 terakhir) ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(7, (i) {
+                    // i=0 = 6 hari lalu, i=6 = hari ini
+                    // dot aktif jika hari tersebut tercakup oleh streak
+                    final daysAgo = 6 - i;
+                    final isActive = daysAgo < streak || (daysAgo == 0 && isClaimed);
+                    final isToday = daysAgo == 0;
+                    return _buildDayDot(
+                      ['-6', '-5', '-4', '-3', '-2', 'Kmrn', 'Hari\nini'][i],
+                      isActive,
+                      isToday: isToday,
+                      isTodayClaimed: isToday && isClaimed,
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                // Progress ke milestone berikutnya
+                Row(
+                  children: [
+                    Text(
+                      'Menuju $nextMilestone hari',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.teksGelap,
                       ),
                     ),
+                    const Spacer(),
                     Text(
-                      '$streak Hari Berturut-turut 🔥',
+                      '$streak / $nextMilestone',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppColors.emasTua,
                       ),
                     ),
                   ],
                 ),
-              ),
-              if (isClaimed)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.sage.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.sageTua.withValues(alpha: 0.4), width: 1),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: (streak / nextMilestone).clamp(0.0, 1.0),
+                    backgroundColor: AppColors.gading,
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.emas),
+                    minHeight: 8,
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_rounded, size: 14, color: AppColors.sageTua),
-                      SizedBox(width: 4),
-                      Text(
-                        'Sudah Klaim',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11.5,
-                          color: AppColors.sageTua,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                ElevatedButton(
-                  onPressed: _isClaimingStreak ? null : _handleClaimStreak,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    minimumSize: const Size(70, 36),
-                  ),
-                  child: _isClaimingStreak
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teksGelap),
-                        )
-                      : const Text('Klaim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
-            ],
+                const SizedBox(height: 12),
+                // Milestone chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: milestones.map((m) {
+                      final isReached = streak >= m;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isReached ? AppColors.sageTua : AppColors.gading,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isReached
+                                  ? AppColors.sageTua
+                                  : AppColors.sage.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isReached ? Icons.emoji_events_rounded : Icons.lock_outline_rounded,
+                                size: 12,
+                                color: isReached ? AppColors.emas : AppColors.sage,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$m hari',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isReached ? Colors.white : AppColors.teksGelap,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Peringatan jika belum klaim
+                if (!isClaimed)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFFB300).withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFB85A00)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            streak > 0
+                                ? '⚠️ Klaim sekarang! Jika kamu melewatkan hari ini, streak $streak hari akan HILANG.'
+                                : 'Klik "Klaim Streak!" untuk memulai streak pertamamu hari ini!',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFFB85A00),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          // Day streak dots: Sen Sel Rab Kam Jum Sab Min
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildDayDot('Sen', 1 <= currentWibWeekday && (1 < currentWibWeekday || isClaimed)),
-              _buildDayDot('Sel', 2 <= currentWibWeekday && (2 < currentWibWeekday || isClaimed)),
-              _buildDayDot('Rab', 3 <= currentWibWeekday && (3 < currentWibWeekday || isClaimed)),
-              _buildDayDot('Kam', 4 <= currentWibWeekday && (4 < currentWibWeekday || isClaimed)),
-              _buildDayDot('Jum', 5 <= currentWibWeekday && (5 < currentWibWeekday || isClaimed)),
-              _buildDayDot('Sab', 6 <= currentWibWeekday && (6 < currentWibWeekday || isClaimed)),
-              _buildDayDot('Min', 7 <= currentWibWeekday && (7 < currentWibWeekday || isClaimed)),
-            ],
-          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
   }
 
-  Widget _buildDayDot(String dayLabel, bool isDone) {
+  Widget _buildDayDot(String dayLabel, bool isDone, {bool isToday = false, bool isTodayClaimed = false}) {
     return Column(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            color: isDone ? AppColors.sageTua : AppColors.gading,
+            color: isTodayClaimed
+                ? AppColors.sageTua
+                : isDone
+                    ? AppColors.sage
+                    : AppColors.gading,
             shape: BoxShape.circle,
             border: Border.all(
-              color: isDone ? AppColors.sageTua : AppColors.sage.withValues(alpha: 0.5),
-              width: 1.5,
+              color: isToday
+                  ? AppColors.emas
+                  : isDone
+                      ? AppColors.sageTua.withValues(alpha: 0.6)
+                      : AppColors.sage.withValues(alpha: 0.4),
+              width: isToday ? 2 : 1.5,
             ),
           ),
-          child: Icon(
-            isDone ? Icons.check_rounded : Icons.circle_outlined,
-            size: 16,
-            color: isDone ? AppColors.teksPutih : AppColors.sage,
+          child: Center(
+            child: isTodayClaimed
+                ? const Text('🔥', style: TextStyle(fontSize: 16))
+                : isDone
+                    ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                    : isToday
+                        ? const Icon(Icons.circle_outlined, size: 14, color: AppColors.emas)
+                        : const Icon(Icons.remove_rounded, size: 14, color: AppColors.sage),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           dayLabel,
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: isDone ? FontWeight.w700 : FontWeight.w500,
-            color: AppColors.teksGelap,
+            fontSize: 9.5,
+            fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+            color: isToday ? AppColors.emasTua : AppColors.teksGelap.withValues(alpha: 0.7),
           ),
         ),
       ],
     );
   }
+
 
   Widget _buildDailyChallengeCard() {
     final challenge = _dailyChallenge;

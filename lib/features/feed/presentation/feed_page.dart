@@ -79,70 +79,44 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _toggleLike(PostModel post) async {
-    // Sinkronisasi status like di kedua tab (idempoten)
-    final forYouIdx = _forYouPosts.indexWhere((p) => p.id == post.id);
-    final followingIdx = _followingPosts.indexWhere((p) => p.id == post.id);
+    final postId = post.id;
 
+    // Temukan index saat ini menggunakan post.id (bukan indeks stale)
+    void applyLikeState(bool liked, int count) {
+      if (!mounted) return;
+      setState(() {
+        final fi = _forYouPosts.indexWhere((p) => p.id == postId);
+        if (fi != -1) {
+          _forYouPosts[fi] = _forYouPosts[fi].copyWith(isLikedByMe: liked, likesCount: count);
+        }
+        final wi = _followingPosts.indexWhere((p) => p.id == postId);
+        if (wi != -1) {
+          _followingPosts[wi] = _followingPosts[wi].copyWith(isLikedByMe: liked, likesCount: count);
+        }
+      });
+    }
+
+    // Ambil state saat ini dari list (bukan dari snapshot yang mungkin stale)
     final currentLiked = post.isLikedByMe;
     final newLiked = !currentLiked;
     final newCount = newLiked ? post.likesCount + 1 : (post.likesCount > 0 ? post.likesCount - 1 : 0);
 
-    setState(() {
-      if (forYouIdx != -1) {
-        _forYouPosts[forYouIdx] = _forYouPosts[forYouIdx].copyWith(
-          isLikedByMe: newLiked,
-          likesCount: newCount,
-        );
-      }
-      if (followingIdx != -1) {
-        _followingPosts[followingIdx] = _followingPosts[followingIdx].copyWith(
-          isLikedByMe: newLiked,
-          likesCount: newCount,
-        );
-      }
-    });
+    // Optimistic update
+    applyLikeState(newLiked, newCount);
 
     try {
-      final result = await PostService.instance.togglePostLike(post.id);
-      if (mounted && result['likes_count'] != null) {
+      final result = await PostService.instance.togglePostLike(postId);
+      if (result['likes_count'] != null) {
         final serverLiked = result['is_liked'] == true;
         final serverCount = (result['likes_count'] as num).toInt();
-
-        setState(() {
-          if (forYouIdx != -1) {
-            _forYouPosts[forYouIdx] = _forYouPosts[forYouIdx].copyWith(
-              isLikedByMe: serverLiked,
-              likesCount: serverCount,
-            );
-          }
-          if (followingIdx != -1) {
-            _followingPosts[followingIdx] = _followingPosts[followingIdx].copyWith(
-              isLikedByMe: serverLiked,
-              likesCount: serverCount,
-            );
-          }
-        });
+        applyLikeState(serverLiked, serverCount);
       }
     } catch (_) {
-      // Rollback jika server gagal
-      if (mounted) {
-        setState(() {
-          if (forYouIdx != -1) {
-            _forYouPosts[forYouIdx] = _forYouPosts[forYouIdx].copyWith(
-              isLikedByMe: currentLiked,
-              likesCount: post.likesCount,
-            );
-          }
-          if (followingIdx != -1) {
-            _followingPosts[followingIdx] = _followingPosts[followingIdx].copyWith(
-              isLikedByMe: currentLiked,
-              likesCount: post.likesCount,
-            );
-          }
-        });
-      }
+      // Rollback ke state sebelumnya
+      applyLikeState(currentLiked, post.likesCount);
     }
   }
+
 
   @override
   void dispose() {
@@ -302,10 +276,13 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
               )
             else
               for (int i = 0; i < _followingPosts.length; i++) ...[
-                PostCard(
-                  post: _followingPosts[i],
-                  onLike: () => _toggleLike(_followingPosts[i]),
-                ),
+                Builder(builder: (context) {
+                  final post = _followingPosts[i];
+                  return PostCard(
+                    post: post,
+                    onLike: () => _toggleLike(post),
+                  );
+                }),
                 if (i < _followingPosts.length - 1) const SizedBox(height: 18),
               ],
           ],
@@ -395,10 +372,13 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
               )
             else
               for (int i = 0; i < _forYouPosts.length; i++) ...[
-                PostCard(
-                  post: _forYouPosts[i],
-                  onLike: () => _toggleLike(_forYouPosts[i]),
-                ),
+                Builder(builder: (context) {
+                  final post = _forYouPosts[i];
+                  return PostCard(
+                    post: post,
+                    onLike: () => _toggleLike(post),
+                  );
+                }),
                 if (i < _forYouPosts.length - 1) const SizedBox(height: 18),
               ],
           ],
