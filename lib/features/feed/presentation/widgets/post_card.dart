@@ -7,6 +7,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_avatar.dart';
@@ -16,7 +17,7 @@ import '../../models/post_model.dart';
 
 import '../../../../core/theme/app_typography.dart';
 
-class PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final PostModel post;
   final VoidCallback? onLike;
   final bool isLiking;
@@ -27,6 +28,102 @@ class PostCard extends StatelessWidget {
     this.onLike,
     this.isLiking = false,
   });
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
+  PostModel get post => widget.post;
+
+  late AnimationController _likeController;
+  late Animation<double> _likeScaleAnimation;
+
+  late AnimationController _doubleTapController;
+  late Animation<double> _doubleTapScale;
+  late Animation<double> _doubleTapOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _likeScaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.45).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.45, end: 0.88).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 0.88, end: 1.0).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30,
+      ),
+    ]).animate(_likeController);
+
+    _doubleTapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _doubleTapScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.2, end: 1.3).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 60,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.3, end: 1.0).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+    ]).animate(_doubleTapController);
+    _doubleTapOpacity = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0),
+        weight: 15,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.0),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 30,
+      ),
+    ]).animate(_doubleTapController);
+  }
+
+  @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.post.isLikedByMe && widget.post.isLikedByMe) {
+      _likeController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _likeController.dispose();
+    _doubleTapController.dispose();
+    super.dispose();
+  }
+
+  void _handleLikeButtonTapped() {
+    HapticFeedback.lightImpact();
+    _likeController.forward(from: 0.0);
+    widget.onLike?.call();
+  }
+
+  void _handleDoubleTapPhoto() {
+    HapticFeedback.mediumImpact();
+    _doubleTapController.forward(from: 0.0);
+    _likeController.forward(from: 0.0);
+    if (!widget.post.isLikedByMe) {
+      widget.onLike?.call();
+    }
+  }
 
   Future<void> _openCoarseLocation(BuildContext context) async {
     if (!post.hasLocation) return;
@@ -258,6 +355,7 @@ class PostCard extends StatelessWidget {
           description: post.caption,
         );
       },
+      onDoubleTap: _handleDoubleTapPhoto,
       child: Container(
         height: 220,
         width: double.infinity,
@@ -286,52 +384,87 @@ class PostCard extends StatelessWidget {
                 ),
               ),
 
-            // Gradient halus bawah
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 60,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.65),
-                      Colors.transparent,
-                    ],
+              // Gradient halus bawah
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 60,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.65),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Top-right short hash
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  post.shortBlockHash,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontFamily: 'monospace',
+              // Top-right short hash
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    post.shortBlockHash,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+
+              // Animasi Pop Big Heart saat Double Tap
+              AnimatedBuilder(
+                animation: _doubleTapController,
+                builder: (context, child) {
+                  if (_doubleTapController.isDismissed) return const SizedBox.shrink();
+                  return Center(
+                    child: Opacity(
+                      opacity: _doubleTapOpacity.value,
+                      child: Transform.scale(
+                        scale: _doubleTapScale.value,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.35),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.merahStatus.withValues(alpha: 0.45),
+                                blurRadius: 28,
+                                spreadRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.favorite_rounded,
+                            color: Colors.white,
+                            size: 68,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
 }
 
   Widget _buildBodyContent(BuildContext context) {
@@ -424,24 +557,37 @@ class PostCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Tombol Like
+          // Tombol Like dengan Animasi Pop & Bounce
           InkWell(
-            onTap: isLiking ? null : onLike,
+            onTap: widget.isLiking ? null : _handleLikeButtonTapped,
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
                 children: [
-                  Icon(
-                    post.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    size: 21,
-                    color: post.isLikedByMe ? AppColors.merahStatus : AppColors.onSurfaceVariant,
+                  ScaleTransition(
+                    scale: _likeScaleAnimation,
+                    child: Icon(
+                      post.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      size: 21,
+                      color: post.isLikedByMe ? AppColors.merahStatus : AppColors.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    '${post.likesCount}',
-                    style: AppTypography.labelProminent(
-                      color: post.isLikedByMe ? AppColors.merahStatus : AppColors.teksGelap,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: child,
+                      );
+                    },
+                    child: Text(
+                      '${post.likesCount}',
+                      key: ValueKey('like_${post.id}_${post.likesCount}'),
+                      style: AppTypography.labelProminent(
+                        color: post.isLikedByMe ? AppColors.merahStatus : AppColors.teksGelap,
+                      ),
                     ),
                   ),
                 ],
