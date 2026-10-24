@@ -712,7 +712,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           if (_badges.isEmpty && _isLoadingBadges)
             const Center(
@@ -722,20 +722,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               ),
             )
           else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.78,
-              ),
-              itemCount: _badges.length,
-              itemBuilder: (context, index) {
-                final badge = _badges[index];
-                return _buildBadgeItem(badge);
-              },
+            Column(
+              children: [
+                for (int i = 0; i < _badges.length; i += 4) ...[
+                  if (i > 0) const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int j = 0; j < 4; j++)
+                        if (i + j < _badges.length)
+                          Expanded(child: _buildBadgeItem(_badges[i + j]))
+                        else
+                          const Expanded(child: SizedBox()),
+                    ],
+                  ),
+                ],
+              ],
             ),
         ],
       ),
@@ -748,9 +750,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     return InkWell(
       onTap: () => BadgeDetailSheet.show(context, badge: badge),
       borderRadius: BorderRadius.circular(12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -816,8 +820,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _loadCaptures() async {
     setState(() {

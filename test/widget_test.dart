@@ -3478,7 +3478,7 @@ void main() {
         expect(BiometricService.instance.isAppUnlocked, isFalse);
 
         // Password >= 6 karakter berhasil (demo/test fallback)
-        final successRes = await BiometricService.instance.verifyPasswordToUnlock('password123');
+        final successRes = await BiometricService.instance.verifyPasswordToUnlock('mock_test_token');
         expect(successRes, isTrue);
         expect(BiometricService.instance.isAppUnlocked, isTrue);
       });
@@ -3509,7 +3509,7 @@ void main() {
         expect(find.byType(TextFormField), findsOneWidget);
 
         // Masukkan kata sandi
-        await tester.enterText(find.byType(TextFormField), 'password123');
+        await tester.enterText(find.byType(TextFormField), 'mock_test_token');
         await tester.pump();
 
         final unlockBtn = find.widgetWithText(ElevatedButton, 'Buka Kunci');

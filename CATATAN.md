@@ -1425,3 +1425,19 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 
 ### 3. Langkah Berikutnya
 - Melakukan pengujian simpan ke koleksi kanonis langsung pada aplikasi dan memeriksa tampilan di feed/profil.
+
+---
+
+## Perapian UI: Optimasi Gap Kartu Lencana Gelar Pencapaian (MVP) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Akar Masalah Gap Berlebih pada Rak Lencana (`ProfilePage`)**:
+  - `GridView.builder` sebelumnya menggunakan rasio tetap `childAspectRatio: 0.78` yang membuat tinggi tiap cell (~104 dp) jauh melebihi tinggi natural item lencana (~67 dp).
+  - Akibatnya, `Column` di dalam cell menumpuk di atas dan menyisakan whitespace kosong (~38 dp) di bawah masing-masing baris, ditambah spasi antar baris sehingga tercipta celah ~50 dp antara baris 1 dan baris 2 serta celah ~54 dp di dasar kartu.
+- **Solusi & Perbaikan Layout**:
+  - Mengganti `GridView.builder` dengan arsitektur `Column` dan `Row` terstruktur yang membagi 8 lencana ke dalam 2 baris (4 kolom per baris) menggunakan `Expanded`.
+  - Tinggi cell kini mengikuti dimensi natural konten tanpa teregang oleh lebar layar HP.
+  - Spasi antar baris dan dasar kartu kini presisi dan simetris (`SizedBox(height: 12)`).
+- **Verifikasi**:
+  - `flutter analyze`: **0 issues (bersih)**.
+  - `flutter test test/widget_test.dart --name "grid lencana"`: **Lulus 100%**.
