@@ -1441,3 +1441,33 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Verifikasi**:
   - `flutter analyze`: **0 issues (bersih)**.
   - `flutter test test/widget_test.dart --name "grid lencana"`: **Lulus 100%**.
+
+---
+
+## Manajemen Izin Runtime (Kamera, Lokasi, Notifikasi) & Kompatibilitas SDK — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Layanan Izin Terpusat (`PermissionService`)**:
+  - Diterapkan di `lib/core/services/permission_service.dart`.
+  - Dilengkapi 3 modal/dialog estetik bertema Faunova (Sage & Emas):
+    1. *Rationale Dialog*: Menjelaskan alasan izin dibutuhkan (Kamera, Lokasi GPS akurat untuk verifikasi blok kanonis, dan Notifikasi tantangan/streak) sebelum sistem OS meminta izin.
+    2. *Permanently Denied Dialog*: Mengarahkan pengguna langsung ke Pengaturan Aplikasi (`openAppSettings()`) jika izin pernah ditolak permanen ("Jangan tanya lagi").
+    3. *Service Disabled Dialog*: Memberi tahu jika GPS/Location Services perangkat sedang dimatikan.
+  - Alur batch request `requestAllInitialPermissions` untuk inisialisasi awal.
+- **Integrasi pada `CameraPage`**:
+  - Pada pembukaan tab Kamera (`_initSensorsAndCamera`), aplikasi memeriksa dan meminta izin Kamera dan Lokasi terlebih dahulu menggunakan dialog ramah pengguna Faunova.
+  - Jika izin ditolak, antarmuka menampilkan state penolakan yang rapi dan tombol buka pengaturan, bukan sekadar layar hitam atau crash diam-diam.
+- **Resolusi Kompatibilitas Android Gradle Plugin (SDK 36 vs 37)**:
+  - Mengatasi kendala `permission_handler_android: 14.1.0` yang mewajibkan `compileSdk = 37` (belum didukung rekomendasi AGP 9.1.0 yang mentok di 36) dengan mematok `permission_handler: 12.0.1` (`permission_handler_android: 13.0.1`).
+  - Menghindari modifikasi paksa compileSdk ke 37 yang berisiko merusak kompatibilitas AGP.
+- **Verifikasi**:
+  - `flutter analyze lib/core/services/permission_service.dart lib/features/camera/presentation/camera_page.dart`: **0 issues (bersih)**.
+  - `flutter build apk --debug`: **Selesai 100% tanpa error AAR metadata** (`✓ Built build/app/outputs/flutter-apk/app-debug.apk`).
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- **Dialog Sistem OS Native**:
+  - Pengujian respons pengguna saat menekan "Allow" / "Deny" / "Don't ask again" pada dialog sistem native Android/iOS memerlukan pengujian langsung pada HP fisik atau emulator aktif.
+
+### 3. Langkah Berikutnya
+- Melanjutkan pengujian interaktif pada emulator/HP fisik via `flutter run`.
+
