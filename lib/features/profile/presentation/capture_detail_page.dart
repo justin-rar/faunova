@@ -31,6 +31,7 @@ class CaptureDetailPage extends StatefulWidget {
 class _CaptureDetailPageState extends State<CaptureDetailPage> {
   bool _isVerifyingBlock = false;
   ChainVerificationResult? _blockVerification;
+  bool _showHashDetails = false;
 
   CaptureModel get capture => widget.capture;
 
@@ -454,6 +455,21 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
                   ),
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.sageTua.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Blok #${capture.seq}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.sageTua,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -465,31 +481,81 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
               height: 1.35,
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Tombol Buka/Tutup Rincian Hash Kriptografis
+          InkWell(
+            onTap: () => setState(() => _showHashDetails = !_showHashDetails),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.sageMuda.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.sage.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _showHashDetails ? Icons.visibility_off_outlined : Icons.tag_rounded,
+                    size: 16,
+                    color: AppColors.sageTua,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _showHashDetails
+                          ? 'Sembunyikan Nilai Hash'
+                          : 'Tampilkan Rincian Hash (SHA-256)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.sageTua,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _showHashDetails ? 'Tutup ▲' : '3 Kode ▼',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.teksGelap.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_showHashDetails) ...[
+            const SizedBox(height: 14),
+
+            // Block Hash
+            _buildHashRow(
+              label: 'Block Hash (#${capture.seq})',
+              hash: capture.blockHash,
+              icon: Icons.tag_rounded,
+            ),
+            const Divider(height: 16),
+
+            // Previous Hash
+            _buildHashRow(
+              label: capture.seq == 1
+                  ? 'Previous Hash (Genesis: SHA-256(User))'
+                  : 'Previous Hash (Blok #${capture.seq - 1})',
+              hash: capture.previousHash,
+              icon: Icons.undo_rounded,
+            ),
+            const Divider(height: 16),
+
+            // Photo SHA-256
+            _buildHashRow(
+              label: 'SHA-256 Byte Citra Asli',
+              hash: capture.photoSha256,
+              icon: Icons.camera_alt_outlined,
+            ),
+          ],
           const SizedBox(height: 14),
-
-          // Block Hash
-          _buildHashRow(
-            label: 'Block Hash (#${capture.seq})',
-            hash: capture.blockHash,
-            icon: Icons.tag_rounded,
-          ),
-          const Divider(height: 16),
-
-          // Previous Hash
-          _buildHashRow(
-            label: capture.seq == 1 ? 'Previous Hash (Genesis: SHA-256(User))' : 'Previous Hash (Blok #${capture.seq - 1})',
-            hash: capture.previousHash,
-            icon: Icons.undo_rounded,
-          ),
-          const Divider(height: 16),
-
-          // Photo SHA-256
-          _buildHashRow(
-            label: 'SHA-256 Byte Citra Asli',
-            hash: capture.photoSha256,
-            icon: Icons.camera_alt_outlined,
-          ),
-          const SizedBox(height: 16),
 
           // Banner Hasil Uji Blok
           if (_blockVerification != null) ...[

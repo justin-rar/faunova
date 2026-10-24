@@ -1122,6 +1122,11 @@ void main() {
 
       // Panel Audit Hash Kanonis
       expect(find.textContaining('Audit Rantai Kriptografis'), findsOneWidget);
+      final expandToggle = find.textContaining('Tampilkan Rincian Hash');
+      if (expandToggle.evaluate().isNotEmpty) {
+        await tester.tap(expandToggle);
+        await tester.pumpAndSettle();
+      }
       expect(find.textContaining('Block Hash'), findsOneWidget);
       expect(find.textContaining('Previous Hash'), findsOneWidget);
       expect(find.textContaining('SHA-256 Byte Citra Asli'), findsOneWidget);
