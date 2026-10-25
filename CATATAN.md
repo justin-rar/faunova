@@ -2231,7 +2231,7 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 5. Status Verifikasi & Pengujian
 - `flutter analyze`: **0 issues found!**
 - `flutter test`: **168/168 tests passed (100% lulus)** termasuk `test/photo_cross_account_verification_test.dart`.
-- Kondisi 6 Postingan Lama: Dilaporkan ke pengguna tanpa modifikasi otomatis (membutuhkan keputusan pengguna apakah ingin dibiarkan atau dihapus manual).
+- Kondisi 6 Postingan Lama: Sesuai instruksi dan konfirmasi pengguna ("tolong hapus 6 postingan sebelumnya"), seluruh 6 postingan lama dengan path memori internal privat Android telah berhasil dihapus dari basis data Supabase (`public.posts`). Linimasa kini 100% bersih dan siap menerima postingan baru dengan foto cloud storage.
 
 
 
