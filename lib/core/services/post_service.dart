@@ -663,6 +663,23 @@ class PostService {
         if (idx != -1) {
           recipientId = _demoPosts[idx].authorId;
           species = _demoPosts[idx].speciesName;
+        } else if (_isUuid(postId)) {
+          try {
+            final postData = await client
+                .from('posts')
+                .select('author_id, captures(species_name)')
+                .eq('id', postId)
+                .maybeSingle();
+            if (postData != null) {
+              recipientId = (postData['author_id'] ?? '').toString();
+              final cap = postData['captures'];
+              if (cap is Map) {
+                species = cap['species_name'] as String?;
+              }
+            }
+          } catch (e) {
+            debugPrint('Failed to query post author for like notif: $e');
+          }
         }
         // Aturan keras: Like ke postingan diri sendiri tidak membuat notifikasi
         if (recipientId.isNotEmpty && recipientId != effectiveUserId) {

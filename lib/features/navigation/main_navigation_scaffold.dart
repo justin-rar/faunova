@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/widgets/glass_bottom_bar.dart';
 import '../camera/presentation/camera_page.dart';
 import '../feed/presentation/feed_page.dart';
@@ -15,6 +17,18 @@ class MainNavigationScaffold extends StatefulWidget {
 
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      final currentUid = Supabase.instance.client.auth.currentUser?.id;
+      if (currentUid != null) {
+        NotificationService.instance.initRealtimeListener(currentUid);
+        NotificationService.instance.fetchServerNotifications();
+      }
+    } catch (_) {}
+  }
 
   void _onTabSelected(int index) {
     if (_currentIndex != index) {

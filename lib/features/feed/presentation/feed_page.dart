@@ -5,14 +5,16 @@
 // ==============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/post_service.dart';
 import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
-import '../../profile/presentation/widgets/notification_setting_sheet.dart';
 import '../models/post_model.dart';
 import 'widgets/post_card.dart';
+import 'widgets/social_notification_sheet.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -50,6 +52,15 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     PostService.instance.onPostCreatedNotifier.addListener(_handleNewPostCreated);
     PostService.instance.onPostReportedNotifier.addListener(_handlePostReportedFromNotifier);
     _loadFeed();
+
+    // Inisialisasi listener notifikasi Realtime untuk pengguna yang login
+    try {
+      final currentUid = Supabase.instance.client.auth.currentUser?.id;
+      if (currentUid != null) {
+        NotificationService.instance.initRealtimeListener(currentUid);
+        NotificationService.instance.fetchServerNotifications();
+      }
+    } catch (_) {}
   }
 
   void _handlePostReported(String postId) {
@@ -218,31 +229,37 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 6),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  tooltip: 'Pusat Notifikasi & Pengingat',
-                  icon: const Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                    size: 23,
-                  ),
-                  onPressed: () => NotificationSettingSheet.show(context),
-                ),
-                Positioned(
-                  top: 13,
-                  right: 13,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: AppColors.emas,
-                      shape: BoxShape.circle,
+            child: ValueListenableBuilder<int>(
+              valueListenable: NotificationService.instance.unreadCountNotifier,
+              builder: (context, unreadCount, _) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: 'Pusat Notifikasi Sosial',
+                      icon: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 23,
+                      ),
+                      onPressed: () => SocialNotificationSheet.show(context),
                     ),
-                  ),
-                ),
-              ],
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.emas,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],

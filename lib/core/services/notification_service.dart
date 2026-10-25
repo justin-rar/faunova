@@ -43,6 +43,8 @@ class SocialNotificationItem {
   final String recipientUserId;
   final String actorUserId;
   final String actorName;
+  final String? actorUsername;
+  final String? actorAvatar;
   final String type; // 'follow' | 'like'
   final String? postId;
   final String? speciesName;
@@ -56,6 +58,8 @@ class SocialNotificationItem {
     required this.recipientUserId,
     required this.actorUserId,
     required this.actorName,
+    this.actorUsername,
+    this.actorAvatar,
     required this.type,
     this.postId,
     this.speciesName,
@@ -70,6 +74,8 @@ class SocialNotificationItem {
         'recipient_user_id': recipientUserId,
         'actor_user_id': actorUserId,
         'actor_name': actorName,
+        'actor_username': actorUsername,
+        'actor_avatar': actorAvatar,
         'type': type,
         'post_id': postId,
         'species_name': speciesName,
@@ -87,6 +93,8 @@ class SocialNotificationItem {
         actorUserId:
             (json['actor_user_id'] ?? json['actor_id'])?.toString() ?? '',
         actorName: json['actor_name']?.toString() ?? 'Penjelajah Satwa',
+        actorUsername: json['actor_username']?.toString(),
+        actorAvatar: json['actor_avatar']?.toString(),
         type: json['type']?.toString() ?? 'follow',
         postId: json['post_id']?.toString(),
         speciesName: json['species_name']?.toString(),
@@ -141,6 +149,9 @@ class NotificationService {
 
   // Antrean notifikasi sosial per ID pengguna penerima
   final Map<String, List<SocialNotificationItem>> _userNotificationQueues = {};
+
+  RealtimeChannel? _realtimeSubscription;
+  final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
 
   String? _mockCurrentUserId;
   void setMockCurrentUserId(String? id) => _mockCurrentUserId = id;
@@ -704,6 +715,181 @@ class NotificationService {
   /// Membersihkan antrean notifikasi sosial (untuk testing)
   void clearNotificationQueues() {
     _userNotificationQueues.clear();
+    unreadCountNotifier.value = 0;
+  }
+
+  /// Menginisialisasi listener Supabase Realtime untuk notifikasi masuk khusus pengguna ini
+  Future<void> initRealtimeListener(String userId) async {
+    if (_isTestEnvironment || userId.isEmpty) return;
+
+    try {
+      if (_realtimeSubscription != null) {
+        await _realtimeSubscription?.unsubscribe();
+        _realtimeSubscription = null;
+      }
+
+      final client = Supabase.instance.client;
+      _realtimeSubscription = client
+          .channel('public:notifications:$userId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'notifications',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'recipient_id',
+              value: userId,
+            ),
+            callback: (payload) async {
+              debugPrint('NotificationService Realtime incoming: ${payload.newRecord}');
+              final record = payload.newRecord;
+              final actorId = (record['actor_id'] ?? '').toString();
+              final recipientId = (record['recipient_id'] ?? '').toString();
+
+              // Aturan keras: Pelaku sendiri tidak boleh menerima notifikasi
+              final currentUserId = _getCurrentUserId();
+              if (actorId == userId || actorId == recipientId || currentUserId == actorId) {
+                return;
+              }
+
+              // Ambil profil actor untuk avatar/nama jika belum lengkap
+              String actorName = 'Penjelajah Satwa';
+              String? actorUsername;
+              String? actorAvatar;
+              try {
+                final prof = await client
+                    .from('profiles')
+                    .select('display_name, username, avatar_path')
+                    .eq('id', actorId)
+                    .maybeSingle();
+                if (prof != null) {
+                  actorName = (prof['display_name'] as String?) ??
+                      (prof['username'] as String?) ??
+                      actorName;
+                  actorUsername = prof['username'] as String?;
+                  actorAvatar = prof['avatar_path'] as String?;
+                }
+              } catch (_) {}
+
+              final item = SocialNotificationItem(
+                id: record['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                recipientUserId: recipientId,
+                actorUserId: actorId,
+                actorName: actorName,
+                actorUsername: actorUsername,
+                actorAvatar: actorAvatar,
+                type: record['type']?.toString() ?? 'follow',
+                postId: record['post_id']?.toString(),
+                title: record['title']?.toString() ?? 'Pemberitahuan Baru',
+                body: record['body']?.toString() ?? '',
+                isRead: false,
+                createdAt: record['created_at'] != null
+                    ? DateTime.parse(record['created_at'].toString())
+                    : DateTime.now(),
+              );
+
+              // 1. Simpan ke antrean memori lokal penerima
+              _userNotificationQueues[userId] ??= [];
+              final exists = _userNotificationQueues[userId]!.any((n) => n.id == item.id);
+              if (!exists) {
+                _userNotificationQueues[userId]!.insert(0, item);
+                unreadCountNotifier.value++;
+              }
+
+              // 2. Tampilkan banner notifikasi lokal di layar HP penerima
+              if (isSocialNotificationEnabled()) {
+                await _deliverLocalSocialNotification(item);
+              }
+            },
+          );
+      _realtimeSubscription!.subscribe();
+      debugPrint('NotificationService: Supabase Realtime aktif untuk recipient $userId');
+    } catch (e) {
+      debugPrint('NotificationService initRealtimeListener error: $e');
+    }
+  }
+
+  /// Menutup langganan Realtime
+  Future<void> disposeRealtimeListener() async {
+    if (_realtimeSubscription != null) {
+      try {
+        await _realtimeSubscription?.unsubscribe();
+      } catch (_) {}
+      _realtimeSubscription = null;
+    }
+  }
+
+  /// Menarik daftar notifikasi pengguna dari Supabase RPC get_my_notifications
+  Future<List<SocialNotificationItem>> fetchServerNotifications({int limit = 30}) async {
+    final myId = _getCurrentUserId();
+    if (myId == null) return [];
+
+    if (_isTestEnvironment) {
+      return fetchMyNotifications(myId);
+    }
+
+    try {
+      final client = Supabase.instance.client;
+      final response = await client.rpc(
+        'get_my_notifications',
+        params: {'p_limit': limit},
+      );
+
+      final List<dynamic> rows = response as List<dynamic>;
+      final list = rows
+          .map((r) => SocialNotificationItem.fromJson(Map<String, dynamic>.from(r as Map)))
+          .toList();
+
+      _userNotificationQueues[myId] = list;
+      unreadCountNotifier.value = list.where((n) => !n.isRead).length;
+      return list;
+    } catch (e) {
+      debugPrint('NotificationService fetchServerNotifications error: $e');
+      return fetchMyNotifications(myId);
+    }
+  }
+
+  /// Menandai seluruh notifikasi pengguna aktif sebagai telah dibaca
+  Future<void> markAllAsRead() async {
+    final myId = _getCurrentUserId();
+    if (myId == null) return;
+
+    unreadCountNotifier.value = 0;
+    final queue = _userNotificationQueues[myId];
+    if (queue != null) {
+      for (int i = 0; i < queue.length; i++) {
+        if (!queue[i].isRead) {
+          queue[i] = SocialNotificationItem(
+            id: queue[i].id,
+            recipientUserId: queue[i].recipientUserId,
+            actorUserId: queue[i].actorUserId,
+            actorName: queue[i].actorName,
+            actorUsername: queue[i].actorUsername,
+            actorAvatar: queue[i].actorAvatar,
+            type: queue[i].type,
+            postId: queue[i].postId,
+            speciesName: queue[i].speciesName,
+            title: queue[i].title,
+            body: queue[i].body,
+            isRead: true,
+            createdAt: queue[i].createdAt,
+          );
+        }
+      }
+    }
+
+    if (!_isTestEnvironment) {
+      try {
+        final client = Supabase.instance.client;
+        await client
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('recipient_id', myId)
+            .eq('is_read', false);
+      } catch (e) {
+        debugPrint('NotificationService markAllAsRead error: $e');
+      }
+    }
   }
 
   Future<void> _deliverLocalSocialNotification(SocialNotificationItem item) async {

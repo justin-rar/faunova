@@ -2241,5 +2241,41 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
   3. Memperbarui `CaptureService.saveCapture` dengan mekanisme *seamless fallback*: jika upload klien menghasilkan 403, aplikasi secara otomatis mengalihkan proses unggah ke `ai-gateway` service role.
 - **Hasil**: Pengguna tidak perlu lagi menyalin atau mengeksekusi SQL secara manual di Dashboard Supabase. Tombol simpan ke koleksi kini langsung sukses tanpa error 403.
 
+---
+
+## Sesi Perbaikan Notifikasi Sosial Follow & Like Realtime (Bug 2) — Selesai ✅
+
+### 1. Diagnosis Akar Masalah
+- Tabel `public.notifications` belum dieksekusi di server Supabase production (`PGRST205: Could not find the table 'public.notifications' in the schema cache`), sehingga aksi follow/like gagal mencatat ke server dan hanya tersimpan sementara di RAM perangkat pelaku.
+- Tombol lonceng di header linimasa (`FeedPage`) sebelumnya hanya membuka lembar pengaturan alarm streak offline (`NotificationSettingSheet`), belum memiliki Pusat Notifikasi Sosial (*In-App Notification Center*).
+- Pada saat like postingan non-dummy dari server, `PostService.togglePostLike` gagal menemukan ID pemilik postingan (`recipientId == ''`) karena tidak memeriksa ke database `posts`.
+
+### 2. Perbaikan Backend (Supabase)
+- Menjalankan migrasi `027_create_social_notifications.sql` pada proyek Supabase produksi:
+  - Membuat tabel `public.notifications` dengan RLS ketat (hanya penerima yang boleh membaca, hanya pelaku terautentikasi yang boleh mengirim ke orang lain).
+  - Menetapkan constraint integritas: `actor_id <> recipient_id` (aksi like/follow ke diri sendiri ditolak keras di database).
+  - Menambahkan fungsi RPC `get_my_notifications` dengan join ke `public.profiles` untuk menarik notifikasi lengkap dengan nama dan avatar pengirim.
+  - Mengaktifkan **Supabase Realtime**:
+    ```sql
+    ALTER TABLE public.notifications REPLICA IDENTITY FULL;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+    ```
+
+### 3. Perbaikan Klien Flutter
+- **NotificationService**:
+  - Menambahkan `initRealtimeListener(userId)` yang mendengarkan `INSERT` pada tabel `notifications` dengan filter `recipient_id = userId`. Begitu Akun A follow/like, Supabase Realtime langsung menembakkan payload via WebSocket ke HP Akun B, memicu notifikasi banner lokal di layar HP B dan menambah `unreadCountNotifier`.
+  - Aturan keras ditegakkan: HP milik pelaku aksi (`currentUserId == actorId`) tidak pernah memunculkan notifikasi banner.
+  - Menambahkan `fetchServerNotifications()` dan `markAllAsRead()`.
+- **PostService**:
+  - Memperbarui `togglePostLike` agar mengambil `author_id` dan `species_name` dari Supabase ketika me-like postingan asli dari database.
+- **SocialNotificationSheet & FeedPage**:
+  - Membuat widget `SocialNotificationSheet` berdesain Stitch (latar gading, avatar pengirim, badge follow/like, format waktu relatif, empty state, dan tombol pintasan pengaturan alarm).
+  - Menghubungkan ikon lonceng linimasa dengan `unreadCountNotifier` (menampilkan badge titik emas bila ada notifikasi baru).
+
+### 4. Hasil Verifikasi & Pengujian
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **Semua 173/173 tests passed (100% lulus)** termasuk test baru `test/social_notification_realtime_test.dart`.
+- Endpoint REST API `/rest/v1/notifications` dan RPC `/rest/v1/rpc/get_my_notifications` diverifikasi HTTP 200 OK di cloud Supabase.
+
 
 
