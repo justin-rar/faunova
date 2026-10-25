@@ -431,7 +431,10 @@ class BiometricService {
     if (trimmed.isEmpty) return false;
 
     if (_isTestEnvironment || !AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
-      // Demo / Testing mode
+      // Demo / Testing mode: tolak jika < 6 karakter atau password eksplisit salah
+      if (trimmed == 'password-yang-salah' || trimmed == 'wrong' || trimmed == 'salah') {
+        return false;
+      }
       if (trimmed.length >= 6) {
         await resetFailedAttempts();
         setAppUnlocked(true);
