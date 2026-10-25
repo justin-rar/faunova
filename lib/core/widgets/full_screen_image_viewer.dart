@@ -7,6 +7,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../utils/media_resolver.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
   final String imageUrl;
@@ -80,7 +81,11 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   }
 
   Widget _buildImage() {
-    final url = widget.imageUrl;
+    final url = MediaResolver.resolvePhotoUrl(
+      widget.imageUrl,
+      speciesName: widget.title,
+      category: widget.subtitle,
+    );
     Widget img;
 
     if (url.startsWith('http://') || url.startsWith('https://')) {

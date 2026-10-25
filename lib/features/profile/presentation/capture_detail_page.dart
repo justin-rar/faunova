@@ -17,6 +17,7 @@ import '../../../core/widgets/glass_app_bar.dart';
 import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
 import '../../feed/presentation/widgets/create_post_sheet.dart';
+import '../../../core/utils/media_resolver.dart';
 import 'widgets/multi_timezone_card.dart';
 
 class CaptureDetailPage extends StatefulWidget {
@@ -166,11 +167,15 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
 
   Widget _buildHeroPhotoCard() {
     Widget imageWidget;
-    final path = capture.photoObjectPath;
+    final resolvedPath = MediaResolver.resolvePhotoUrl(
+      capture.photoObjectPath,
+      speciesName: capture.speciesName,
+      category: capture.category,
+    );
 
-    if (path.startsWith('http://') || path.startsWith('https://')) {
+    if (resolvedPath.startsWith('http://') || resolvedPath.startsWith('https://')) {
       imageWidget = Image.network(
-        path,
+        resolvedPath,
         fit: BoxFit.cover,
         width: double.infinity,
         height: 270,
@@ -199,9 +204,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           ),
         ),
       );
-    } else if (path.startsWith('assets/')) {
+    } else if (resolvedPath.startsWith('assets/')) {
       imageWidget = Image.asset(
-        path,
+        resolvedPath,
         fit: BoxFit.cover,
         width: double.infinity,
         height: 270,
@@ -213,9 +218,9 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           ),
         ),
       );
-    } else if (path.isNotEmpty && File(path).existsSync()) {
+    } else if (resolvedPath.isNotEmpty && File(resolvedPath).existsSync()) {
       imageWidget = Image.file(
-        File(path),
+        File(resolvedPath),
         fit: BoxFit.cover,
         width: double.infinity,
         height: 270,
@@ -240,7 +245,7 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
       onTap: () {
         FullScreenImageViewer.open(
           context,
-          imageUrl: capture.photoObjectPath,
+          imageUrl: resolvedPath,
           title: capture.speciesName,
           subtitle: '${capture.category} • Blok #${capture.seq}',
           description: capture.description,

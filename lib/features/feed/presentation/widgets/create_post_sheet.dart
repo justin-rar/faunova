@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/post_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/media_resolver.dart';
 import '../../../camera/models/capture_model.dart';
 import '../../models/post_model.dart';
 
@@ -132,7 +133,11 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final photo = widget.capture.photoObjectPath;
+    final photo = MediaResolver.resolvePhotoUrl(
+      widget.capture.photoObjectPath,
+      speciesName: widget.capture.speciesName,
+      category: widget.capture.category,
+    );
 
     Widget imageThumbnail;
     if (photo.startsWith('http://') || photo.startsWith('https://')) {

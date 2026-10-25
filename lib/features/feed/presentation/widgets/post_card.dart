@@ -17,6 +17,7 @@ import '../../models/post_model.dart';
 
 import 'report_post_sheet.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/media_resolver.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -327,11 +328,15 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   Widget _buildPhotoSurface(BuildContext context) {
     Widget imageWidget;
-    final url = post.photoUrl;
+    final resolvedUrl = MediaResolver.resolvePhotoUrl(
+      post.photoUrl,
+      speciesName: post.speciesName,
+      category: post.category,
+    );
 
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
       imageWidget = Image.network(
-        url,
+        resolvedUrl,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
@@ -358,9 +363,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
           ),
         ),
       );
-    } else if (url.startsWith('assets/')) {
+    } else if (resolvedUrl.startsWith('assets/')) {
       imageWidget = Image.asset(
-        url,
+        resolvedUrl,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
@@ -371,9 +376,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
           ),
         ),
       );
-    } else if (url.isNotEmpty && File(url).existsSync()) {
+    } else if (resolvedUrl.isNotEmpty && File(resolvedUrl).existsSync()) {
       imageWidget = Image.file(
-        File(url),
+        File(resolvedUrl),
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
@@ -391,7 +396,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       onTap: () {
         FullScreenImageViewer.open(
           context,
-          imageUrl: post.photoUrl,
+          imageUrl: resolvedUrl,
           title: post.speciesName,
           subtitle: '@${post.authorUsername} • ${post.category}',
           description: post.caption,
