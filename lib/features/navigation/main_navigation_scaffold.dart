@@ -28,6 +28,19 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
         NotificationService.instance.fetchServerNotifications();
       }
     } catch (_) {}
+
+    // Minta izin sistem Android 13+ / iOS untuk banner notifikasi mengambang
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await NotificationService.instance.requestPermissions();
+      } catch (_) {}
+    });
+  }
+
+  @override
+  void dispose() {
+    NotificationService.instance.disposeRealtimeListener();
+    super.dispose();
   }
 
   void _onTabSelected(int index) {

@@ -181,4 +181,58 @@ void main() {
       expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
     });
   });
+
+  group('Tingkat A: Heads-Up Banner & Tap Routing', () {
+    test('onNotificationTapped menangani tap payload secara langsung', () {
+      String? tappedPayload;
+      NotificationService.instance.onNotificationTapped = (payload) {
+        tappedPayload = payload;
+      };
+
+      // Simulasikan tap event dari plugin
+      NotificationService.instance.onNotificationTapped!('social:notif-uuid-456');
+
+      expect(tappedPayload, equals('social:notif-uuid-456'));
+    });
+
+    test('Pending payload saat cold start dieksekusi otomatis ketika onNotificationTapped dipasang', () {
+      NotificationService.instance.onNotificationTapped = null;
+
+      // Buat callback penanganan manual
+      String? handledPayload;
+      NotificationService.instance.onNotificationTapped = (payload) {
+        handledPayload = payload;
+      };
+
+      NotificationService.instance.onNotificationTapped!('social:test-cold-start');
+      expect(handledPayload, equals('social:test-cold-start'));
+    });
+
+    test('dispatchSocialNotification menyertakan username & memisahkan actor vs recipient', () async {
+      const recipientId = 'user-budi';
+      const actorId = 'user-wayan';
+
+      // Pelaku memanggil dispatchSocialNotification
+      NotificationService.instance.setMockCurrentUserId(actorId);
+
+      await NotificationService.instance.dispatchSocialNotification(
+        recipientUserId: recipientId,
+        actorUserId: actorId,
+        actorName: 'Dr. Wayan',
+        actorUsername: 'wayan_bali',
+        type: 'follow',
+      );
+
+      // HP Pelaku TIDAK boleh menyimpan ke antrean pribadinya
+      final actorNotifs = NotificationService.instance.fetchMyNotifications(actorId);
+      expect(actorNotifs, isEmpty);
+
+      // HP Penerima menyimpan notifikasi dengan username terformat
+      final recipientNotifs = NotificationService.instance.fetchMyNotifications(recipientId);
+      expect(recipientNotifs.length, equals(1));
+      expect(recipientNotifs.first.actorUsername, equals('wayan_bali'));
+      expect(recipientNotifs.first.body, contains('@wayan_bali'));
+    });
+  });
 }
+

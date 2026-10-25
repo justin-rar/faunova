@@ -308,16 +308,20 @@ class SocialService {
         _followingUserIds.add(targetUserId);
         final myId = _getCurrentUserId() ?? 'user-demo';
         String myName = 'Penjelajah Satwa';
+        String? myUsername;
+        String? myAvatar;
         try {
           final myProf = await client
               .from('profiles')
-              .select('display_name, username')
+              .select('display_name, username, avatar_path')
               .eq('id', myId)
               .maybeSingle();
           if (myProf != null) {
             myName = (myProf['display_name'] as String?) ??
                 (myProf['username'] as String?) ??
                 'Penjelajah Satwa';
+            myUsername = myProf['username'] as String?;
+            myAvatar = myProf['avatar_path'] as String?;
           }
         } catch (_) {}
 
@@ -325,6 +329,8 @@ class SocialService {
           recipientUserId: targetUserId,
           actorUserId: myId,
           actorName: myName,
+          actorUsername: myUsername,
+          actorAvatar: myAvatar,
           type: 'follow',
         );
       } else {

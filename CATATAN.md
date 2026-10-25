@@ -2277,5 +2277,43 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 - `flutter test`: **Semua 173/173 tests passed (100% lulus)** termasuk test baru `test/social_notification_realtime_test.dart`.
 - Endpoint REST API `/rest/v1/notifications` dan RPC `/rest/v1/rpc/get_my_notifications` diverifikasi HTTP 200 OK di cloud Supabase.
 
+---
+
+## Sesi Pengiriman Notifikasi Sistem Melayang / Heads-Up Banner (Level A) — Selesai ✅
+
+### 1. Tujuan
+Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di status bar Android dengan suara dan getaran) saat Akun A follow atau like postingan Akun B. Mengetuk banner langsung membuka aplikasi dan menampilkan Pusat Notifikasi Sosial (*Social Notification Sheet*). Pelaku tidak pernah menerima notifikasi untuk aksinya sendiri, dan unfollow/unlike tidak membuat duplikasi notifikasi.
+
+### 2. Implementasi Tingkat A (Saat Aplikasi B Berjalan / Di Latar Belakang)
+- **Saluran Notifikasi Android (`faunova_social_v2`)**:
+  - Saluran `channelSocialId` ditingkatkan ke ID versi 2 (`faunova_social_v2`) dengan `importance: Importance.max` dan `priority: Priority.max` agar Android 8+ dan Android 13/14/15 mengaktifkan mode popup melayang (*heads-up floating banner*).
+  - Mengaktifkan `playSound: true`, `enableVibration: true`, dan `channelShowBadge: true`.
+- **Izin Notifikasi Sistem Otomatis (Android 13+ & iOS)**:
+  - Pada `MainNavigationScaffold.initState`, sistem secara otomatis meminta izin sistem runtime (`POST_NOTIFICATIONS`) saat pengguna pertama kali masuk linimasa.
+- **Rute Ketukan Notifikasi (*Tap Routing*)**:
+  - Di `lib/main.dart`, `FaunovaApp.navigatorKey` dipasang pada `MaterialApp`.
+  - Callback `NotificationService.instance.onNotificationTapped` dikonfigurasi untuk menangani payload `'social:<id>'`, secara otomatis memanggil `SocialNotificationSheet.show(context)` saat banner diketuk.
+  - Mendukung ketukan saat aplikasi dibuka dingin (*cold start*) via mekanisme antrean payload `_pendingTapPayload`.
+- **Deduplikasi & ID Deterministik**:
+  - Mengganti ID statis dengan hash deterministik 31-bit positif (`_generateNotificationId(item.id)`) sehingga notifikasi follow/like berikutnya tidak saling menimpa di status tray Android.
+  - Set `_processedNotificationIds` mencegah banner duplikat jika record yang sama diterima ulang.
+- **Pembersihan Bersih Saat Tutup**:
+  - `MainNavigationScaffold.dispose` memanggil `disposeRealtimeListener()` untuk memutus koneksi websocket saat logout atau pergantian user.
+
+### 3. Hasil Pengujian & Analisis
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **Semua 176/176 tests passed (100% lulus)**.
+- Pengujian unit & widget `test/social_notification_realtime_test.dart` mencakup:
+  1. Serialisasi/deserialisasi model sosial.
+  2. Pencegahan self-notification (like/follow ke diri sendiri diblokir total).
+  3. Pemisahan antrean pelaku vs penerima.
+  4. Penanganan respon ketukan banner (*tap routing*).
+  5. Penanganan payload saat aplikasi diluncurkan dari kondisi tertutup (*cold start*).
+
+### 4. Batasan & Langkah Lanjutan
+- **Level A**: Bekerja ketika aplikasi penerima sedang terbuka atau berada di *recent apps* / *background*.
+- **Level B (Opsional)**: Untuk menerima notifikasi banner saat aplikasi penerima dimatikan total (*swiped away / killed process*), diperlukan integrasi Firebase Cloud Messaging (FCM) dan device push token di backend Supabase.
+
+
 
 

@@ -26,10 +26,10 @@ class NotificationConstants {
   static const String channelDescription =
       'Saluran pengingat streak harian, tantangan biologi satwa, dan masa aktif Centang Biru Faunova.';
 
-  static const String channelSocialId = 'faunova_social';
+  static const String channelSocialId = 'faunova_social_v2';
   static const String channelSocialName = 'Aktivitas Sosial Faunova';
   static const String channelSocialDescription =
-      'Pemberitahuan saat postingan disukai atau saat ada pengguna baru mengikuti Anda.';
+      'Pemberitahuan mengambang saat postingan disukai atau saat ada pengguna baru mengikuti Anda.';
 
   static const String keyStreakReminderEnabled = 'faunova_notif_streak_enabled';
   static const String keyChallengeReminderEnabled = 'faunova_notif_challenge_enabled';
@@ -152,6 +152,35 @@ class NotificationService {
 
   RealtimeChannel? _realtimeSubscription;
   final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
+  final Set<String> _processedNotificationIds = {};
+  void Function(String payload)? _onNotificationTapped;
+  String? _pendingTapPayload;
+
+  void Function(String payload)? get onNotificationTapped => _onNotificationTapped;
+  set onNotificationTapped(void Function(String payload)? handler) {
+    _onNotificationTapped = handler;
+    if (handler != null && _pendingTapPayload != null) {
+      final p = _pendingTapPayload!;
+      _pendingTapPayload = null;
+      handler(p);
+    }
+  }
+
+  void _handleNotificationTap(String payload) {
+    if (_onNotificationTapped != null) {
+      _onNotificationTapped!(payload);
+    } else {
+      _pendingTapPayload = payload;
+    }
+  }
+
+  int _generateNotificationId(String notifId) {
+    var hash = 0;
+    for (var i = 0; i < notifId.length; i++) {
+      hash = (31 * hash + notifId.codeUnitAt(i)) & 0x7FFFFFFF;
+    }
+    return hash == 0 ? 1005 : hash;
+  }
 
   String? _mockCurrentUserId;
   void setMockCurrentUserId(String? id) => _mockCurrentUserId = id;
@@ -200,9 +229,9 @@ class NotificationService {
     try {
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const darwinSettings = DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
       );
 
       const initSettings = InitializationSettings(
@@ -215,8 +244,24 @@ class NotificationService {
         settings: initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           debugPrint('Notification tapped: ${response.payload}');
+          if (response.payload != null) {
+            _handleNotificationTap(response.payload!);
+          }
         },
       );
+
+      // Tangani jika aplikasi diluncurkan langsung dari ketukan notifikasi sistem
+      try {
+        final launchDetails = await _localNotifications.getNotificationAppLaunchDetails();
+        if (launchDetails?.didNotificationLaunchApp ?? false) {
+          final payload = launchDetails?.notificationResponse?.payload;
+          if (payload != null) {
+            _handleNotificationTap(payload);
+          }
+        }
+      } catch (e) {
+        debugPrint('NotificationService launchDetails check error: $e');
+      }
 
       _isInitialized = true;
       debugPrint('NotificationService: Berhasil diinisialisasi.');
@@ -607,6 +652,8 @@ class NotificationService {
     required String recipientUserId,
     required String actorUserId,
     required String actorName,
+    String? actorUsername,
+    String? actorAvatar,
     required String type, // 'follow' | 'like'
     String? postId,
     String? speciesName,
@@ -621,17 +668,23 @@ class NotificationService {
         ? 'Pengikut Baru! 👥'
         : 'Postingan Anda Disukai! ❤️';
 
+    final actorIdentifier = (actorUsername != null && actorUsername.isNotEmpty)
+        ? '$actorName (@$actorUsername)'
+        : actorName;
+
     final body = type == 'follow'
-        ? '$actorName mulai mengikuti linimasa satwa Anda.'
+        ? '$actorIdentifier mulai mengikuti linimasa satwa Anda.'
         : (speciesName != null && speciesName.isNotEmpty
-            ? '$actorName menyukai tangkapan $speciesName Anda.'
-            : '$actorName menyukai postingan linimasa Anda.');
+            ? '$actorIdentifier menyukai tangkapan $speciesName Anda.'
+            : '$actorIdentifier menyukai postingan linimasa Anda.');
 
     final item = SocialNotificationItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       recipientUserId: recipientUserId,
       actorUserId: actorUserId,
       actorName: actorName,
+      actorUsername: actorUsername,
+      actorAvatar: actorAvatar,
       type: type,
       postId: postId,
       speciesName: speciesName,
@@ -715,6 +768,7 @@ class NotificationService {
   /// Membersihkan antrean notifikasi sosial (untuk testing)
   void clearNotificationQueues() {
     _userNotificationQueues.clear();
+    _processedNotificationIds.clear();
     unreadCountNotifier.value = 0;
   }
 
@@ -893,11 +947,18 @@ class NotificationService {
   }
 
   Future<void> _deliverLocalSocialNotification(SocialNotificationItem item) async {
-    final notifId = item.type == 'follow'
+    if (_processedNotificationIds.contains(item.id)) {
+      debugPrint('NotificationService: Notifikasi ${item.id} sudah pernah ditampilkan, lewati.');
+      return;
+    }
+    _processedNotificationIds.add(item.id);
+
+    final notifId = _generateNotificationId(item.id);
+    final standardId = item.type == 'follow'
         ? NotificationConstants.idSocialFollow
         : NotificationConstants.idSocialLike;
 
-    _scheduledRecords[notifId] = ScheduledNotificationRecord(
+    final record = ScheduledNotificationRecord(
       id: notifId,
       title: item.title,
       body: item.body,
@@ -905,6 +966,8 @@ class NotificationService {
       isRecurringDaily: false,
       category: item.type == 'follow' ? 'social_follow' : 'social_like',
     );
+    _scheduledRecords[notifId] = record;
+    _scheduledRecords[standardId] = record;
 
     if (!_isTestEnvironment) {
       try {
@@ -917,6 +980,7 @@ class NotificationService {
             channelName: NotificationConstants.channelSocialName,
             channelDesc: NotificationConstants.channelSocialDescription,
           ),
+          payload: 'social:${item.id}',
         );
       } catch (e) {
         debugPrint('NotificationService _deliverLocalSocialNotification error: $e');
@@ -1069,12 +1133,18 @@ class NotificationService {
     required String channelName,
     required String channelDesc,
   }) {
+    final isSocial = channelId == NotificationConstants.channelSocialId;
+
     final androidDetails = AndroidNotificationDetails(
       channelId,
       channelName,
       channelDescription: channelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: isSocial ? Importance.max : Importance.high,
+      priority: isSocial ? Priority.max : Priority.high,
+      playSound: true,
+      enableVibration: true,
+      channelShowBadge: true,
+      ticker: isSocial ? 'Notifikasi Baru Faunova' : null,
       icon: '@mipmap/ic_launcher',
     );
 
