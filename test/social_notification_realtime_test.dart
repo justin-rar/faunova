@@ -6,8 +6,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:faunova/core/services/notification_service.dart';
-import 'package:faunova/core/services/post_service.dart';
-import 'package:faunova/core/services/social_service.dart';
 import 'package:faunova/features/feed/presentation/widgets/social_notification_sheet.dart';
 
 void main() {
