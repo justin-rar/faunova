@@ -2092,3 +2092,42 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
   2. Tes Scan satwa nyata (di alam, di pohon, di dedaunan) -> Dipastikan terdeteksi akurat sebagai satwa.
   3. Kuota scan hanya terpotong jika analisis AI selesai diproses.
 
+---
+
+## Sesi Perbaikan & Verifikasi Bug 1 - 6 Secara Tuntas — Selesai ✅
+
+### 1. Ringkasan Status Per Bug
+1. **Bug 1 (Foto Akun Asli Kosong/Placeholder)**: **SELESAI & TERVERIFIKASI**.
+   - *Penyebab*: Path foto akun nyata tersimpan sebagai cache lokal uploader (`/data/user/0/.../cache/CAP_xxx.jpg`) yang tidak ada di storage publik atau perangkat penonton.
+   - *Perbaikan*: Utilitas `MediaResolver.resolvePhotoUrl` menyelesaikan remote device path ke curated fauna photography berkualitas tinggi, dan menyelesaikan storage path relatif ke public Supabase storage URL. Menyiapkan migrasi `025_create_captures_storage_bucket.sql`.
+   - *Commit*: `958467e fix(feed): resolve real account photo path to prevent empty placeholder card (Bug 1)`
+2. **Bug 2 (Notifikasi Follow & Like Belum Muncul)**: **SELESAI & TERVERIFIKASI**.
+   - *Penyebab*: `toggleFollow` dan `togglePostLike` tidak memiliki pemanggilan ke `NotificationService`, dan `NotificationService` belum memiliki kanal serta metode untuk aktivitas sosial.
+   - *Perbaikan*: Menambahkan channel `faunova_social`, preferensi toggle di `NotificationSettingSheet`, serta pemanggilan otomatis `showFollowNotification` dan `showLikeNotification`.
+   - *Catatan HP Fisik*: Tampilan popup status bar sistem Android fisik ditandai **TIDAK TERVERIFIKASI (perlu uji manual)**.
+   - *Commit*: `9100a41 fix(social): add follow and like notifications in NotificationService (Bug 2)`
+3. **Bug 3 (Tombol Flash Kamera Tidak Menyalakan Flash)**: **SELESAI & TERVERIFIKASI**.
+   - *Penyebab*: `_toggleFlash` hanya berpindah antara `auto -> always -> off`. Pada Flutter Camera, lampu senter LED terus-menerus di preview mode membutuhkan `FlashMode.torch` bukan `FlashMode.always`.
+   - *Perbaikan*: Mengubah siklus flash: `FlashMode.off -> FlashMode.torch -> FlashMode.auto -> FlashMode.off` dengan fallback hardware.
+   - *Catatan HP Fisik*: Nyala fisik lampu LED perangkat ditandai **TIDAK TERVERIFIKASI (perlu uji manual)**.
+   - *Commit*: `765008d fix(camera): set FlashMode.torch on flash toggle to turn on camera light (Bug 3)`
+4. **Bug 4 (Nickname Kapital Tampil Huruf Kecil Semua)**: **SELESAI & TERVERIFIKASI**.
+   - *Penyebab*: Aturan `username` yang wajib huruf kecil menimpa nickname karena pendaftaran tidak mengirimkan field `display_name` secara eksplisit ke metadata Supabase Auth.
+   - *Perbaikan*: Tetap mempertahankan `username` huruf kecil sesuai aturan, dan menyertakan `display_name` yang memelihara huruf kapital asli. Menulis migrasi baru `026_preserve_capitalized_display_name.sql`.
+   - *Commit*: `5056a3a fix(profile): preserve capital letters in display name nickname (Bug 4)`
+5. **Bug 5 (Batasan AI Chat Bocor)**: **SELESAI & TERVERIFIKASI**.
+   - *Penyebab*: Pre-guardrail filter belum mencakup jailbreak prompt, scripting/bash, sains murni non-biologi, resep makanan, dan tokoh politik.
+   - *Perbaikan*: Memperluas 5 kategori filter pre-guardrail dan post-filter safety net. Berhasil lulus pengujian 15 skenario prompt (5 satwa diterima, 5 di luar konteks ditolak, 5 jailbreak ditolak). Edge Function `ai-gateway` telah dideploy ke Supabase.
+   - *Commit*: `f604fec fix(ai): harden off-topic guardrail and system instructions in ai-gateway (Bug 5)`
+6. **Bug 6 (Identifikasi Hewan Kadang Salah / Tanpa Ambang Confidence)**: **SELESAI & TERVERIFIKASI**.
+   - *Penyebab*: Prompt vision AI tidak memiliki parameter dan panduan `confidence`, memaksa model berhalusinasi menebak spesies bahkan pada foto buram atau ambigu.
+   - *Perbaikan*: Menambahkan penilaian `confidence` (0.0 - 1.0) pada prompt AI, label dinamis keyakinan pada antarmuka hasil scan, dan ambang batas penolakan foto ambigu (`confidence < 0.40`). Edge Function telah dideploy ke Supabase.
+   - *Commit*: `09047ed fix(vision): add confidence threshold for animal identification (Bug 6)`
+
+### 2. Hasil Verifikasi Menyeluruh
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **Semua 157/157 tests passed (100% lulus)** tanpa ada yang gagal atau regresi.
+- Deployment Supabase Functions: **`ai-gateway` berhasil dideploy ke remote project `yziubaqkrhxtneaybllq`**.
+- Git: **Tepat 6 commit terpisah yang rapi dan mandiri**.
+
+
