@@ -46,6 +46,67 @@ function getWibDateString(): string {
   return wibTime.toISOString().split("T")[0];
 }
 
+// Validasi Guardrail Ketat Topik Chat: Menolak tegas pertanyaan di luar fauna (programming, rumus, politik, resep, dll)
+function checkOffTopicGuardrail(message: string, animalName?: string): string | null {
+  const lower = message.toLowerCase().trim();
+  const animal = animalName || "satwa ini";
+  const standardRejection = `Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, ekologi, dan perilakunya. Silakan ajukan pertanyaan yang berkaitan dengan ${animal} ya!`;
+
+  // 1. Keyword & Pola Pertanyaan Pemrograman / Software / Coding
+  const programmingPatterns = [
+    /\b(program|programming|programmer|coding|koding|koder|developer|software|perangkat lunak)\b/i,
+    /\b(source code|kode program|syntax|sintaks|algoritma|algorithm|pseudocode)\b/i,
+    /\b(python|javascript|typescript|dart|flutter|java|c\+\+|c\#|golang|rust|html|css|php|sql|nosql|react|vue|node\.?js|bash|git|github)\b/i,
+    /\b(function|fungsi|class|kelas|variabel|variable|loop|perulangan|array|debugging|debug|compiler|framework|library|api|endpoint|database)\b/i,
+    /\b(print\(|console\.log|void main|import |def |public static void|select \* from)\b/i,
+  ];
+
+  for (const pattern of programmingPatterns) {
+    if (pattern.test(lower)) {
+      return standardRejection;
+    }
+  }
+
+  // 2. Matematika, Fisika, dan Sains Non-Biologi
+  const nonBioSciencePatterns = [
+    /\b(kalkulus|integral|turunan|aljabar|persamaan kuadrat|trigonometri|matriks)\b/i,
+    /\b(rumus fisika|hukum newton|termodinamika|stoikiometri|reaksi kimia non-biologi)\b/i,
+    /^(hitung|berapakah|hitunglah)\s+([0-9\+\-\*\/\^\(\)\s\=\.\,]{3,})/i,
+  ];
+
+  for (const pattern of nonBioSciencePatterns) {
+    if (pattern.test(lower)) {
+      return standardRejection;
+    }
+  }
+
+  // 3. Finansial, Investasi & Politik
+  const financeAndPoliticsPatterns = [
+    /\b(crypto|kripto|bitcoin|ethereum|saham|investasi|trading|forex|pinjol|pinjaman online)\b/i,
+    /\b(pemilu|pilpres|pilkada|partai politik|capres|cawapres|dpr|menteri|politik praktis)\b/i,
+  ];
+
+  for (const pattern of financeAndPoliticsPatterns) {
+    if (pattern.test(lower)) {
+      return standardRejection;
+    }
+  }
+
+  // 4. Resep Masakan & Puisi/Lagu Umum Non-Fauna
+  const recipesAndGeneralPatterns = [
+    /\b(resep masakan|cara memasak|bumbu rendang|cara membuat kue|bumbu soto)\b/i,
+    /\b(puisi cinta|surat cinta|chord gitar|kunci gitar|lirik lagu)\b/i,
+  ];
+
+  for (const pattern of recipesAndGeneralPatterns) {
+    if (pattern.test(lower)) {
+      return standardRejection;
+    }
+  }
+
+  return null;
+}
+
 // Hitung SHA-256 dari string base64 / binary bytes
 async function calculateSha256(base64Data: string): Promise<string> {
   const binaryString = atob(base64Data);
@@ -607,37 +668,17 @@ serve(async (req: Request) => {
         }
       }
 
-      // Kuota Atomik Harian: 20 scan / hari WIB (Anti Race-Condition)
+      // Kuota Harian WIB: 20 scan / hari (Pengecekan Kuota di Awal Tanpa Memotong)
       const dateWib = getWibDateString();
-      let scanAllowed = false;
-      let currentCount = 0;
-      let usedRpcReservation = false;
+      const { data: usage } = await adminClient
+        .from("daily_scan_usage")
+        .select("used_count")
+        .eq("user_id", user.id)
+        .eq("date_wib", dateWib)
+        .maybeSingle();
 
-      const { data: scanRpcData, error: scanRpcErr } = await adminClient.rpc(
-        "reserve_scan_quota",
-        {
-          p_user_id: user.id,
-          p_date_wib: dateWib,
-          p_max_scans: 20,
-        }
-      );
-
-      if (!scanRpcErr && scanRpcData && scanRpcData.length > 0) {
-        scanAllowed = scanRpcData[0].allowed === true;
-        currentCount = scanRpcData[0].current_used_count;
-        usedRpcReservation = true;
-      } else {
-        // Fallback jika migration RPC belum aktif
-        const { data: usage } = await adminClient
-          .from("daily_scan_usage")
-          .select("used_count")
-          .eq("user_id", user.id)
-          .eq("date_wib", dateWib)
-          .maybeSingle();
-
-        currentCount = usage?.used_count ?? 0;
-        scanAllowed = currentCount < 20;
-      }
+      let currentCount = usage?.used_count ?? 0;
+      let scanAllowed = currentCount < 20;
 
       // Pengecekan akun tester developer (WowokTT)
       let isTesterAccount = false;
@@ -686,31 +727,37 @@ serve(async (req: Request) => {
       // Hitung SHA-256 byte foto
       const photoSha256 = await calculateSha256(imageBase64);
 
-      // Prompt identifikasi satwa Faunova (Validasi Ketat Fauna / Animalia Non-Manusia)
+      // Prompt identifikasi satwa Faunova (Objektif: Temukan dan identifikasi satwa nyata non-manusia)
       const prompt =
-        "Kamu adalah pakar zoologi dan taksonomi fauna Indonesia untuk aplikasi Faunova.\n" +
-        "TUGAS UTAMA: Tentukan apakah gambar ini memuat satwa/hewan nyata (Kingdom Animalia NON-MANUSIA) hidup atau BUKAN.\n\n" +
-        "ATURAN KLASIFIKASI KETAT:\n" +
-        "1. Objek berikut BUKAN HEWAN/SATWA: tanaman, pohon, kopi, teh, bunga, daun, buah, sayuran, makanan, minuman, benda mati, perabotan, kendaraan, mainan/boneka, gambar kartun/sketsa/logo, kemasan, atau foto layar.\n" +
-        "2. LARANGAN KERAS MANUSIA: Manusia (Homo sapiens, orang, wajah manusia, selfie, tubuh manusia) DILARANG KERAS diidentifikasi sebagai satwa Faunova! Meskipun secara biologi manusia termasuk mamalia/Animalia, aplikasi Faunova HANYA untuk satwa/fauna liar atau peliharaan non-manusia. Jika gambar memuat manusia atau wajah manusia, kamu WAJIB menetapkan \"isAnimal\": false, \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\": \"Foto memuat manusia (Homo sapiens). Faunova khusus untuk satwa liar dan fauna non-manusia.\"\n" +
-        "3. Jika gambar adalah objek BUKAN HEWAN di atas (misal: kopi/minuman/tanaman/benda mati/manusia), kamu WAJIB menetapkan \"isAnimal\": false, \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\": \"Foto ini tidak memuat satwa\". DILARANG MENGISI nama tanaman/benda/manusia ke kolom name!\n" +
-        "4. HANYA jika gambar BENAR-BENAR MENAMPILKAN HEWAN NYATA NON-MANUSIA (mamalia non-manusia, burung, reptil, amfibi, ikan, serangga, arachnida, moluska), tetapkan \"isAnimal\": true, isi nama umum satwa, nama ilmiah latin, deskripsi, dan fakta uniknya.\n\n" +
-        "Format respon JSON:\n" +
-        "Jika BUKAN satwa / Manusia:\n" +
+        "Kamu adalah pakar zoologi dan taksonomi fauna Indonesia untuk aplikasi observasi satwa Faunova.\n" +
+        "TUGAS UTAMA: Periksa apakah di dalam foto terdapat SATWA/HEWAN NYATA (Kingdom Animalia non-manusia: mamalia, burung, reptil, amfibi, ikan, serangga, laba-laba, moluska, dll) baik di alam bebas maupun peliharaan.\n\n" +
+        "PANDUAN KLASIFIKASI OBJEKTIF:\n" +
+        "1. JIKA TERDAPAT SATWA DI FOTO (PRIORITAS UTAMA):\n" +
+        "   - Satwa sering kali berada di dahan pohon, di antara dedaunan/tanaman, di atas rumput/tanah, di air, di dinding, atau memiliki latar belakang lingkungan alami/buatan. JIKA ADA SATWA DI GAMBAR, FOKUSLAH PADA SATWA TERSEBUT dan WAJIB tetapkan \"isAnimal\": true!\n" +
+        "   - Jangan sekali-kali menolak satwa hanya karena latar belakangnya berupa tanaman, pohon, kandang, lantai, atau benda sekitar.\n" +
+        "   - Tentukan nama umum satwa dalam bahasa Indonesia, nama ilmiah latin (Genus species), deskripsi ciri morfologi & habitat alami, serta fakta uniknya.\n" +
+        "2. JIKA SAMA SEKALI TIDAK ADA SATWA (BUKAN SATWA):\n" +
+        "   - Tetapkan \"isAnimal\": false HANYA jika foto BENAR-BENAR TIDAK MEMUAT SATWA SAMA SEKALI, yaitu:\n" +
+        "     a. Foto manusia (Homo sapiens, orang, wajah manusia, selfie, tubuh manusia). Faunova khusus untuk fauna non-manusia.\n" +
+        "     b. Foto murni tanaman/tumbuhan/bunga/pohon tanpa ada hewan di atasnya.\n" +
+        "     c. Benda mati, laptop/elektronik, kendaraan, perabotan, makanan/minuman olahan manusia, mainan/boneka, gambar kartun/logo, atau foto layar.\n" +
+        "   - Untuk bukan satwa, isi \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\" jelaskan secara ramah objek apa yang terpotret (misal: 'Foto memuat manusia (Homo sapiens)', 'Foto hanya memuat tanaman/bunga', 'Foto memuat benda mati').\n\n" +
+        "Format respon JSON WAJIB:\n" +
+        "Jika SATWA NYATA DITEMUKAN:\n" +
+        "{\n" +
+        '  "isAnimal": true,\n' +
+        '  "name": "Nama satwa dalam bahasa Indonesia",\n' +
+        '  "categoryOrSpecies": "Nama ilmiah latin (Genus species)",\n' +
+        '  "description": "Deskripsi ciri fisik satwa, habitat alami, dan status konservasi",\n' +
+        '  "additionalFact": "Fakta unik satwa ini"\n' +
+        "}\n" +
+        "Jika BUKAN SATWA / Manusia / Tanaman murni / Benda mati:\n" +
         "{\n" +
         '  "isAnimal": false,\n' +
         '  "name": null,\n' +
         '  "categoryOrSpecies": null,\n' +
         '  "description": null,\n' +
-        '  "additionalFact": "Foto ini tidak memuat satwa"\n' +
-        "}\n" +
-        "Jika SATWA NON-MANUSIA:\n" +
-        "{\n" +
-        '  "isAnimal": true,\n' +
-        '  "name": "Nama satwa dalam bahasa Indonesia",\n' +
-        '  "categoryOrSpecies": "Nama ilmiah latin (Genus species)",\n' +
-        '  "description": "Deskripsi singkat ciri fisik, habitat, dan status konservasi",\n' +
-        '  "additionalFact": "Fakta unik satwa ini"\n' +
+        '  "additionalFact": "Foto ini tidak memuat satwa (misal: memuat manusia atau benda mati)"\n' +
         "}";
 
       let parsedResult: any = null;
@@ -831,7 +878,6 @@ serve(async (req: Request) => {
       // Sanitasi & Validasi ketat hasil isAnimal di sisi server
       let isAnimal = parsedResult?.isAnimal === true;
       const additionalFactStr = String(parsedResult?.additionalFact || "").toLowerCase();
-      const descStr = String(parsedResult?.description || "").toLowerCase();
       const nameStr = String(parsedResult?.name || "").toLowerCase();
       const speciesStr = String(parsedResult?.categoryOrSpecies || "").toLowerCase();
 
@@ -839,19 +885,23 @@ serve(async (req: Request) => {
       const isHuman =
         speciesStr.includes("homo sapiens") ||
         speciesStr.startsWith("homo ") ||
-        nameStr.includes("manusia") ||
-        (nameStr.includes("orang") && !nameStr.includes("utan") && !nameStr.includes("hutan")) ||
-        descStr.includes("spesies manusia") ||
-        descStr.includes("manusia modern") ||
-        descStr.includes("homo sapiens");
+        nameStr === "manusia" ||
+        nameStr === "orang" ||
+        nameStr === "selfie" ||
+        nameStr.includes("wajah manusia");
 
-      // Periksa flora / tanaman / makanan
-      const isFlora =
-        descStr.includes("tanaman") ||
-        descStr.includes("tumbuhan") ||
-        nameStr.includes("kopi") ||
-        nameStr.includes("teh") ||
-        speciesStr.includes("coffea");
+      // Periksa flora murni pada nama/spesies (bukan pada deskripsi diet/habitat satwa)
+      const isPureFloraName =
+        (nameStr.startsWith("pohon ") ||
+          nameStr.startsWith("tanaman ") ||
+          nameStr.startsWith("bunga ") ||
+          nameStr === "kopi" ||
+          nameStr === "teh" ||
+          speciesStr.startsWith("coffea ")) &&
+        !nameStr.includes("kupu") &&
+        !nameStr.includes("burung") &&
+        !nameStr.includes("serangga") &&
+        !nameStr.includes("kumbang");
 
       // Periksa penolakan eksplisit dari AI
       const isExplicitlyRejected =
@@ -861,7 +911,7 @@ serve(async (req: Request) => {
         !parsedResult?.name ||
         nameStr === "null";
 
-      if (isHuman || isFlora || isExplicitlyRejected) {
+      if (isHuman || isPureFloraName || isExplicitlyRejected) {
         isAnimal = false;
         if (parsedResult) {
           parsedResult.isAnimal = false;
@@ -870,26 +920,27 @@ serve(async (req: Request) => {
           parsedResult.description = null;
           if (isHuman) {
             parsedResult.additionalFact = "Foto memuat manusia (Homo sapiens). Faunova khusus untuk katalog satwa dan fauna non-manusia.";
-          } else if (isFlora) {
-            parsedResult.additionalFact = "Foto memuat flora/tanaman atau makanan/minuman, bukan satwa.";
+          } else if (isPureFloraName) {
+            parsedResult.additionalFact = "Foto memuat flora/tanaman murni, bukan satwa.";
           } else {
             parsedResult.additionalFact = "Foto ini tidak memuat satwa.";
           }
         }
       }
 
-      // Jika tidak menggunakan RPC reservation, update counter sekarang
-      if (!usedRpcReservation) {
-        await adminClient.from("daily_scan_usage").upsert(
-          {
-            user_id: user.id,
-            date_wib: dateWib,
-            used_count: currentCount + 1,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,date_wib" }
-        );
-      }
+      // Pemotongan Kuota Harian:
+      // Kuota HANYA dipotong jika AI BERHASIL menganalisis foto (baik satwa maupun bukan satwa).
+      // Jika AI error / gagal di atas, kuota user tetap utuh tanpa dipotong.
+      const newQuotaUsed = currentCount + 1;
+      await adminClient.from("daily_scan_usage").upsert(
+        {
+          user_id: user.id,
+          date_wib: dateWib,
+          used_count: newQuotaUsed,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,date_wib" }
+      );
 
       // Simpan ke tabel public.scans
       const locationCheck =
@@ -1025,7 +1076,7 @@ serve(async (req: Request) => {
           isAnimal: isAnimal,
           result: parsedResult,
           photoSha256: photoSha256,
-          quotaUsed: currentCount + 1,
+          quotaUsed: newQuotaUsed,
           quotaMax: 20,
           aiProvider: usedAiProvider,
         }),
@@ -1253,13 +1304,42 @@ serve(async (req: Request) => {
 
       let reply: string = "";
 
+      // 0. PRE-GUARDRAIL FILTER: Blokir langsung pertanyaan di luar topik satwa (Programming, Rumus, Politik, Resep, dll)
+      const offTopicRejection = checkOffTopicGuardrail(trimmedMessage, animalInfo?.name);
+      if (offTopicRejection) {
+        console.log(`[Guardrail Aktif] Pertanyaan "${trimmedMessage}" diblokir karena di luar topik satwa.`);
+        reply = offTopicRejection;
+      }
+
       // 1. PRIORITAS UTAMA: Google Gemini Flash (Multi-turn Conversation)
-      if (geminiApiKey) {
+      if (!reply && geminiApiKey) {
         try {
+          const systemInstructionText =
+            "PERAN UTAMA: Kamu adalah Naturalis dan Pemandu Konservasi Satwa Faunova yang ramah, sopan, dan berwawasan ilmiah.\n" +
+            `Konteks Satwa yang Sedang Diobservasi:\n` +
+            `- Nama Satwa: ${animalInfo?.name || "Satwa Lapangan"}\n` +
+            `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
+            `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
+            `- Catatan Lapangan: ${animalInfo?.additionalFact || "-"}\n\n` +
+            "ATURAN MUTLAK GUARDRAIL (SANGAT KETAT / ZERO TOLERANCE):\n" +
+            "1. FOKUS HANYA PADA DUNIA SATWA: Kamu HANYA BOLEH menjawab pertanyaan seputar satwa ini (" +
+            (animalInfo?.name || "satwa") +
+            "), atau dunia satwa liar / biologi satwa (habitat, anatomi, pola makan, taksonomi, perlindungan).\n" +
+            "2. LARANGAN KERAS TOPIK LAIN: DILARANG KERAS menjawab topik pemrograman/coding, rumus matematika, fisika/kimia non-biologi, resep masakan, politik, teknologi umum, atau pertanyaan di luar fauna!\n" +
+            "3. WAJIB MENOLAK TOPIK DI LUAR SATWA: Jika pengguna menanyakan topik di luar fauna (misalnya tentang coding, pemrograman, matematika, resep, atau obrolan umum), KAMU WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
+            "Gunakan persis kalimat penolakan ini:\n" +
+            "\"Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, dan ekologinya. Silakan ajukan pertanyaan yang berkaitan dengan " +
+            (animalInfo?.name || "satwa ini") +
+            " ya!\"\n" +
+            "4. FORMAT RESPONS: Bahasa Indonesia yang lugas, hangat, edukatif, dan ringkas (1-2 paragraf pendek). JANGAN PERNAH menyertakan potongan kode program sama sekali.";
+
           const geminiChatPayload = {
+            systemInstruction: {
+              parts: [{ text: systemInstructionText }],
+            },
             contents: geminiContents,
             generationConfig: {
-              temperature: 0.6,
+              temperature: 0.2,
               maxOutputTokens: 1000,
             },
           };
@@ -1393,6 +1473,16 @@ serve(async (req: Request) => {
         } catch (dsErr: any) {
           console.warn("DeepSeek Chat cadangan error:", dsErr?.message || dsErr);
         }
+      }
+
+      // 4. POST-GUARDRAIL SAFETY NET: Jika respons memuat kode program / syntax
+      if (
+        reply &&
+        (reply.includes("```") ||
+          /\b(def |class |function |const |let |var |import |console\.log|print\(|public static)\b/.test(reply))
+      ) {
+        console.log("[Guardrail Post-Filter] Jawaban AI memuat potongan kode/sintaks, diganti dengan penolakan sopan.");
+        reply = `Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, dan ekologinya. Silakan ajukan pertanyaan yang berkaitan dengan ${animalInfo?.name || "satwa ini"} ya!`;
       }
 
       if (!reply) {

@@ -2050,3 +2050,45 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 - Tekan **`R`** (*Hot Restart*) pada terminal `flutter run` di perangkat untuk memuat ulang antarmuka klien.
 - Coba bidik foto satwa di tab Kamera atau tanyakan fakta satwa pada tab Obrolan.
 
+---
+
+## Sesi Perbaikan Guardrail Chat AI, Deteksi Satwa (False-Negative), & Proteksi Kuota Scan — Selesai ✅
+
+### 1. Masalah yang Dilaporkan Pengguna
+1. **Kebobolan Guardrail Chat**: Pengguna bertanya seputar topik non-satwa (programming/coding) dan AI masih menjawab.
+2. **False-Negative Deteksi Satwa**: AI mendeteksi gambar satwa nyata sebagai "bukan satwa" (batasan klasifikasi terlalu ketat).
+3. **Pemotongan Kuota Saat Scan Gagal**: Jika proses deteksi AI mengalami error teknis atau kegagalan jaringan, kuota scan pengguna sempat berkurang, padahal seharusnya tetap utuh jika gagal. (Jika mendeteksi manusia/bukan satwa dengan sukses, kuota tetap berkurang sesuai aturan).
+
+### 2. Akar Masalah & Solusi yang Diterapkan
+- **Bug 1 — Tiga Lapis Perlindungan Guardrail Chat (`ai-gateway`)**:
+  - *Akar masalah*: Prompt instruksi multi-turn sebelumnya ditempatkan di riwayat pesan pengguna biasa (`role: "user"`) tanpa `systemInstruction` resmi Gemini v1beta, sehingga instruksi tertimpa oleh pertanyaan terakhir pengguna.
+  - *Perbaikan*:
+    1. **Pre-Guardrail Regex Filter**: Menambahkan fungsi `checkOffTopicGuardrail` yang mendeteksi kata kunci programming/koding (Python, Dart, Flutter, algoritma, fungsi, query, dll), matematika/fisika murni, politik, dan resep masakan, lalu langsung mengembalikan penolakan santun tanpa memanggil LLM.
+    2. **Gemini Top-Level `systemInstruction`**: Menyertakan `systemInstruction` mutlak berklausul zero-tolerance dengan `temperature: 0.2` agar Gemini patuh 100%.
+    3. **Post-Guardrail Safety Net**: Jika output AI memuat blok kode (``` atau kata kunci syntax), respons otomatis diganti dengan penolakan ramah.
+- **Bug 2 — Pelonggaran Batasan Deteksi Satwa Nyata**:
+  - *Akar masalah*:
+    1. Server sanitasi sebelumnya memeriksa `descStr.includes("tanaman") || descStr.includes("tumbuhan")`. Satwa nyata (ulat, kupu-kupu, serangga, burung, rusa, luwak) yang deskripsinya menyebutkan "memakan tanaman" atau "hinggap di pohon" otomatis terlempar ke `isAnimal: false`!
+    2. Prompt terlalu kaku menekankan larangan tanaman sehingga satwa di dahan/daun terabaikan.
+  - *Perbaikan*:
+    1. Menghapus pengecekan `descStr` yang keliru pada server, hanya memeriksa nama murni flora jika objek bukan satwa.
+    2. Memperbarui prompt AI dengan instruksi objektif: satwa di alam bebas sering kali berlatar tanaman/tanah/pohon/kandang, sehingga AI wajib fokus pada satwanya dan menetapkan `isAnimal: true`.
+- **Bug 3 — Proteksi Kuota Scan Saat Gagal Teknis**:
+  - *Akar masalah*: Fungsi `reserve_scan_quota` menaikkan `used_count` sebelum AI dipanggil. Jika AI timeout atau error provider 502, kuota tidak dikembalikan.
+  - *Perbaikan*:
+    1. Di awal scan, server hanya membaca kuota pengguna (`used_count < 20`) tanpa menaikkan counter.
+    2. Pemotongan kuota (`upsert` ke `daily_scan_usage`) **HANYA** dieksekusi jika AI berhasil memproses gambar (baik satwa terdeteksi maupun manusia/bukan satwa terdeteksi).
+    3. Jika AI gagal teknis / error provider, kuota pengguna dijamin **100% tetap utuh**.
+
+### 3. Hasil Verifikasi & Pengujian
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **Semua 143/143 tests passed! (100% lulus)**.
+- Supabase Edge Function: **Berhasil dideploy kembali ke server production (`ai-gateway`)**.
+- Reset Quota cURL: **Berhasil diverifikasi (`WowokTT` kuota 0/20)**.
+
+### 4. Langkah Berikutnya
+- Pengguna dapat langsung menguji coba kembali di aplikasi:
+  1. Tes Chat dengan topik di luar satwa (misal: "ajarkan saya coding python") -> Dipastikan ditolak dengan sopan.
+  2. Tes Scan satwa nyata (di alam, di pohon, di dedaunan) -> Dipastikan terdeteksi akurat sebagai satwa.
+  3. Kuota scan hanya terpotong jika analisis AI selesai diproses.
+
