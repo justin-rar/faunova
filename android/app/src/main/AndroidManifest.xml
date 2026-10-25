@@ -13,9 +13,10 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
     <application
-        android:label="faunova"
+        android:label="Faunova"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"

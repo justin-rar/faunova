@@ -232,12 +232,25 @@ class _AppSettingsSheetState extends State<AppSettingsSheet> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
-                              color: AppColors.sageMuda.withValues(alpha: 0.6),
-                              shape: BoxShape.circle,
+                              color: AppColors.sageTua,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.emas, width: 1),
                             ),
-                            child: const Icon(Icons.pets_rounded, color: AppColors.sageTua, size: 20),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(9),
+                              child: Image.asset(
+                                'assets/images/faunova_logo.png',
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Center(
+                                  child: Icon(Icons.pets_rounded, color: Colors.white, size: 20),
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 10),
                           const Expanded(

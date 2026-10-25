@@ -461,11 +461,11 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildEmblem() {
     return Container(
-      width: 72,
-      height: 72,
+      width: 80,
+      height: 80,
       decoration: BoxDecoration(
         color: AppColors.sageTua,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: AppColors.emas,
           width: 2,
@@ -478,8 +478,17 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-      child: const Center(
-        child: Icon(Icons.pets_rounded, color: Colors.white, size: 36),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Image.asset(
+          'assets/images/faunova_logo.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Center(
+            child: Icon(Icons.pets_rounded, color: Colors.white, size: 38),
+          ),
+        ),
       ),
     );
   }
