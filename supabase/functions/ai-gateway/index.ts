@@ -210,11 +210,11 @@ async function callCloudflareChat(
   return { ok: false, error: "Cloudflare Chat gagal" };
 }
 
-// Panggil Gemini API (kompatibilitas gemini-3.8-flash & fallback otomatis ke gemini-2.0-flash)
+// Panggil Gemini API (kompatibilitas gemini-2.5-flash, gemini-2.0-flash, & gemini-1.5-flash-latest)
 async function callGemini(
   geminiApiKey: string,
   payload: any,
-  models = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"],
+  models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"],
   timeoutMs = 25000
 ): Promise<Response> {
   let lastErrorText = "";
@@ -243,10 +243,19 @@ async function callGemini(
     }
   }
 
+  // Bersihkan format JSON mentah dari pesan kesalahan Google
+  let cleanErrorMessage = lastErrorText;
+  try {
+    const parsed = JSON.parse(lastErrorText);
+    if (parsed.error?.message) {
+      cleanErrorMessage = parsed.error.message;
+    }
+  } catch (_) {}
+
   return new Response(
     JSON.stringify({
       error: "PROVIDER_ERROR",
-      message: `Layanan identifikasi AI: ${lastErrorText.substring(0, 160)}`,
+      message: `Layanan identifikasi AI: ${cleanErrorMessage.substring(0, 160)}`,
       details: lastErrorText,
     }),
     { status: lastStatus >= 400 && lastStatus < 600 ? lastStatus : 502 }
@@ -313,54 +322,62 @@ async function callDeepSeekVision(
   prompt: string,
   mimeType: string,
   imageBase64: string,
-  timeoutMs = 25000
+  timeoutMs = 30000
 ): Promise<{ ok: boolean; data?: any; error?: string }> {
-  try {
-    const completionsUrl = "https://api.deepseek.com/chat/completions";
-    const payload = {
-      model: "deepseek-flash",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: `data:${mimeType};base64,${imageBase64}` },
-            },
-            { type: "text", text: prompt },
-          ],
+  const completionsUrl = "https://api.deepseek.com/chat/completions";
+  const models = ["deepseek-flash", "deepseek-v4-flash-vision-exp", "deepseek-chat"];
+  let lastErrText = "";
+
+  for (const model of models) {
+    try {
+      const payload = {
+        model: model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+              },
+              { type: "text", text: prompt },
+            ],
+          },
+        ],
+        temperature: 0.1,
+      };
+
+      const resp = await fetch(completionsUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
-      ],
-      temperature: 0.1,
-    };
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
 
-    const resp = await fetch(completionsUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-
-    if (resp.ok) {
-      const json = await resp.json();
-      const rawContent = json.choices?.[0]?.message?.content;
-      if (rawContent) {
-        return { ok: true, data: extractCleanJson(rawContent) };
+      if (resp.ok) {
+        const json = await resp.json();
+        const rawContent = json.choices?.[0]?.message?.content;
+        if (rawContent) {
+          return { ok: true, data: extractCleanJson(rawContent) };
+        }
+      } else {
+        const errText = await resp.text();
+        console.warn(`DeepSeek Vision model ${model} non-ok:`, resp.status, errText);
+        lastErrText = errText;
+        if (errText.includes("Insufficient Balance")) {
+          return { ok: false, error: "Insufficient Balance" };
+        }
       }
-    } else {
-      const errText = await resp.text();
-      console.warn("DeepSeek Vision non-ok:", resp.status, errText);
-      return { ok: false, error: errText };
+    } catch (err: any) {
+      console.warn(`DeepSeek Vision model ${model} error:`, err.message);
+      lastErrText = err.message;
     }
-  } catch (err: any) {
-    console.warn("DeepSeek Vision error:", err.message);
-    return { ok: false, error: err.message };
   }
 
-  return { ok: false, error: "DeepSeek Vision gagal diproses" };
+  return { ok: false, error: lastErrText || "DeepSeek Vision gagal diproses" };
 }
 
 serve(async (req: Request) => {
@@ -650,7 +667,7 @@ serve(async (req: Request) => {
         const geminiResp = await callGemini(
           geminiApiKey,
           geminiPayload,
-          ["gemini-2.0-flash", "gemini-1.5-flash"],
+          ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"],
           25000
         );
 
@@ -1246,21 +1263,18 @@ serve(async (req: Request) => {
         }
       }
 
-          if (!reply) {
-            console.error("Seluruh provider chat AI gagal");
-            return new Response(
-              JSON.stringify({
-                error: "PROVIDER_ERROR",
-                message: "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi.",
-                details: errorText,
-              }),
-              {
-                status: geminiResp.status,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
-            );
+      if (!reply) {
+        console.error("Seluruh provider chat AI gagal");
+        return new Response(
+          JSON.stringify({
+            error: "PROVIDER_ERROR",
+            message: "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi.",
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
-        }
+        );
       }
 
       // Simpan riwayat chat ke tabel scan_chats (user message dan assistant reply)

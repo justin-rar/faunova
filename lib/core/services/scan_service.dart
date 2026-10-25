@@ -123,9 +123,20 @@ class ScanService {
               'Sesi autentikasi telah berakhir. Silakan masuk kembali.',
         );
       } else {
-        final errorMsg = responseData['message']?.toString() ??
+        var errorMsg = responseData['message']?.toString() ??
             responseData['error']?.toString() ??
             'Gagal memproses pemindaian di server (${response.statusCode}).';
+        try {
+          if (errorMsg.contains('{"error"') || errorMsg.contains('{\n')) {
+            final start = errorMsg.indexOf('{');
+            final parsedInner = jsonDecode(errorMsg.substring(start));
+            if (parsedInner['error']?['message'] != null) {
+              errorMsg = 'Layanan AI: ${parsedInner['error']['message']}';
+            } else if (parsedInner['message'] != null) {
+              errorMsg = parsedInner['message'];
+            }
+          }
+        } catch (_) {}
         throw ScanException(errorMsg, statusCode: response.statusCode);
       }
     } catch (e) {
