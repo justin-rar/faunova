@@ -52,10 +52,21 @@ function checkOffTopicGuardrail(message: string, animalName?: string): string | 
   const animal = animalName || "satwa ini";
   const standardRejection = `Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, ekologi, dan perilakunya. Silakan ajukan pertanyaan yang berkaitan dengan ${animal} ya!`;
 
-  // 1. Keyword & Pola Pertanyaan Pemrograman / Software / Coding
+  // 1. Jailbreak, Prompt Injection, dan Roleplay Bypass
+  const jailbreakPatterns = [
+    /\b(abaikan (semua )?(aturan|instruksi|perintah)|ignore (all )?(instructions|rules)|lupakan (semua )?(aturan|batasan)|roleplay|pretend you are|kamu sekarang adalah|kamu adalah asisten|bypass|override)\b/i,
+  ];
+
+  for (const pattern of jailbreakPatterns) {
+    if (pattern.test(lower)) {
+      return standardRejection;
+    }
+  }
+
+  // 2. Keyword & Pola Pertanyaan Pemrograman / Software / Coding
   const programmingPatterns = [
-    /\b(program|programming|programmer|coding|koding|koder|developer|software|perangkat lunak)\b/i,
-    /\b(source code|kode program|syntax|sintaks|algoritma|algorithm|pseudocode)\b/i,
+    /\b(program|programming|programmer|coding|koding|koder|developer|software|perangkat lunak|aplikasi mobile|web|website)\b/i,
+    /\b(source code|kode program|syntax|sintaks|algoritma|algorithm|pseudocode|script|skrip|script bash|terminal|command line)\b/i,
     /\b(python|javascript|typescript|dart|flutter|java|c\+\+|c\#|golang|rust|html|css|php|sql|nosql|react|vue|node\.?js|bash|git|github)\b/i,
     /\b(function|fungsi|class|kelas|variabel|variable|loop|perulangan|array|debugging|debug|compiler|framework|library|api|endpoint|database)\b/i,
     /\b(print\(|console\.log|void main|import |def |public static void|select \* from)\b/i,
@@ -67,11 +78,11 @@ function checkOffTopicGuardrail(message: string, animalName?: string): string | 
     }
   }
 
-  // 2. Matematika, Fisika, dan Sains Non-Biologi
+  // 3. Matematika, Fisika, dan Sains Non-Biologi
   const nonBioSciencePatterns = [
-    /\b(kalkulus|integral|turunan|aljabar|persamaan kuadrat|trigonometri|matriks)\b/i,
-    /\b(rumus fisika|hukum newton|termodinamika|stoikiometri|reaksi kimia non-biologi)\b/i,
-    /^(hitung|berapakah|hitunglah)\s+([0-9\+\-\*\/\^\(\)\s\=\.\,]{3,})/i,
+    /\b(matematika|kalkulus|integral|turunan|aljabar|persamaan kuadrat|trigonometri|matriks|bilangan prima|luas segitiga|lingkaran|sudut)\b/i,
+    /\b(fisika|kimia|hukum newton|gravitasi|relativitas|einstein|kecepatan cahaya|termodinamika|stoikiometri|reaksi kimia non-biologi)\b/i,
+    /(hitung|berapakah|hitunglah)\s+.*([0-9\+\-\*\/\^\(\)\=\.\,]{3,})/i,
   ];
 
   for (const pattern of nonBioSciencePatterns) {
@@ -80,10 +91,10 @@ function checkOffTopicGuardrail(message: string, animalName?: string): string | 
     }
   }
 
-  // 3. Finansial, Investasi & Politik
+  // 4. Finansial, Investasi & Politik
   const financeAndPoliticsPatterns = [
-    /\b(crypto|kripto|bitcoin|ethereum|saham|investasi|trading|forex|pinjol|pinjaman online)\b/i,
-    /\b(pemilu|pilpres|pilkada|partai politik|capres|cawapres|dpr|menteri|politik praktis)\b/i,
+    /\b(presiden|menteri|gubernur|bupati|walikota|perdana menteri|dpr|mpr|pemilu|pilpres|pilkada|partai politik|politik|pejabat)\b/i,
+    /\b(crypto|kripto|bitcoin|ethereum|saham|investasi|trading|forex|pinjol|pinjaman online|rupiah|dollar|rekening bank)\b/i,
   ];
 
   for (const pattern of financeAndPoliticsPatterns) {
@@ -92,9 +103,9 @@ function checkOffTopicGuardrail(message: string, animalName?: string): string | 
     }
   }
 
-  // 4. Resep Masakan & Puisi/Lagu Umum Non-Fauna
+  // 5. Resep Masakan & Puisi/Lagu/Kuliner Non-Fauna
   const recipesAndGeneralPatterns = [
-    /\b(resep masakan|cara memasak|bumbu rendang|cara membuat kue|bumbu soto)\b/i,
+    /\b(resep|bumbu|cara memasak|cara membuat nasi|membuat kue|bakar rica|ikan bakar|gorengan|soto|rendang|sambal|makanan enak)\b/i,
     /\b(puisi cinta|surat cinta|chord gitar|kunci gitar|lirik lagu)\b/i,
   ];
 

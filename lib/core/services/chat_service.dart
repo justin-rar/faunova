@@ -241,7 +241,7 @@ class ChatService {
     final species = scanContext?.categoryOrSpecies ?? 'Fauna Tropis';
     final lowerMsg = message.toLowerCase();
 
-    // Deteksi pertanyaan di luar topik satwa (coding, matematika, dsb)
+    // Deteksi pertanyaan di luar topik satwa (coding, jailbreak, resep, politik, matematika, dsb)
     final isUnrelated = lowerMsg.contains('coding') ||
         lowerMsg.contains('koding') ||
         lowerMsg.contains('program') ||
@@ -252,11 +252,38 @@ class ChatService {
         lowerMsg.contains('css') ||
         lowerMsg.contains('flutter') ||
         lowerMsg.contains('dart') ||
+        lowerMsg.contains('script') ||
+        lowerMsg.contains('skrip') ||
+        lowerMsg.contains('source code') ||
+        lowerMsg.contains('syntax') ||
+        lowerMsg.contains('algoritma') ||
+        lowerMsg.contains('abaikan') ||
+        lowerMsg.contains('ignore') ||
+        lowerMsg.contains('lupakan') ||
+        lowerMsg.contains('roleplay') ||
         lowerMsg.contains('matematika') ||
         lowerMsg.contains('hitung') ||
         lowerMsg.contains('kalkulus') ||
         lowerMsg.contains('aljabar') ||
+        lowerMsg.contains('bilangan prima') ||
+        lowerMsg.contains('luas segitiga') ||
         lowerMsg.contains('rumus') ||
+        lowerMsg.contains('fisika') ||
+        lowerMsg.contains('relativitas') ||
+        lowerMsg.contains('einstein') ||
+        lowerMsg.contains('gravitasi') ||
+        lowerMsg.contains('presiden') ||
+        lowerMsg.contains('menteri') ||
+        lowerMsg.contains('gubernur') ||
+        lowerMsg.contains('politik') ||
+        lowerMsg.contains('pemilu') ||
+        lowerMsg.contains('pilpres') ||
+        lowerMsg.contains('resep') ||
+        lowerMsg.contains('bumbu') ||
+        lowerMsg.contains('memasak') ||
+        lowerMsg.contains('nasi goreng') ||
+        lowerMsg.contains('ikan bakar') ||
+        lowerMsg.contains('bakar rica') ||
         RegExp(r'\d+\s*[\+\-\*\/\^]\s*\d+').hasMatch(lowerMsg);
 
     String reply;
