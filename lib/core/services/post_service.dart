@@ -37,7 +37,13 @@ class PostService {
     }
   }
 
+  String? _mockCurrentUserId;
+  void setMockCurrentUserId(String? id) => _mockCurrentUserId = id;
+
   String? _getCurrentUserId() {
+    if (_mockCurrentUserId != null) return _mockCurrentUserId;
+    final notifMock = NotificationService.instance.mockCurrentUserId;
+    if (notifMock != null) return notifMock;
     try {
       return Supabase.instance.client.auth.currentSession?.user.id;
     } catch (_) {
@@ -599,6 +605,8 @@ class PostService {
     final client = _getSupabaseClient();
     final userId = _getCurrentUserId();
 
+    final effectiveUserId = userId ?? _getCurrentUserId() ?? 'user-demo';
+
     if (AppConfig.isDemoMode || client == null || userId == null || !_isUuid(postId)) {
       final idx = _demoPosts.indexWhere((p) => p.id == postId);
       if (idx != -1) {
@@ -610,10 +618,18 @@ class PostService {
           likesCount: newCount,
         );
         if (newIsLiked) {
-          NotificationService.instance.showLikeNotification(
-            likerName: current.authorName.isNotEmpty ? current.authorName : current.authorUsername,
-            speciesName: current.speciesName,
-          );
+          // Aturan keras: Like ke postingan diri sendiri tidak membuat notifikasi
+          if (current.authorId != effectiveUserId) {
+            const myName = 'Saya (Kolektor)';
+            await NotificationService.instance.dispatchSocialNotification(
+              recipientUserId: current.authorId,
+              actorUserId: effectiveUserId,
+              actorName: myName,
+              type: 'like',
+              postId: postId,
+              speciesName: current.speciesName,
+            );
+          }
         }
         return {
           'post_id': postId,
@@ -642,16 +658,37 @@ class PostService {
       }
 
       if (resultMap['is_liked'] == true) {
-        String liker = 'Penjelajah Satwa';
+        String recipientId = '';
         String? species;
         if (idx != -1) {
-          liker = _demoPosts[idx].authorName.isNotEmpty ? _demoPosts[idx].authorName : _demoPosts[idx].authorUsername;
+          recipientId = _demoPosts[idx].authorId;
           species = _demoPosts[idx].speciesName;
         }
-        NotificationService.instance.showLikeNotification(
-          likerName: liker,
-          speciesName: species,
-        );
+        // Aturan keras: Like ke postingan diri sendiri tidak membuat notifikasi
+        if (recipientId.isNotEmpty && recipientId != effectiveUserId) {
+          String myName = 'Penjelajah Satwa';
+          try {
+            final myProf = await client
+                .from('profiles')
+                .select('display_name, username')
+                .eq('id', effectiveUserId)
+                .maybeSingle();
+            if (myProf != null) {
+              myName = (myProf['display_name'] as String?) ??
+                  (myProf['username'] as String?) ??
+                  'Penjelajah Satwa';
+            }
+          } catch (_) {}
+
+          await NotificationService.instance.dispatchSocialNotification(
+            recipientUserId: recipientId,
+            actorUserId: effectiveUserId,
+            actorName: myName,
+            type: 'like',
+            postId: postId,
+            speciesName: species,
+          );
+        }
       }
 
       return resultMap;

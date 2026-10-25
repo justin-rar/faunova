@@ -41,7 +41,13 @@ class SocialService {
     }
   }
 
+  String? _mockCurrentUserId;
+  void setMockCurrentUserId(String? id) => _mockCurrentUserId = id;
+
   String? _getCurrentUserId() {
+    if (_mockCurrentUserId != null) return _mockCurrentUserId;
+    final notifMock = NotificationService.instance.mockCurrentUserId;
+    if (notifMock != null) return notifMock;
     try {
       return Supabase.instance.client.auth.currentSession?.user.id;
     } catch (_) {
@@ -270,8 +276,14 @@ class SocialService {
       }
 
       if (newFollowing) {
-        final followerName = profile?.displayName ?? profile?.username ?? 'Penjelajah Satwa';
-        NotificationService.instance.showFollowNotification(followerName: followerName);
+        final myId = _getCurrentUserId() ?? 'user-demo';
+        const myName = 'Saya (Penjelajah)';
+        await NotificationService.instance.dispatchSocialNotification(
+          recipientUserId: targetUserId,
+          actorUserId: myId,
+          actorName: myName,
+          type: 'follow',
+        );
       }
 
       return {
@@ -294,10 +306,27 @@ class SocialService {
 
       if (isNowFollowing) {
         _followingUserIds.add(targetUserId);
-        final followerName = (result['target_username'] as String?) ??
-            (result['target_name'] as String?) ??
-            'Penjelajah Satwa';
-        NotificationService.instance.showFollowNotification(followerName: followerName);
+        final myId = _getCurrentUserId() ?? 'user-demo';
+        String myName = 'Penjelajah Satwa';
+        try {
+          final myProf = await client
+              .from('profiles')
+              .select('display_name, username')
+              .eq('id', myId)
+              .maybeSingle();
+          if (myProf != null) {
+            myName = (myProf['display_name'] as String?) ??
+                (myProf['username'] as String?) ??
+                'Penjelajah Satwa';
+          }
+        } catch (_) {}
+
+        await NotificationService.instance.dispatchSocialNotification(
+          recipientUserId: targetUserId,
+          actorUserId: myId,
+          actorName: myName,
+          type: 'follow',
+        );
       } else {
         _followingUserIds.remove(targetUserId);
       }

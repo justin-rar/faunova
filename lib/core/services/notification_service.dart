@@ -7,6 +7,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'encrypted_storage_service.dart';
@@ -34,6 +35,68 @@ class NotificationConstants {
   static const String keyChallengeReminderEnabled = 'faunova_notif_challenge_enabled';
   static const String keyVerifiedExpiryReminderEnabled = 'faunova_notif_verified_enabled';
   static const String keySocialNotifEnabled = 'faunova_notif_social_enabled';
+}
+
+/// Model data notifikasi aktivitas sosial
+class SocialNotificationItem {
+  final String id;
+  final String recipientUserId;
+  final String actorUserId;
+  final String actorName;
+  final String type; // 'follow' | 'like'
+  final String? postId;
+  final String? speciesName;
+  final String title;
+  final String body;
+  final bool isRead;
+  final DateTime createdAt;
+
+  const SocialNotificationItem({
+    required this.id,
+    required this.recipientUserId,
+    required this.actorUserId,
+    required this.actorName,
+    required this.type,
+    this.postId,
+    this.speciesName,
+    required this.title,
+    required this.body,
+    this.isRead = false,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'recipient_user_id': recipientUserId,
+        'actor_user_id': actorUserId,
+        'actor_name': actorName,
+        'type': type,
+        'post_id': postId,
+        'species_name': speciesName,
+        'title': title,
+        'body': body,
+        'is_read': isRead,
+        'created_at': createdAt.toIso8601String(),
+      };
+
+  factory SocialNotificationItem.fromJson(Map<String, dynamic> json) =>
+      SocialNotificationItem(
+        id: json['id']?.toString() ?? '',
+        recipientUserId:
+            (json['recipient_user_id'] ?? json['recipient_id'])?.toString() ?? '',
+        actorUserId:
+            (json['actor_user_id'] ?? json['actor_id'])?.toString() ?? '',
+        actorName: json['actor_name']?.toString() ?? 'Penjelajah Satwa',
+        type: json['type']?.toString() ?? 'follow',
+        postId: json['post_id']?.toString(),
+        speciesName: json['species_name']?.toString(),
+        title: json['title']?.toString() ?? '',
+        body: json['body']?.toString() ?? '',
+        isRead: json['is_read'] == true,
+        createdAt: json['created_at'] != null
+            ? DateTime.parse(json['created_at'].toString())
+            : DateTime.now(),
+      );
 }
 
 class ScheduledNotificationRecord {
@@ -75,6 +138,23 @@ class NotificationService {
 
   // Cache catatan notifikasi terjadwal (berguna untuk testing dan inspeksi UI)
   final Map<int, ScheduledNotificationRecord> _scheduledRecords = {};
+
+  // Antrean notifikasi sosial per ID pengguna penerima
+  final Map<String, List<SocialNotificationItem>> _userNotificationQueues = {};
+
+  String? _mockCurrentUserId;
+  void setMockCurrentUserId(String? id) => _mockCurrentUserId = id;
+  String? get mockCurrentUserId => _mockCurrentUserId;
+
+  String? _getCurrentUserId() {
+    if (_mockCurrentUserId != null) return _mockCurrentUserId;
+    try {
+      final client = Supabase.instance.client;
+      return client.auth.currentUser?.id ?? client.auth.currentSession?.user.id;
+    } catch (_) {
+      return null;
+    }
+  }
 
   bool get _isTestEnvironment {
     try {
@@ -507,11 +587,173 @@ class NotificationService {
     }
   }
 
-  /// Menampilkan notifikasi instan ketika ada pengguna baru mengikuti akun kita
+  /// Mendistribusikan notifikasi aktivitas sosial khusus ke pengguna penerima (recipient).
+  /// Aturan keras:
+  /// 1. Aksi ke diri sendiri (actorUserId == recipientUserId) TIDAK PERNAH membuat notifikasi.
+  /// 2. Perangkat pelaku yang melakukan aksi TIDAK PERNAH memunculkan notifikasi lokal.
+  /// 3. Notifikasi hanya dimunculkan di perangkat milik pengguna penerima.
+  Future<void> dispatchSocialNotification({
+    required String recipientUserId,
+    required String actorUserId,
+    required String actorName,
+    required String type, // 'follow' | 'like'
+    String? postId,
+    String? speciesName,
+  }) async {
+    // 1. Like/follow ke diri sendiri tidak boleh membuat notifikasi
+    if (actorUserId == recipientUserId) {
+      debugPrint('NotificationService: Aksi ke diri sendiri diabaikan (actor == recipient: $actorUserId).');
+      return;
+    }
+
+    final title = type == 'follow'
+        ? 'Pengikut Baru! 👥'
+        : 'Postingan Anda Disukai! ❤️';
+
+    final body = type == 'follow'
+        ? '$actorName mulai mengikuti linimasa satwa Anda.'
+        : (speciesName != null && speciesName.isNotEmpty
+            ? '$actorName menyukai tangkapan $speciesName Anda.'
+            : '$actorName menyukai postingan linimasa Anda.');
+
+    final item = SocialNotificationItem(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      recipientUserId: recipientUserId,
+      actorUserId: actorUserId,
+      actorName: actorName,
+      type: type,
+      postId: postId,
+      speciesName: speciesName,
+      title: title,
+      body: body,
+      createdAt: DateTime.now(),
+    );
+
+    // 2. Simpan ke antrean notifikasi pengguna penerima
+    _userNotificationQueues[recipientUserId] ??= [];
+    _userNotificationQueues[recipientUserId]!.insert(0, item);
+
+    // 3. Simpan ke database Supabase jika sesi aktif tersedia
+    if (!_isTestEnvironment) {
+      try {
+        final client = Supabase.instance.client;
+        if (client.auth.currentSession != null) {
+          await client.from('notifications').insert({
+            'recipient_id': recipientUserId,
+            'actor_id': actorUserId,
+            'type': type,
+            'post_id': postId,
+            'title': title,
+            'body': body,
+          });
+        }
+      } catch (e) {
+        // Graceful fallback jika tabel notifikasi belum termigrasi
+        debugPrint('NotificationService insert DB notif note: $e');
+      }
+    }
+
+    // 4. ATURAN KERAS: Perangkat PELAKU yang menekan tombol TIDAK PERNAH memunculkan notifikasi!
+    final currentUserId = _getCurrentUserId();
+    if (currentUserId != null && currentUserId == actorUserId) {
+      debugPrint('NotificationService: Notifikasi untuk $recipientUserId tersimpan, HP pelaku ($actorUserId) tidak memunculkan notifikasi.');
+      return;
+    }
+
+    // 5. Jika perangkat yang sedang berjalan saat ini adalah perangkat penerima:
+    if (currentUserId != null && currentUserId == recipientUserId) {
+      await _deliverLocalSocialNotification(item);
+    }
+  }
+
+  /// Mengirimkan notifikasi lokal tertunda khusus untuk user penerima saat membuka aplikasi
+  Future<List<SocialNotificationItem>> deliverPendingNotificationsForUser(String userId) async {
+    if (!isSocialNotificationEnabled()) return [];
+
+    final queue = _userNotificationQueues[userId] ?? [];
+    final unread = queue.where((item) => !item.isRead).toList();
+
+    for (final item in unread) {
+      await _deliverLocalSocialNotification(item);
+      final idx = queue.indexWhere((q) => q.id == item.id);
+      if (idx != -1) {
+        queue[idx] = SocialNotificationItem(
+          id: item.id,
+          recipientUserId: item.recipientUserId,
+          actorUserId: item.actorUserId,
+          actorName: item.actorName,
+          type: item.type,
+          postId: item.postId,
+          speciesName: item.speciesName,
+          title: item.title,
+          body: item.body,
+          isRead: true,
+          createdAt: item.createdAt,
+        );
+      }
+    }
+    return queue;
+  }
+
+  /// Mengambil daftar notifikasi milik pengguna tertentu dengan filter penerima
+  List<SocialNotificationItem> fetchMyNotifications(String userId) {
+    final list = _userNotificationQueues[userId] ?? [];
+    return list.where((n) => n.recipientUserId == userId && n.actorUserId != userId).toList();
+  }
+
+  /// Membersihkan antrean notifikasi sosial (untuk testing)
+  void clearNotificationQueues() {
+    _userNotificationQueues.clear();
+  }
+
+  Future<void> _deliverLocalSocialNotification(SocialNotificationItem item) async {
+    final notifId = item.type == 'follow'
+        ? NotificationConstants.idSocialFollow
+        : NotificationConstants.idSocialLike;
+
+    _scheduledRecords[notifId] = ScheduledNotificationRecord(
+      id: notifId,
+      title: item.title,
+      body: item.body,
+      scheduledDate: DateTime.now(),
+      isRecurringDaily: false,
+      category: item.type == 'follow' ? 'social_follow' : 'social_like',
+    );
+
+    if (!_isTestEnvironment) {
+      try {
+        await _localNotifications.show(
+          id: notifId,
+          title: item.title,
+          body: item.body,
+          notificationDetails: _notificationDetails(
+            channelId: NotificationConstants.channelSocialId,
+            channelName: NotificationConstants.channelSocialName,
+            channelDesc: NotificationConstants.channelSocialDescription,
+          ),
+        );
+      } catch (e) {
+        debugPrint('NotificationService _deliverLocalSocialNotification error: $e');
+      }
+    }
+  }
+
+  /// Menampilkan notifikasi instan ketika ada pengguna baru mengikuti akun kita (hanya jika di perangkat penerima)
   Future<void> showFollowNotification({
     required String followerName,
+    String? recipientUserId,
+    String? actorUserId,
   }) async {
     if (!isSocialNotificationEnabled()) return;
+
+    final currentUserId = _getCurrentUserId();
+    // Aturan keras: Jangan pernah tampilkan di HP pelaku
+    if (actorUserId != null && currentUserId != null && actorUserId == currentUserId) {
+      return;
+    }
+    if (recipientUserId != null && currentUserId != null && recipientUserId != currentUserId) {
+      return;
+    }
 
     final title = 'Pengikut Baru! 👥';
     final body = '$followerName mulai mengikuti linimasa satwa Anda.';
@@ -544,12 +786,23 @@ class NotificationService {
     }
   }
 
-  /// Menampilkan notifikasi instan ketika ada yang menyukai postingan linimasa kita
+  /// Menampilkan notifikasi instan ketika ada yang menyukai postingan linimasa kita (hanya jika di perangkat penerima)
   Future<void> showLikeNotification({
     required String likerName,
     String? speciesName,
+    String? recipientUserId,
+    String? actorUserId,
   }) async {
     if (!isSocialNotificationEnabled()) return;
+
+    final currentUserId = _getCurrentUserId();
+    // Aturan keras: Jangan pernah tampilkan di HP pelaku
+    if (actorUserId != null && currentUserId != null && actorUserId == currentUserId) {
+      return;
+    }
+    if (recipientUserId != null && currentUserId != null && recipientUserId != currentUserId) {
+      return;
+    }
 
     final title = 'Postingan Anda Disukai! ❤️';
     final body = speciesName != null && speciesName.isNotEmpty
