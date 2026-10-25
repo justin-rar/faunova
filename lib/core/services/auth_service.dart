@@ -74,13 +74,20 @@ class AuthService {
       );
     }
 
+    final cleanUsername = username.trim();
+    final cleanFullName = fullName.trim();
+    final displayName = cleanFullName.isNotEmpty ? cleanFullName : cleanUsername;
+
     try {
       final response = await Supabase.instance.client.auth.signUp(
         email: email.trim(),
         password: password,
         data: {
-          'full_name': fullName.trim(),
-          'username': username.trim().toLowerCase(),
+          'full_name': cleanFullName,
+          'display_name': displayName,
+          'nickname': displayName,
+          'raw_username': cleanUsername,
+          'username': cleanUsername.toLowerCase(),
         },
       );
       return response;

@@ -56,7 +56,13 @@ class PublicProfileModel {
     return PublicProfileModel(
       id: json['id'] as String? ?? '',
       username: json['username'] as String? ?? 'kolektor',
-      displayName: json['display_name'] as String? ?? json['full_name'] as String? ?? 'Penjelajah Satwa',
+      displayName: (json['display_name'] as String?)?.trim().isNotEmpty == true
+          ? (json['display_name'] as String).trim()
+          : (json['full_name'] as String?)?.trim().isNotEmpty == true
+              ? (json['full_name'] as String).trim()
+              : (json['nickname'] as String?)?.trim().isNotEmpty == true
+                  ? (json['nickname'] as String).trim()
+                  : (json['username'] as String?) ?? 'Penjelajah Satwa',
       avatarPath: json['avatar_path'] as String? ?? json['avatar_url'] as String?,
       bio: json['bio'] as String? ?? '',
       isVerified: effectiveVerified,
