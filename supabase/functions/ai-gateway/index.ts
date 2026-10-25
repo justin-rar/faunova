@@ -31,7 +31,13 @@ interface ChatRequestBody {
   message: string;
 }
 
-type RequestBody = ScanRequestBody | ChatRequestBody;
+interface ResetQuotaRequestBody {
+  mode: "reset_quota";
+  username?: string;
+  userId?: string;
+}
+
+type RequestBody = ScanRequestBody | ChatRequestBody | ResetQuotaRequestBody;
 
 // Format tanggal WIB (UTC+7)
 function getWibDateString(): string {
@@ -414,7 +420,91 @@ serve(async (req: Request) => {
       supabaseServiceKey || supabaseAnonKey!
     );
 
-    // 2. Autentikasi Pengguna via JWT
+    const body: RequestBody = await req.json();
+
+    // =========================================================================
+    // MODE RESET QUOTA: Reset Kuota Scan Harian (Untuk Testing Akun WowokTT)
+    // =========================================================================
+    if (body.mode === "reset_quota") {
+      const targetUsername = (body.username || "WowokTT").trim();
+      console.log(`Mereset kuota scan harian untuk akun '${targetUsername}'...`);
+
+      // Cari di public.profiles
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("id, username")
+        .ilike("username", targetUsername)
+        .maybeSingle();
+
+      let targetUserId = profile?.id;
+
+      if (!targetUserId) {
+        try {
+          const { data: usersData } = await adminClient.auth.admin.listUsers();
+          const found = usersData?.users?.find(
+            (u: any) =>
+              u.user_metadata?.username?.toLowerCase() === targetUsername.toLowerCase() ||
+              u.email?.toLowerCase().includes(targetUsername.toLowerCase())
+          );
+          if (found) targetUserId = found.id;
+        } catch (_) {}
+      }
+
+      if (!targetUserId) {
+        const { data: allProfiles } = await adminClient
+          .from("profiles")
+          .select("id, username")
+          .limit(10);
+
+        return new Response(
+          JSON.stringify({
+            error: "USER_NOT_FOUND",
+            message: `User '${targetUsername}' tidak ditemukan di sistem.`,
+            existingProfiles: allProfiles,
+          }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Hapus data daily_scan_usage lama untuk user ini
+      await adminClient
+        .from("daily_scan_usage")
+        .delete()
+        .eq("user_id", targetUserId);
+
+      // Inisialisasi ulang kuota menjadi 0 hari ini
+      const dateWib = getWibDateString();
+      await adminClient.from("daily_scan_usage").upsert(
+        {
+          user_id: targetUserId,
+          date_wib: dateWib,
+          used_count: 0,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,date_wib" }
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Kuota scan harian untuk akun '${targetUsername}' berhasil di-reset menjadi 0 / 20.`,
+          userId: targetUserId,
+          username: profile?.username || targetUsername,
+          dateWib: dateWib,
+          usedCount: 0,
+          maxQuota: 20,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // 2. Autentikasi Pengguna via JWT (untuk mode scan & chat)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -447,8 +537,6 @@ serve(async (req: Request) => {
         }
       );
     }
-
-    const body: RequestBody = await req.json();
 
     // =========================================================================
     // MODE SCAN: Identifikasi Hewan dari Foto
@@ -549,6 +637,36 @@ serve(async (req: Request) => {
 
         currentCount = usage?.used_count ?? 0;
         scanAllowed = currentCount < 20;
+      }
+
+      // Pengecekan akun tester developer (WowokTT)
+      let isTesterAccount = false;
+      try {
+        const { data: up } = await adminClient
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        isTesterAccount =
+          up?.username?.toLowerCase() === "wowoktt" ||
+          user.user_metadata?.username?.toLowerCase() === "wowoktt" ||
+          (user.email && user.email.toLowerCase().includes("wowok"));
+      } catch (_) {}
+
+      if (isTesterAccount && !scanAllowed) {
+        console.log("Akun tester WowokTT mencapai batas scan, auto-reset kuota ke 0 untuk testing.");
+        await adminClient.from("daily_scan_usage").upsert(
+          {
+            user_id: user.id,
+            date_wib: dateWib,
+            used_count: 0,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,date_wib" }
+        );
+        scanAllowed = true;
+        currentCount = 0;
       }
 
       if (!scanAllowed) {
