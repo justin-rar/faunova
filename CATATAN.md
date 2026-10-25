@@ -1626,6 +1626,31 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 3. Langkah Berikutnya
 - Melakukan Hot Reload / Hot Restart pada `flutter run` di perangkat untuk memverifikasi tampilan riwayat transaksi dan tombol perpanjangan.
 
+---
 
+## Sesi Perbaikan Test Suite Hive, Isolasi Midtrans, & Sesi S24 — Selesai ✅
 
+### 1. Selesai Dikerjakan
+- **Investigasi & Resolusi Masalah Uji Sebelumnya**:
+  - **Penyebab Timeout 30s**: Penulisan file box Hive terenkripsi (`HiveAesCipher`) di `EncryptedStorageService` yang tidak di-await pada alur game/streak di latar belakang saat dijalankan dalam zona asinkron `testWidgets`, menyebabkan antrean lock I/O menggantung pada sesi pengujian S17.
+  - **Solusi Timeout**: Menambahkan in-memory cache/fallback di `EncryptedStorageService` khusus untuk environment pengujian (`_isTestEnvironment` / `isTestEnv: true`), serta memastikan penanganan nilai `null` melalui pemanggilan `box.delete(key)` yang aman.
+  - **Penyebab Kegagalan S19 UpgradeBlueCheckSheet**: State leakage dari pengujian sebelumnya (`simulateWebhookSettlement`) yang menyisakan transaksi berstatus `settlement` aktif di dalam memori `PaymentService._demoTransactions`. Akibatnya, pengujian berikutnya menganggap profil sudah aktif berlangganan Centang Biru dan menampilkan tombol perpanjangan bukannya tombol pembelian awal.
+  - **Solusi Isolasi Transaksi**: Menambahkan `setUp` dan `tearDown` pada group pengujian `S19` di `test/widget_test.dart` yang memanggil `PaymentService.instance.resetDemoTransactions()`.
+  - **Pembersihan Lint**: Menghapus import redundan `package:flutter/foundation.dart` di `encrypted_storage_service.dart`.
+- **Eksekusi & Hasil Pengujian 100% Lulus**:
+  - `flutter analyze`: **0 issues / No issues found!**
+  - `flutter test test/security_and_rls_test.dart`: **9/9 tests passed (100% lulus)**.
+  - `flutter test test/widget_test.dart`: **113/113 tests passed (100% lulus)**.
+  - `flutter test` (keseluruhan suite): **122/122 tests passed (100% lulus dalam 6 detik)**.
+- **Sesi S24 — Data Demo & Skenario Demo Walkthrough (`docs/skenario_demo_dan_laporan.md`)**:
+  - Verifikasi kelengkapan akun demo riset (`arya_wallacea`, `wayan_bali`, `siti_badak`, `faiz_ocean`, `dewi_papua`, `borneo_wildlife`).
+  - Verifikasi 12 bank soal biologi satwa liar berbasis sains dan taksonomi nyata di database Postgres & memori offline `QuizService`.
+  - Penyusunan naskah **Skenario Demo Walkthrough 9 Langkah (End-to-End)** yang siap dipresentasikan di hadapan Dosen/Asisten Laboratorium PAM (5–7 menit).
+  - Penyusunan daftar **12 Titik Tangkapan Layar (*Screenshot*)** esensial untuk lampiran Bab Implementasi pada Laporan Akhir PAM.
+  - Seluruh perubahan kode telah di-commit dan di-push ke repositori GitHub (`origin/main`).
 
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik
+- Pengujian interaksi kamera fisik, sensor kompas magnetometer lapangan, dan pemindaian sidik jari biometrik langsung pada HP Android fisik saat presentasi berlangsung.
+
+### 3. Langkah Berikutnya
+- Melanjutkan ke fase Cadangan (Hari 13–14) sesuai `docs/scope.md`: latihan alur demo menggunakan HP fisik, pengambilan tangkapan layar untuk laporan, dan pemolesan akhir bila diperlukan.
