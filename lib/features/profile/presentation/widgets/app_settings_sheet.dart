@@ -276,7 +276,7 @@ class _AppSettingsSheetState extends State<AppSettingsSheet> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Teknologi: Flutter, Supabase (Auth, RLS, Storage, Edge Functions), DeepSeek Vision & Gemini Flash, Midtrans Sandbox, OpenStreetMap & Hive.',
+                        'Teknologi: Flutter, Supabase (Auth, RLS, Storage, Edge Functions), Google Gemini Flash & AI Vision, Midtrans Sandbox, OpenStreetMap & Hive.',
                         style: TextStyle(fontSize: 11, color: AppColors.teksGelap, height: 1.35),
                       ),
                       const SizedBox(height: 6),

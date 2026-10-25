@@ -257,10 +257,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
                         scanResult.isAnimal
                             ? (scanResult.aiProvider != null
                                 ? 'Terdeteksi ${scanResult.aiProvider}'
-                                : 'Terdeteksi DeepSeek Vision')
+                                : 'Terdeteksi Gemini Flash')
                             : (scanResult.aiProvider != null
                                 ? '${scanResult.aiProvider}: Bukan Satwa'
-                                : 'DeepSeek: Bukan Satwa'),
+                                : 'Gemini: Bukan Satwa'),
                         style: AppTypography.labelCaption(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

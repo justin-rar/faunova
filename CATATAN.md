@@ -2020,3 +2020,33 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 4. Langkah Berikutnya
 - Pengguna dapat langsung menekan tombol bidik kamera di HP fisik (akun WowokTT) untuk menguji deteksi gambar satwa.
 
+---
+
+## Sesi Pengembalian Mesin AI Utama ke Google Gemini Flash — Selesai ✅
+
+### 1. Permintaan Pengguna
+- Mengembalikan mesin AI untuk deteksi scan gambar satwa dan tanya jawab kuis/chat kembali ke **Google Gemini Flash** sebagai prioritas utama.
+
+### 2. Tindakan & Implementasi
+- **Prioritas Utama di Edge Function `ai-gateway` (`supabase/functions/ai-gateway/index.ts`)**:
+  - **Mode Scan**: Google Gemini Flash (`gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-1.5-flash-latest`) dijadikan Prioritas 1. Cadangan: Cloudflare Workers AI Vision dan DeepSeek Vision.
+  - **Mode Chat**: Google Gemini Flash dijadikan Prioritas 1 untuk multi-turn chat pemandu konservasi satwa dengan guardrail zoologi ketat. Cadangan: Cloudflare MiniMax/Llama dan DeepSeek Chat.
+- **Pembaruan Teks & UI Klien Flutter**:
+  - `lib/core/services/scan_service.dart`: Fallback demo AI provider disetel ke `'Google Gemini Flash'`.
+  - `lib/features/camera/models/scan_result_model.dart`: Fallback provider model disetel ke `'Google Gemini Flash'`.
+  - `lib/features/camera/presentation/camera_page.dart`: Pesan proses diubah menjadi `'Menganalisis satwa via Gemini AI...'` dan HUD langkah 3 menjadi `'Validasi ai-gateway (Gemini AI Vision)'`.
+  - `lib/features/camera/presentation/scan_result_page.dart`: Tag kartu foto dikembalikan ke `'Terdeteksi Gemini Flash'`.
+  - `lib/features/profile/presentation/widgets/app_settings_sheet.dart`: Keterangan teknologi diperbarui menjadi Google Gemini Flash & AI Vision.
+- **Deployment Production ke Supabase**:
+  - `ai-gateway` sukses dideploy kembali ke proyek Supabase `yziubaqkrhxtneaybllq`.
+  - Endpoint reset quota dan integritas verifikasi aktif normal.
+
+### 3. Hasil Pengujian & Verifikasi
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **143/143 tests passed! (100% lulus)**.
+- Supabase Edge Function deployment: **Sukses terunggah dan aktif (`Deployed Functions`)**.
+
+### 4. Langkah Berikutnya
+- Tekan **`R`** (*Hot Restart*) pada terminal `flutter run` di perangkat untuk memuat ulang antarmuka klien.
+- Coba bidik foto satwa di tab Kamera atau tanyakan fakta satwa pada tab Obrolan.
+

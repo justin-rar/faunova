@@ -180,7 +180,7 @@ class ScanService {
       receivedAt: DateTime.now(),
       localPhotoPath: localPhotoPath,
       imageBase64: imageBase64,
-      aiProvider: 'DeepSeek Vision (deepseek-flash)',
+      aiProvider: 'Google Gemini Flash',
     );
   }
 }
