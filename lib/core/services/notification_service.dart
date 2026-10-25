@@ -17,15 +17,23 @@ class NotificationConstants {
   static const int idDailyChallengeReminder = 1002;
   static const int idVerifiedExpiryReminder = 1003;
   static const int idInstantTest = 1004;
+  static const int idSocialFollow = 1005;
+  static const int idSocialLike = 1006;
 
   static const String channelId = 'faunova_notifications';
   static const String channelName = 'Pengingat Faunova';
   static const String channelDescription =
       'Saluran pengingat streak harian, tantangan biologi satwa, dan masa aktif Centang Biru Faunova.';
 
+  static const String channelSocialId = 'faunova_social';
+  static const String channelSocialName = 'Aktivitas Sosial Faunova';
+  static const String channelSocialDescription =
+      'Pemberitahuan saat postingan disukai atau saat ada pengguna baru mengikuti Anda.';
+
   static const String keyStreakReminderEnabled = 'faunova_notif_streak_enabled';
   static const String keyChallengeReminderEnabled = 'faunova_notif_challenge_enabled';
   static const String keyVerifiedExpiryReminderEnabled = 'faunova_notif_verified_enabled';
+  static const String keySocialNotifEnabled = 'faunova_notif_social_enabled';
 }
 
 class ScheduledNotificationRecord {
@@ -219,6 +227,20 @@ class NotificationService {
     } else if (verifiedUntil != null) {
       await scheduleVerifiedExpiryReminder(verifiedUntil);
     }
+  }
+
+  bool isSocialNotificationEnabled() {
+    return EncryptedStorageService.instance.getSetting(
+      NotificationConstants.keySocialNotifEnabled,
+      defaultValue: true,
+    ) as bool? ?? true;
+  }
+
+  Future<void> setSocialNotificationEnabled(bool enabled) async {
+    await EncryptedStorageService.instance.saveSetting(
+      NotificationConstants.keySocialNotifEnabled,
+      enabled,
+    );
   }
 
   // ============================================================================
@@ -481,6 +503,83 @@ class NotificationService {
         );
       } catch (e) {
         debugPrint('NotificationService showInstantNotification error: $e');
+      }
+    }
+  }
+
+  /// Menampilkan notifikasi instan ketika ada pengguna baru mengikuti akun kita
+  Future<void> showFollowNotification({
+    required String followerName,
+  }) async {
+    if (!isSocialNotificationEnabled()) return;
+
+    final title = 'Pengikut Baru! 👥';
+    final body = '$followerName mulai mengikuti linimasa satwa Anda.';
+
+    _scheduledRecords[NotificationConstants.idSocialFollow] =
+        ScheduledNotificationRecord(
+      id: NotificationConstants.idSocialFollow,
+      title: title,
+      body: body,
+      scheduledDate: DateTime.now(),
+      isRecurringDaily: false,
+      category: 'social_follow',
+    );
+
+    if (!_isTestEnvironment) {
+      try {
+        await _localNotifications.show(
+          id: NotificationConstants.idSocialFollow,
+          title: title,
+          body: body,
+          notificationDetails: _notificationDetails(
+            channelId: NotificationConstants.channelSocialId,
+            channelName: NotificationConstants.channelSocialName,
+            channelDesc: NotificationConstants.channelSocialDescription,
+          ),
+        );
+      } catch (e) {
+        debugPrint('NotificationService showFollowNotification error: $e');
+      }
+    }
+  }
+
+  /// Menampilkan notifikasi instan ketika ada yang menyukai postingan linimasa kita
+  Future<void> showLikeNotification({
+    required String likerName,
+    String? speciesName,
+  }) async {
+    if (!isSocialNotificationEnabled()) return;
+
+    final title = 'Postingan Anda Disukai! ❤️';
+    final body = speciesName != null && speciesName.isNotEmpty
+        ? '$likerName menyukai tangkapan $speciesName Anda.'
+        : '$likerName menyukai postingan linimasa Anda.';
+
+    _scheduledRecords[NotificationConstants.idSocialLike] =
+        ScheduledNotificationRecord(
+      id: NotificationConstants.idSocialLike,
+      title: title,
+      body: body,
+      scheduledDate: DateTime.now(),
+      isRecurringDaily: false,
+      category: 'social_like',
+    );
+
+    if (!_isTestEnvironment) {
+      try {
+        await _localNotifications.show(
+          id: NotificationConstants.idSocialLike,
+          title: title,
+          body: body,
+          notificationDetails: _notificationDetails(
+            channelId: NotificationConstants.channelSocialId,
+            channelName: NotificationConstants.channelSocialName,
+            channelDesc: NotificationConstants.channelSocialDescription,
+          ),
+        );
+      } catch (e) {
+        debugPrint('NotificationService showLikeNotification error: $e');
       }
     }
   }

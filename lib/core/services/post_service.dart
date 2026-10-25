@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../../features/feed/models/post_model.dart';
+import 'notification_service.dart';
 
 class PostException implements Exception {
   final String message;
@@ -608,6 +609,12 @@ class PostService {
           isLikedByMe: newIsLiked,
           likesCount: newCount,
         );
+        if (newIsLiked) {
+          NotificationService.instance.showLikeNotification(
+            likerName: current.authorName.isNotEmpty ? current.authorName : current.authorUsername,
+            speciesName: current.speciesName,
+          );
+        }
         return {
           'post_id': postId,
           'is_liked': newIsLiked,
@@ -631,6 +638,19 @@ class PostService {
         _demoPosts[idx] = _demoPosts[idx].copyWith(
           isLikedByMe: resultMap['is_liked'] == true,
           likesCount: (resultMap['likes_count'] as num?)?.toInt() ?? _demoPosts[idx].likesCount,
+        );
+      }
+
+      if (resultMap['is_liked'] == true) {
+        String liker = 'Penjelajah Satwa';
+        String? species;
+        if (idx != -1) {
+          liker = _demoPosts[idx].authorName.isNotEmpty ? _demoPosts[idx].authorName : _demoPosts[idx].authorUsername;
+          species = _demoPosts[idx].speciesName;
+        }
+        NotificationService.instance.showLikeNotification(
+          likerName: liker,
+          speciesName: species,
         );
       }
 

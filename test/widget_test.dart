@@ -2699,13 +2699,15 @@ void main() {
       expect(find.text('Pengingat Streak Harian (19:00 WIB)'), findsOneWidget);
       expect(find.text('Tantangan Satwa Hari Ini (08:00 WIB)'), findsOneWidget);
       expect(find.text('Masa Aktif Centang Biru (H-3)'), findsOneWidget);
-      expect(find.byType(Switch), findsNWidgets(3));
+      expect(find.text('Aktivitas Sosial (Suka & Pengikut)'), findsOneWidget);
+      expect(find.byType(Switch), findsNWidgets(4));
 
       // Verifikasi daftar jadwal alarm aktif
       expect(find.text('Jadwal Alarm Notifikasi Aktif'), findsOneWidget);
 
       // Verifikasi tombol uji coba notifikasi instan
       final testButton = find.text('Kirim Notifikasi Percobaan');
+      await tester.scrollUntilVisible(testButton, 100);
       expect(testButton, findsOneWidget);
 
       await tester.tap(testButton);

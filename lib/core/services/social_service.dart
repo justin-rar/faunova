@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../../features/feed/models/post_model.dart';
 import '../../features/profile/models/public_profile_model.dart';
+import 'notification_service.dart';
 import 'post_service.dart';
 
 class SocialException implements Exception {
@@ -268,6 +269,11 @@ class SocialService {
         );
       }
 
+      if (newFollowing) {
+        final followerName = profile?.displayName ?? profile?.username ?? 'Penjelajah Satwa';
+        NotificationService.instance.showFollowNotification(followerName: followerName);
+      }
+
       return {
         'success': true,
         'target_user_id': targetUserId,
@@ -288,6 +294,10 @@ class SocialService {
 
       if (isNowFollowing) {
         _followingUserIds.add(targetUserId);
+        final followerName = (result['target_username'] as String?) ??
+            (result['target_name'] as String?) ??
+            'Penjelajah Satwa';
+        NotificationService.instance.showFollowNotification(followerName: followerName);
       } else {
         _followingUserIds.remove(targetUserId);
       }

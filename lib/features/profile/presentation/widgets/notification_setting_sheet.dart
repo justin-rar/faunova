@@ -30,6 +30,7 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
   bool _streakEnabled = true;
   bool _challengeEnabled = true;
   bool _verifiedEnabled = true;
+  bool _socialEnabled = true;
   bool _isCheckedInToday = false;
   DateTime? _verifiedUntil;
   List<ScheduledNotificationRecord> _activeRecords = [];
@@ -46,6 +47,7 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
     final streakEn = NotificationService.instance.isStreakReminderEnabled();
     final challengeEn = NotificationService.instance.isChallengeReminderEnabled();
     final verifiedEn = NotificationService.instance.isVerifiedExpiryReminderEnabled();
+    final socialEn = NotificationService.instance.isSocialNotificationEnabled();
 
     // Cek status streak hari ini
     bool checkedIn = false;
@@ -70,6 +72,7 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
         _streakEnabled = streakEn;
         _challengeEnabled = challengeEn;
         _verifiedEnabled = verifiedEn;
+        _socialEnabled = socialEn;
         _isCheckedInToday = checkedIn;
         _verifiedUntil = verifiedExpiry;
         _activeRecords = records;
@@ -125,6 +128,23 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
           content: Text(val
               ? 'Pengingat H-3 Centang Biru diaktifkan.'
               : 'Pengingat Centang Biru dinonaktifkan.'),
+          backgroundColor: AppColors.sageTua,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleSocial(bool val) async {
+    setState(() => _socialEnabled = val);
+    await NotificationService.instance.setSocialNotificationEnabled(val);
+    _refreshRecords();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(val
+              ? 'Notifikasi aktivitas sosial (suka & pengikut) diaktifkan.'
+              : 'Notifikasi aktivitas sosial dinonaktifkan.'),
           backgroundColor: AppColors.sageTua,
           duration: const Duration(seconds: 2),
         ),
@@ -321,6 +341,18 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
                                 ),
                               )
                             : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // 4. Notifikasi Sosial (Suka & Pengikut)
+                      _buildSettingCard(
+                        icon: Icons.favorite_rounded,
+                        iconColor: const Color(0xFFE91E63),
+                        title: 'Aktivitas Sosial (Suka & Pengikut)',
+                        subtitle:
+                            'Pemberitahuan instan ketika ada pengguna baru mengikuti Anda atau menyukai tangkapan satwa di linimasa.',
+                        value: _socialEnabled,
+                        onChanged: _toggleSocial,
                       ),
                       const SizedBox(height: 20),
 
