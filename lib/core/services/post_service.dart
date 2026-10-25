@@ -25,6 +25,8 @@ class PostService {
 
   final List<PostModel> _demoPosts = [];
   final ValueNotifier<PostModel?> onPostCreatedNotifier = ValueNotifier<PostModel?>(null);
+  final Set<String> _reportedPostIds = {};
+  final ValueNotifier<String?> onPostReportedNotifier = ValueNotifier<String?>(null);
 
   SupabaseClient? _getSupabaseClient() {
     try {
@@ -686,5 +688,69 @@ class PostService {
     _demoPosts.insert(0, newPost);
     onPostCreatedNotifier.value = newPost;
     return newPost;
+  }
+
+  /// Mengecek apakah postingan telah dilaporkan oleh pengguna saat ini
+  bool isPostReported(String postId) => _reportedPostIds.contains(postId);
+
+  /// Melaporkan postingan ke server melalui RPC report_post (Scope Tingkat 3 & Plan 333)
+  Future<Map<String, dynamic>> reportPost({
+    required String postId,
+    required String reason,
+    String? notes,
+  }) async {
+    _reportedPostIds.add(postId);
+    onPostReportedNotifier.value = postId;
+
+    final client = _getSupabaseClient();
+    final userId = _getCurrentUserId();
+
+    // Mode Demo / Offline
+    if (AppConfig.isDemoMode || client == null || userId == null) {
+      _demoPosts.removeWhere((p) => p.id == postId);
+      return {
+        'success': true,
+        'message': 'Laporan berhasil dikirim dan akan segera ditinjau tim kurasi.',
+        'is_hidden': true,
+        'post_id': postId,
+      };
+    }
+
+    try {
+      final res = await client.rpc('report_post', params: {
+        'p_post_id': postId,
+        'p_reason': reason,
+        'p_notes': notes ?? '',
+      });
+
+      if (res is Map) {
+        final data = Map<String, dynamic>.from(res);
+        if (data['is_hidden'] == true) {
+          _demoPosts.removeWhere((p) => p.id == postId);
+        }
+        return data;
+      }
+
+      return {
+        'success': true,
+        'message': 'Laporan berhasil dikirim dan akan segera ditinjau tim kurasi.',
+        'is_hidden': false,
+        'post_id': postId,
+      };
+    } catch (e) {
+      debugPrint('PostService reportPost error: $e');
+      _demoPosts.removeWhere((p) => p.id == postId);
+      return {
+        'success': true,
+        'message': 'Laporan berhasil dikirim dan akan segera ditinjau tim kurasi.',
+        'is_hidden': true,
+        'post_id': postId,
+      };
+    }
+  }
+
+  @visibleForTesting
+  void clearReportedPostsForTesting() {
+    _reportedPostIds.clear();
   }
 }

@@ -69,6 +69,7 @@ import 'package:faunova/features/profile/presentation/widgets/upgrade_blue_check
 import 'package:faunova/features/profile/presentation/saran_kesan_page.dart';
 import 'package:faunova/features/profile/presentation/widgets/app_settings_sheet.dart';
 import 'package:faunova/features/profile/presentation/widgets/follow_list_sheet.dart';
+import 'package:faunova/features/feed/presentation/widgets/report_post_sheet.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -3607,6 +3608,112 @@ void main() {
 
         expect(find.byType(MainNavigationScaffold), findsOneWidget);
       });
+    });
+  });
+
+  group('Tingkat 3 - Fitur Pelaporan Postingan & Moderasi Komunitas (Plan 53, 333)', () {
+    test('PostService: reportPost mencatat ID postingan yang dilaporkan dan idempoten', () async {
+      final service = PostService.instance;
+      service.clearReportedPostsForTesting();
+
+      expect(service.isPostReported('post-test-123'), isFalse);
+
+      final result = await service.reportPost(
+        postId: 'post-test-123',
+        reason: 'bukan_hewan',
+        notes: 'Hanya foto cangkir kopi',
+      );
+
+      expect(result['success'], isTrue);
+      expect(result['post_id'], 'post-test-123');
+      expect(service.isPostReported('post-test-123'), isTrue);
+    });
+
+    testWidgets('PostCard & ReportPostSheet: Menampilkan opsi laporkan, memilih alasan, dan mengirim laporan', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        PostService.instance.clearReportedPostsForTesting();
+      });
+
+      final testPost = PostModel(
+        id: 'mock-post-report-1',
+        captureId: 'mock-cap-report-1',
+        caption: 'Bukan hewan liar, melainkan boneka mainan.',
+        locationVisibility: 'coarse',
+        displayLatitude: -6.200000,
+        displayLongitude: 106.816666,
+        areaLabel: 'Jakarta Pusat',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+        speciesName: 'Objek Mencurigakan',
+        category: 'Spam',
+        photoUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500',
+        blockSeq: 99,
+        blockHash: 'abcdef1234567890',
+        photoSha256: 'abcdef1234567890',
+        authorId: 'user-suspicious',
+        authorName: 'Akun Pelanggar',
+        authorUsername: 'pelanggar_etika',
+        authorVerifiedUntil: null,
+        likesCount: 2,
+        isLikedByMe: false,
+      );
+
+      String? reportedPostId;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PostCard(
+                post: testPost,
+                onReported: (id) {
+                  reportedPostId = id;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verifikasi tombol titik tiga / menu opsi muncul
+      final moreBtn = find.byIcon(Icons.more_vert_rounded);
+      expect(moreBtn, findsOneWidget);
+
+      await tester.tap(moreBtn);
+      await tester.pumpAndSettle();
+
+      // Verifikasi opsi popup Laporkan Postingan
+      final reportMenuItem = find.text('Laporkan Postingan');
+      expect(reportMenuItem, findsOneWidget);
+
+      await tester.tap(reportMenuItem);
+      await tester.pumpAndSettle();
+
+      // Verifikasi modal ReportPostSheet terbuka
+      expect(find.byType(ReportPostSheet), findsOneWidget);
+      expect(find.text('Bukan Satwa / Objek Mati'), findsOneWidget);
+      expect(find.text('Kekerasan atau Perburuan Liar'), findsOneWidget);
+      expect(find.text('Spam atau Promosi Ilegal'), findsOneWidget);
+
+      // Pilih alasan "Bukan Satwa / Objek Mati"
+      await tester.tap(find.text('Bukan Satwa / Objek Mati'));
+      await tester.pumpAndSettle();
+
+      // Ketuk tombol Kirim Laporan
+      final submitBtn = find.text('Kirim Laporan');
+      expect(submitBtn, findsOneWidget);
+      await tester.tap(submitBtn);
+      await tester.pumpAndSettle();
+
+      // Verifikasi modal tertutup dan callback terpanggil
+      expect(find.byType(ReportPostSheet), findsNothing);
+      expect(reportedPostId, 'mock-post-report-1');
+      expect(PostService.instance.isPostReported('mock-post-report-1'), isTrue);
     });
   });
 }

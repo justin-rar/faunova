@@ -1653,4 +1653,46 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - Pengujian interaksi kamera fisik, sensor kompas magnetometer lapangan, dan pemindaian sidik jari biometrik langsung pada HP Android fisik saat presentasi berlangsung.
 
 ### 3. Langkah Berikutnya
-- Melanjutkan ke fase Cadangan (Hari 13–14) sesuai `docs/scope.md`: latihan alur demo menggunakan HP fisik, pengambilan tangkapan layar untuk laporan, dan pemolesan akhir bila diperlukan.
+- Melanjutkan ke fase Cadangan (Hari 13–14) sesuai `docs/scope.md`: latihan alur demo menggunakan HP fisik, pengambilan tangkapan layar untuk laporan, dan implementasi fitur pelengkap Tingkat 3.
+
+---
+
+## Sesi Tingkat 3 (Cadangan) — Fitur Pelaporan Postingan & Moderasi Komunitas (Plan 53, 333) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Skema Database & RLS (`supabase/migrations/021_post_reporting_and_moderation.sql`)**:
+  - Dibuat tabel `public.post_reports` dengan field `id`, `post_id`, `reporter_id`, `reason`, `notes`, dan `created_at`.
+  - Constraint unik `UNIQUE(post_id, reporter_id)` untuk mencegah pelaporan ganda (idempoten).
+  - RLS aktif penuh: pengguna terotentikasi hanya bisa menyisipkan laporan miliknya sendiri (`auth.uid() = reporter_id`) dan melihat laporannya sendiri.
+  - RPC `public.report_post`:
+    - Fungsi `SECURITY DEFINER` dengan `SET search_path = public, auth`.
+    - Validasi: pengguna dilarang melaporkan postingan miliknya sendiri (`v_author_id <> v_reporter_id`).
+    - Validasi enum kategori alasan laporan (*bukan_hewan, kekerasan_satwa, lokasi_palsu, spam, ujaran_kebencian, lainnya*).
+    - **Ambang Batas Moderasi Otomatis (Plan 333)**: Menghitung total pelapor unik per postingan. Jika mencapai ambang batas $\ge 3$ laporan, postingan otomatis disembunyikan dari feed publik (`posts.deleted_at = now()`).
+- **Integrasi Service Layer (`PostService`)**:
+  - Diterapkan di `lib/core/services/post_service.dart`.
+  - Method `reportPost({required String postId, required String reason, String? notes})`:
+    - Memanggil RPC `report_post` di Supabase.
+    - Menangani fallback mode demo / luring dengan menyembunyikan postingan secara lokal.
+    - Menyediakan `isPostReported(postId)` dan `onPostReportedNotifier` untuk sinkronisasi state linimasa.
+- **Antarmuka Pengguna Modal Sheet (`ReportPostSheet`)**:
+  - Dibuat di `lib/features/feed/presentation/widgets/report_post_sheet.dart`.
+  - Desain mengikuti palet resmi Faunova (Sage tua, Gading, Emas, Merah status).
+  - Kartu pemilih 6 kategori pelanggaran dengan ikon visual dan deskripsi ringkas.
+  - Kolom opsional catatan/keterangan tambahan dengan batas 200 karakter.
+  - State loading interaktif, feedback SnackBar keberhasilan, dan penanganan galat.
+- **Integrasi Kartu Linimasa & Feed (`PostCard` & `FeedPage`)**:
+  - Menambahkan tombol menu titik tiga (`...`) di header `PostCard` dengan opsi *"Laporkan Postingan"* (ikon bendera merah).
+  - Terhubung dengan `ReportPostSheet.show()`.
+  - Saat laporan berhasil dikirim, postingan seketika dihapus dari daftar feed aktif (*Untuk Kamu* dan *Mengikuti*) pengguna demi kenyamanan pengalaman pengguna (*instant client hide*).
+- **Verifikasi & Rangkaian Pengujian**:
+  - `flutter analyze`: **0 issues / No issues found! (bersih total)**.
+  - `flutter test test/widget_test.dart`: **115/115 pengujian lulus (100%)**.
+  - `flutter test test/security_and_rls_test.dart`: **9/9 pengujian keamanan lulus (100%)**.
+  - Total keseluruhan tes: **124/124 pengujian lulus (100% pass)**.
+
+### 2. Belum Teruji / Membutuhkan HP Fisik
+- Pengujian interaksi sentuhan langsung modal sheet pada layar HP fisik Android saat linimasa feed di-scroll.
+
+### 3. Langkah Berikutnya
+- Melanjutkan latihan alur demo lengkap pada perangkat HP fisik (`flutter run`) dan pengambilan 12 tangkapan layar untuk laporan akhir.

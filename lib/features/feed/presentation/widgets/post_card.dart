@@ -15,18 +15,21 @@ import '../../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../profile/presentation/public_profile_page.dart';
 import '../../models/post_model.dart';
 
+import 'report_post_sheet.dart';
 import '../../../../core/theme/app_typography.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
   final VoidCallback? onLike;
   final bool isLiking;
+  final void Function(String postId)? onReported;
 
   const PostCard({
     super.key,
     required this.post,
     this.onLike,
     this.isLiking = false,
+    this.onReported,
   });
 
   @override
@@ -277,6 +280,45 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 2),
+          // Tombol Opsi / Laporkan Postingan (Scope Tingkat 3 & Plan 333)
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: AppColors.teksGelap.withValues(alpha: 0.7),
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onSelected: (val) {
+              if (val == 'report') {
+                ReportPostSheet.show(
+                  context,
+                  post: post,
+                  onReportSuccess: widget.onReported,
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Row(
+                  children: [
+                    const Icon(Icons.flag_outlined, size: 18, color: AppColors.merahStatus),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Laporkan Postingan',
+                      style: AppTypography.bodyCompact(
+                        fontSize: 13,
+                        color: AppColors.merahStatus,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

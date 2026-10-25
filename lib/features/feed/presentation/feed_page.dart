@@ -47,7 +47,24 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     // Default aktif di tab 'Untuk Kamu' (index 1), persis seperti referensi desain
     _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
     PostService.instance.onPostCreatedNotifier.addListener(_handleNewPostCreated);
+    PostService.instance.onPostReportedNotifier.addListener(_handlePostReportedFromNotifier);
     _loadFeed();
+  }
+
+  void _handlePostReported(String postId) {
+    if (mounted) {
+      setState(() {
+        _forYouPosts.removeWhere((p) => p.id == postId);
+        _followingPosts.removeWhere((p) => p.id == postId);
+      });
+    }
+  }
+
+  void _handlePostReportedFromNotifier() {
+    final reportedId = PostService.instance.onPostReportedNotifier.value;
+    if (reportedId != null) {
+      _handlePostReported(reportedId);
+    }
   }
 
   void _handleNewPostCreated() {
@@ -146,6 +163,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     PostService.instance.onPostCreatedNotifier.removeListener(_handleNewPostCreated);
+    PostService.instance.onPostReportedNotifier.removeListener(_handlePostReportedFromNotifier);
     _tabController.dispose();
     super.dispose();
   }
@@ -308,6 +326,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
                     key: ValueKey('following_${post.id}'),
                     post: post,
                     onLike: () => _toggleLike(post),
+                    onReported: _handlePostReported,
                   );
                 }),
                 if (i < _followingPosts.length - 1) const SizedBox(height: 18),
@@ -405,6 +424,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
                     key: ValueKey('foryou_${post.id}'),
                     post: post,
                     onLike: () => _toggleLike(post),
+                    onReported: _handlePostReported,
                   );
                 }),
                 if (i < _forYouPosts.length - 1) const SizedBox(height: 18),
