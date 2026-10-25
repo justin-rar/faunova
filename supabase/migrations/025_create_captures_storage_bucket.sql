@@ -33,7 +33,10 @@ ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
     bucket_id = 'captures' 
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (
+        (storage.foldername(name))[1] = auth.uid()::text
+        OR name LIKE (auth.uid()::text || '/%')
+    )
 );
 
 -- C. Pengguna dapat memperbarui atau menghapus foto miliknya sendiri
@@ -43,7 +46,10 @@ ON storage.objects FOR UPDATE
 TO authenticated
 USING (
     bucket_id = 'captures' 
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (
+        (storage.foldername(name))[1] = auth.uid()::text
+        OR name LIKE (auth.uid()::text || '/%')
+    )
 );
 
 DROP POLICY IF EXISTS "Users can delete their own captures" ON storage.objects;
@@ -52,5 +58,8 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
     bucket_id = 'captures' 
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (
+        (storage.foldername(name))[1] = auth.uid()::text
+        OR name LIKE (auth.uid()::text || '/%')
+    )
 );
