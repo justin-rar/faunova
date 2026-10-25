@@ -18,6 +18,7 @@ class ScanResultModel {
   final String? localPhotoPath;
   final String? imageBase64;
   final String? aiProvider;
+  final double confidence;
 
   const ScanResultModel({
     required this.scanId,
@@ -39,9 +40,15 @@ class ScanResultModel {
     this.localPhotoPath,
     this.imageBase64,
     this.aiProvider,
+    this.confidence = 0.90,
   });
 
   int get quotaRemaining => (quotaMax - quotaUsed).clamp(0, quotaMax);
+
+  String get confidencePercentText => '${(confidence * 100).toInt()}%';
+
+  String get confidenceLabel =>
+      confidence >= 0.85 ? 'Sangat yakin' : confidence >= 0.65 ? 'Cukup yakin' : 'Perkiraan';
 
   factory ScanResultModel.fromJson(
     Map<String, dynamic> json, {
@@ -139,6 +146,9 @@ class ScanResultModel {
       aiProvider: json['aiProvider']?.toString() ??
           resultObj['aiProvider']?.toString() ??
           (isAnimalValue ? 'Google Gemini Flash' : 'Gemini AI'),
+      confidence: (resultObj['confidence'] as num?)?.toDouble() ??
+          (json['confidence'] as num?)?.toDouble() ??
+          0.90,
     );
   }
 
@@ -148,6 +158,7 @@ class ScanResultModel {
       'requestId': requestId,
       'status': status,
       'isAnimal': isAnimal,
+      'confidence': confidence,
       'name': name,
       'categoryOrSpecies': categoryOrSpecies,
       'description': description,

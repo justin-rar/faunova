@@ -752,19 +752,24 @@ serve(async (req: Request) => {
         "     a. Foto manusia (Homo sapiens, orang, wajah manusia, selfie, tubuh manusia). Faunova khusus untuk fauna non-manusia.\n" +
         "     b. Foto murni tanaman/tumbuhan/bunga/pohon tanpa ada hewan di atasnya.\n" +
         "     c. Benda mati, laptop/elektronik, kendaraan, perabotan, makanan/minuman olahan manusia, mainan/boneka, gambar kartun/logo, atau foto layar.\n" +
-        "   - Untuk bukan satwa, isi \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\" jelaskan secara ramah objek apa yang terpotret (misal: 'Foto memuat manusia (Homo sapiens)', 'Foto hanya memuat tanaman/bunga', 'Foto memuat benda mati').\n\n" +
         "Format respon JSON WAJIB:\n" +
         "Jika SATWA NYATA DITEMUKAN:\n" +
         "{\n" +
         '  "isAnimal": true,\n' +
+        '  "confidence": 0.95,\n' +
         '  "name": "Nama satwa dalam bahasa Indonesia",\n' +
         '  "categoryOrSpecies": "Nama ilmiah latin (Genus species)",\n' +
         '  "description": "Deskripsi ciri fisik satwa, habitat alami, dan status konservasi",\n' +
         '  "additionalFact": "Fakta unik satwa ini"\n' +
         "}\n" +
+        "PANDUAN TINGKAT KEYAKINAN (CONFIDENCE):\n" +
+        "- Jika satwa terlihat jelas: confidence >= 0.75.\n" +
+        "- Jika satwa terlihat namun terhalang atau foto agak buram: confidence antara 0.40 dan 0.74 (berikan nama kelompok umum yang aman dan jangan berhalusinasi).\n" +
+        "- Jika foto SANGAT BURAM, GELAP, atau AMBIGU sehingga tidak dapat dipastikan satwa apa: tetapkan \"isAnimal\": false, \"confidence\": 0.20, \"name\": null, \"categoryOrSpecies\": null, \"description\": null, dan \"additionalFact\": \"Objek pada foto terlalu buram atau kurang pencahayaan untuk dapat diidentifikasi sebagai satwa secara akurat. Silakan ambil foto lebih dekat dengan pencahayaan cukup.\"\n\n" +
         "Jika BUKAN SATWA / Manusia / Tanaman murni / Benda mati:\n" +
         "{\n" +
         '  "isAnimal": false,\n' +
+        '  "confidence": 0.10,\n' +
         '  "name": null,\n' +
         '  "categoryOrSpecies": null,\n' +
         '  "description": null,\n' +
@@ -922,7 +927,11 @@ serve(async (req: Request) => {
         !parsedResult?.name ||
         nameStr === "null";
 
-      if (isHuman || isPureFloraName || isExplicitlyRejected) {
+      const rawConfidence =
+        typeof parsedResult?.confidence === "number" ? parsedResult.confidence : 0.90;
+      const isTooAmbiguousOrLowConfidence = rawConfidence < 0.40;
+
+      if (isHuman || isPureFloraName || isExplicitlyRejected || isTooAmbiguousOrLowConfidence) {
         isAnimal = false;
         if (parsedResult) {
           parsedResult.isAnimal = false;
@@ -933,6 +942,8 @@ serve(async (req: Request) => {
             parsedResult.additionalFact = "Foto memuat manusia (Homo sapiens). Faunova khusus untuk katalog satwa dan fauna non-manusia.";
           } else if (isPureFloraName) {
             parsedResult.additionalFact = "Foto memuat flora/tanaman murni, bukan satwa.";
+          } else if (isTooAmbiguousOrLowConfidence) {
+            parsedResult.additionalFact = "Objek pada foto terlalu buram atau kurang pencahayaan untuk dapat diidentifikasi sebagai satwa secara akurat. Silakan ambil foto lebih dekat dengan pencahayaan cukup.";
           } else {
             parsedResult.additionalFact = "Foto ini tidak memuat satwa.";
           }

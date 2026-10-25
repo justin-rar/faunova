@@ -343,7 +343,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Cukup yakin (94%)',
+                  '${scanResult.confidenceLabel} (${scanResult.confidencePercentText})',
                   style: AppTypography.labelCaption(
                     fontSize: 11,
                     color: AppColors.onTertiaryFixed,
