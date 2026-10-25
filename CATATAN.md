@@ -1723,3 +1723,37 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 3. Langkah Berikutnya
 - Melakukan Hot Restart (`R`) pada sesi `flutter run` di HP nirkabel untuk mencoba langsung pengalaman bermain kuis gaya Quizizz.
 
+---
+
+## Sesi Branding & Logo Aplikasi (Faunova Official App Icon) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Desain Logo Resmi Faunova (`assets/images/faunova_logo.png`)**:
+  - Dibuat dengan palet warna resmi Faunova (Sage Tua `#5C7457`, Aksen Emas `#C8A96B`, Gading `#F7F4ED`).
+  - Menggabungkan siluet elegan Burung Rangkong (Enggang) dan Rusa Bawean di antara daun tropis dengan lingkaran aperture lensa/kompas lapangan dan bintang fajar *Nova*.
+- **Pembaruan Ikon Launcher Android (`ic_launcher.png` & `ic_launcher_round.png`)**:
+  - Di-generate untuk seluruh densitas layar Android:
+    - `mipmap-mdpi`: 48x48
+    - `mipmap-hdpi`: 72x72
+    - `mipmap-xhdpi`: 96x96
+    - `mipmap-xxhdpi`: 144x144
+    - `mipmap-xxxhdpi`: 192x192
+  - `AndroidManifest.xml` diperbarui dengan `android:label="Faunova"` dan `android:roundIcon="@mipmap/ic_launcher_round"`.
+- **Integrasi Logo di Antarmuka Aplikasi**:
+  - `LoginPage`: Emblem login kini menampilkan logo resmi Faunova berbingkai emas halus.
+  - `AppSettingsSheet`: Kartu Tentang Faunova kini memuat logo resmi aplikasi.
+- **Pembaruan Bank Kuis (40 Soal)**:
+  - Bank soal lokal diperluas menjadi 40 soal taksonomi dan biogeografi satwa Indonesia.
+  - Migrasi `024_seed_expanded_quiz_questions.sql` dibuat untuk Supabase.
+- **Verifikasi**:
+  - `flutter analyze`: **0 issues / Bersih total**.
+  - `flutter test`: **125/125 pengujian lulus (100% pass)**.
+  - Seluruh perubahan di-commit dan di-push ke GitHub (`origin/main`).
+
+### 2. Belum Teruji / Membutuhkan HP Fisik
+- Memeriksa tampilan ikon aplikasi di home screen / app drawer Android (membutuhkan re-install aplikasi).
+
+### 3. Langkah Berikutnya
+- Jika ingin ikon aplikasi di home screen HP berganti, jalankan kembali `flutter run` dari awal agar APK baru dengan ikon launcher terpasang di HP.
+
+
