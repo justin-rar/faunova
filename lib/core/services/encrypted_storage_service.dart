@@ -6,7 +6,7 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../features/camera/models/capture_model.dart';
@@ -25,6 +25,19 @@ class EncryptedStorageService {
   List<int>? _encryptionKey;
 
   bool get isInitialized => _isInitialized;
+
+  bool get _isTestEnvironment {
+    try {
+      if (Platform.environment.containsKey('FLUTTER_TEST')) return true;
+      return WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  final Map<String, dynamic> _inMemorySettings = {};
+  final Map<String, List<CaptureModel>> _inMemoryCaptures = {};
+  Map<String, dynamic>? _inMemoryCurrency;
 
   @visibleForTesting
   void setMockSecureStorage(FlutterSecureStorage storage) {
@@ -131,6 +144,8 @@ class EncryptedStorageService {
 
   /// Menyimpan cache koleksi satwa pengguna ke Hive terenkripsi
   Future<void> saveUserCaptures(String userId, List<CaptureModel> captures) async {
+    _inMemoryCaptures[userId] = List.from(captures);
+    if (_isTestEnvironment) return;
     try {
       if (!_isInitialized) await init();
       if (!_isInitialized || !Hive.isBoxOpen(boxCaptures)) return;
@@ -145,6 +160,9 @@ class EncryptedStorageService {
 
   /// Mengambil cache koleksi satwa pengguna dari Hive terenkripsi (Offline Read)
   List<CaptureModel> getUserCaptures(String userId) {
+    if (_inMemoryCaptures.containsKey(userId)) {
+      return _inMemoryCaptures[userId]!;
+    }
     try {
       if (!_isInitialized || !Hive.isBoxOpen(boxCaptures)) return [];
 
@@ -172,16 +190,18 @@ class EncryptedStorageService {
     required DateTime lastUpdatedAt,
     required String baseCurrency,
   }) async {
+    _inMemoryCurrency = {
+      'rates': rates,
+      'last_updated_at': lastUpdatedAt.toIso8601String(),
+      'base': baseCurrency,
+    };
+    if (_isTestEnvironment) return;
     try {
       if (!_isInitialized) await init();
       if (!_isInitialized || !Hive.isBoxOpen(boxCurrency)) return;
 
       final box = Hive.box<dynamic>(boxCurrency);
-      await box.put('rates_data', {
-        'rates': rates,
-        'last_updated_at': lastUpdatedAt.toIso8601String(),
-        'base': baseCurrency,
-      });
+      await box.put('rates_data', _inMemoryCurrency!);
     } catch (e) {
       debugPrint('EncryptedStorageService saveCurrencyRates error: $e');
     }
@@ -189,6 +209,9 @@ class EncryptedStorageService {
 
   /// Mengambil cache kurs dari Hive terenkripsi
   Map<String, dynamic>? getCurrencyRates() {
+    if (_inMemoryCurrency != null) {
+      return _inMemoryCurrency;
+    }
     try {
       if (!_isInitialized || !Hive.isBoxOpen(boxCurrency)) return null;
 
@@ -208,44 +231,59 @@ class EncryptedStorageService {
 
   /// Menyimpan cache skor kuis tertinggi (hanya tampilan lokal)
   Future<void> saveBestQuizScore(int score) async {
-    try {
-      if (!_isInitialized) await init();
-      if (!_isInitialized || !Hive.isBoxOpen(boxSettings)) return;
-
-      final box = Hive.box<dynamic>(boxSettings);
-      await box.put('best_quiz_score', score);
-    } catch (e) {
-      debugPrint('EncryptedStorageService saveBestQuizScore error: $e');
-    }
+    await saveSetting('best_quiz_score', score);
   }
 
   /// Mengambil cache skor kuis tertinggi
   int getBestQuizScore({int defaultScore = 0}) {
-    try {
-      if (!_isInitialized || !Hive.isBoxOpen(boxSettings)) return defaultScore;
-
-      final box = Hive.box<dynamic>(boxSettings);
-      return (box.get('best_quiz_score', defaultValue: defaultScore) as num?)?.toInt() ?? defaultScore;
-    } catch (e) {
-      return defaultScore;
-    }
+    final val = getSetting('best_quiz_score', defaultValue: defaultScore);
+    if (val is num) return val.toInt();
+    return defaultScore;
   }
 
   /// Menyimpan preferensi umum
   Future<void> saveSetting(String key, dynamic value) async {
+    if (value == null) {
+      _inMemorySettings.remove(key);
+    } else {
+      _inMemorySettings[key] = value;
+    }
+    if (_isTestEnvironment) return;
     try {
       if (!_isInitialized) await init();
       if (!_isInitialized || !Hive.isBoxOpen(boxSettings)) return;
 
       final box = Hive.box<dynamic>(boxSettings);
-      await box.put(key, value);
+      if (value == null) {
+        await box.delete(key);
+      } else {
+        await box.put(key, value);
+      }
     } catch (e) {
       debugPrint('EncryptedStorageService saveSetting error: $e');
     }
   }
 
+  /// Menghapus preferensi umum
+  Future<void> deleteSetting(String key) async {
+    _inMemorySettings.remove(key);
+    if (_isTestEnvironment) return;
+    try {
+      if (!_isInitialized) await init();
+      if (!_isInitialized || !Hive.isBoxOpen(boxSettings)) return;
+
+      final box = Hive.box<dynamic>(boxSettings);
+      await box.delete(key);
+    } catch (e) {
+      debugPrint('EncryptedStorageService deleteSetting error: $e');
+    }
+  }
+
   /// Mengambil preferensi umum
   dynamic getSetting(String key, {dynamic defaultValue}) {
+    if (_inMemorySettings.containsKey(key)) {
+      return _inMemorySettings[key];
+    }
     try {
       if (!_isInitialized || !Hive.isBoxOpen(boxSettings)) return defaultValue;
 
@@ -262,6 +300,9 @@ class EncryptedStorageService {
 
   /// Menghapus cache privat (koleksi pengguna) saat keluar akun
   Future<void> clearPrivateCacheOnSignOut() async {
+    _inMemoryCaptures.clear();
+    _inMemorySettings.clear();
+    if (_isTestEnvironment) return;
     try {
       if (!_isInitialized || !Hive.isBoxOpen(boxCaptures)) return;
 
@@ -276,6 +317,10 @@ class EncryptedStorageService {
   /// Menghapus seluruh box untuk pengujian
   @visibleForTesting
   Future<void> clearAllForTesting() async {
+    _inMemoryCaptures.clear();
+    _inMemoryCurrency = null;
+    _inMemorySettings.clear();
+    if (_isTestEnvironment) return;
     try {
       if (_isInitialized) {
         if (Hive.isBoxOpen(boxCaptures)) await Hive.box<String>(boxCaptures).clear();

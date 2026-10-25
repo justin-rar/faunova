@@ -94,9 +94,19 @@ class _UpgradeBlueCheckSheetState extends State<UpgradeBlueCheckSheet>
           _isVerified = true;
           _verifiedUntil = profile.verifiedUntil;
         } else {
-          final hasActiveSettlement = history.any((t) => t.isSuccess);
-          if (hasActiveSettlement) {
+          final activeSettlement = history.where((t) {
+            if (!t.isSuccess) return false;
+            final expiry = (t.processedAt ?? t.createdAt)?.add(Duration(days: t.entitlementDays));
+            return expiry != null && expiry.isAfter(DateTime.now());
+          }).toList();
+
+          if (activeSettlement.isNotEmpty) {
             _isVerified = true;
+            _verifiedUntil = (activeSettlement.first.processedAt ?? activeSettlement.first.createdAt)
+                ?.add(Duration(days: activeSettlement.first.entitlementDays));
+          } else {
+            _isVerified = false;
+            _verifiedUntil = null;
           }
         }
       });
