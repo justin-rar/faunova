@@ -428,15 +428,33 @@ class SocialService {
   /// Mengambil daftar postingan publik milik pengguna tertentu
   Future<List<PostModel>> fetchUserPublicPosts(String targetUserId, {int limit = 30}) async {
     final client = _getSupabaseClient();
-    final myId = _getCurrentUserId();
 
-    if (AppConfig.isDemoMode || client == null || myId == null || !_isUuid(targetUserId)) {
+    if (AppConfig.isDemoMode || client == null || !_isUuid(targetUserId)) {
       if (PostService.instance.demoPosts.isEmpty) {
         PostService.instance.initMockDemoPosts();
       }
       return PostService.instance.demoPosts.where((p) => p.authorId == targetUserId).toList();
     }
 
+    // 1. Coba panggil get_user_posts (RPC teruji di migrasi 014)
+    try {
+      final response = await client.rpc(
+        'get_user_posts',
+        params: {
+          'p_user_id': targetUserId,
+          'p_limit': limit,
+        },
+      );
+
+      if (response is List) {
+        final posts = response.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+        return posts;
+      }
+    } catch (e) {
+      debugPrint('fetchUserPublicPosts (get_user_posts) error: $e, mencoba get_user_public_posts...');
+    }
+
+    // 2. Coba panggil get_user_public_posts (RPC migrasi 005/022)
     try {
       final response = await client.rpc(
         'get_user_public_posts',
@@ -446,12 +464,16 @@ class SocialService {
         },
       );
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+      if (response is List) {
+        final posts = response.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+        return posts;
+      }
     } catch (e) {
-      debugPrint('fetchUserPublicPosts error: $e');
-      return PostService.instance.demoPosts.where((p) => p.authorId == targetUserId).toList();
+      debugPrint('fetchUserPublicPosts (get_user_public_posts) error: $e');
     }
+
+    // 3. Fallback: ambil dari memory PostService demoPosts
+    return PostService.instance.demoPosts.where((p) => p.authorId == targetUserId).toList();
   }
 
   bool _isUuid(String id) {

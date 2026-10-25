@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/badge_service.dart';
 import '../../../core/services/capture_service.dart';
+import '../../../core/services/post_service.dart';
 import '../../../core/services/profile_service.dart';
 import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -61,6 +62,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         }
       }
     });
+    PostService.instance.onPostCreatedNotifier.addListener(_handlePostCreated);
     _loadCaptures();
     _loadProfile();
     _loadBadges();
@@ -104,9 +106,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     } catch (_) {}
   }
 
+  void _handlePostCreated() {
+    if (mounted) {
+      _loadMyPosts();
+    }
+  }
+
   Future<void> _loadMyPosts() async {
-    String? resolvedId = _myProfile?.id;
-    if (resolvedId == null) {
+    final currentUserId = AuthService.instance.currentUserId;
+    String resolvedId = currentUserId ?? _myProfile?.id ?? '';
+    if (resolvedId.isEmpty) {
       try {
         final p = await ProfileService.instance.getMyProfile();
         resolvedId = p.id;
@@ -150,6 +159,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    PostService.instance.onPostCreatedNotifier.removeListener(_handlePostCreated);
     _tabController.dispose();
     super.dispose();
   }

@@ -32,6 +32,9 @@ class AuthService {
     return null;
   }
 
+  /// Mendapatkan ID user yang sedang aktif
+  String? get currentUserId => currentUser?.id;
+
   /// Mendapatkan email user yang sedang aktif (atau demo email)
   String? get currentUserEmail {
     if (AppConfig.isSupabaseConfigured && AppConfig.isSupabaseInitialized) {
