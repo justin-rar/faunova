@@ -10,6 +10,7 @@ import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
+import '../../profile/presentation/widgets/notification_setting_sheet.dart';
 import '../models/post_model.dart';
 import 'widgets/post_card.dart';
 
@@ -175,6 +176,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
       appBar: GlassAppBar(
         automaticallyImplyLeading: false,
         centerTitle: true,
+        leading: const SizedBox(width: 48),
         title: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -213,6 +215,37 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
             ),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  tooltip: 'Pusat Notifikasi & Pengingat',
+                  icon: const Icon(
+                    Icons.notifications_outlined,
+                    color: Colors.white,
+                    size: 23,
+                  ),
+                  onPressed: () => NotificationSettingSheet.show(context),
+                ),
+                Positioned(
+                  top: 13,
+                  right: 13,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: AppColors.emas,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: TabBarView(
         controller: _tabController,

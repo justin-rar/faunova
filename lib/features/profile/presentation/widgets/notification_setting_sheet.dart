@@ -139,14 +139,19 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
   }
 
   Future<void> _sendTestNotification() async {
+    final granted = await NotificationService.instance.requestPermissions();
     await NotificationService.instance.showInstantNotification();
     _refreshRecords();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Notifikasi percobaan berhasil dikirim ke perangkat!'),
+        SnackBar(
+          content: Text(
+            granted
+                ? 'Notifikasi percobaan berhasil dikirim ke perangkat!'
+                : 'Notifikasi dikirim! Pastikan izin notifikasi diizinkan di sistem HP Anda.',
+          ),
           backgroundColor: AppColors.sageTua,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -401,6 +406,8 @@ class _NotificationSettingSheetState extends State<NotificationSettingSheet> {
       ),
     );
   }
+
+
 
   Widget _buildSettingCard({
     required IconData icon,
