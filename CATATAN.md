@@ -1839,5 +1839,36 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 5. Langkah Berikutnya
 - Melakukan Hot Restart (`R`) pada sesi `flutter run` di perangkat untuk mencoba semua fitur yang telah disimulasikan dan diperbaiki.
 
+---
+
+## Sesi Integrasi Prioritas AI Vision DeepSeek (DeepSeek-V4.1-Flash Multimodal) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Peralihan Prioritas Mesin Deteksi Citra ke DeepSeek Vision (`supabase/functions/ai-gateway/index.ts`)**:
+  - Mengubah urutan eksekusi pada Edge Function `ai-gateway` (mode: `scan`) sehingga **DeepSeek Vision API (`deepseek-flash` / `DeepSeek-V4.1-Flash`)** menjadi **Prioritas Utama (#1)** dalam menganalisis dan mendeteksi foto satwa yang dikirim dari kamera.
+  - Payload dikirim menggunakan format OpenAI-compatible multimodal ke endpoint `https://api.deepseek.com/chat/completions` dengan `type: "image_url"` (base64 data URI) dan prompt ilmiah klasifikasi satwa ber-guardrail biologi ketat.
+  - Jika DeepSeek Vision sukses menghasilkan analisis taksonomi, hasil ditandai dengan metadata `aiProvider = "DeepSeek Vision (deepseek-flash)"`.
+  - Sistem tetap memiliki cadangan bertingkat anggun (*graceful multi-tier fallback*):
+    - Prioritas 1: **DeepSeek Vision** (`deepseek-flash`)
+    - Cadangan 1: **Cloudflare Workers AI Llama 3.2 Vision**
+    - Cadangan 2: **Google Gemini Flash** (`gemini-2.0-flash` / `gemini-1.5-flash`)
+- **Peralihan Prioritas Mode Tanya-Jawab Chat ke DeepSeek Chat**:
+  - Pada mode `chat`, `ai-gateway` juga mendahulukan pemanggilan model **DeepSeek Chat** (`deepseek-flash` / `deepseek-chat`) untuk memberikan balasan naturalis dan edukasi biologi seputar satwa yang terdeteksi.
+- **Pembaruan Model & Tampilan Antarmuka Klien (Flutter)**:
+  - `ScanResultModel`: Menambahkan atribut `aiProvider` untuk mencatat model AI yang mendeteksi satwa.
+  - `CameraPage`: Memperbarui pesan pemrosesan saat rana ditekan menjadi *"Menganalisis satwa via DeepSeek AI..."* dan memperbarui langkah pipeline taktis HUD menjadi *"Validasi ai-gateway (DeepSeek Vision API)"*.
+  - `ScanResultPage`: Badge deteksi pada pojok kanan bawah foto satwa kini menampilkan badge informatif: *"Terdeteksi DeepSeek Vision (deepseek-flash)"* atau nama provider yang memproses citra.
+  - `AppSettingsSheet`: Memperbarui kartu spesifikasi teknologi menyertakan DeepSeek Vision & Gemini Flash.
+- **Pengujian & Verifikasi**:
+  - `flutter analyze`: **0 issues found! (Bersih total)**.
+  - `flutter test`: **Semua 143/143 pengujian lulus (100% pass)**.
+
+### 2. Belum Teruji / Membutuhkan Perangkat Fisik & Saldo Live
+- **Pengujian Live Kuota Akun DeepSeek**: Memeriksa apakah API Key akun developer DeepSeek memiliki saldo balance aktif ($) untuk panggilan API live di edge server. Jika saldo akun $0.00, sistem secara otomatis mengaktifkan fallback cadangan Gemini tanpa memutus layanan pengguna.
+
+### 3. Langkah Berikutnya
+- Melakukan reload / hot restart (`R`) pada sesi `flutter run` di HP nirkabel untuk mencoba memotret dan melihat kinerja deteksi gambar DeepSeek secara langsung.
+
+
 
 

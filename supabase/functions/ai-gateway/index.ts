@@ -579,9 +579,33 @@ serve(async (req: Request) => {
         "}";
 
       let parsedResult: any = null;
+      let usedAiProvider = "DeepSeek Vision (deepseek-flash)";
 
-      // 1. Coba Cloudflare Workers AI Vision terlebih dahulu jika token dan account ID diset
-      if (cloudflareApiToken && cloudflareAccountId) {
+      // 1. PRIORITAS UTAMA: DeepSeek Vision API (DeepSeek-V4.1-Flash multimodal)
+      if (deepseekApiKey) {
+        try {
+          console.log("Menganalisis foto satwa dengan DeepSeek Vision API (deepseek-flash)...");
+          const dsResult = await callDeepSeekVision(
+            deepseekApiKey,
+            prompt,
+            mimeType,
+            imageBase64,
+            30000
+          );
+          if (dsResult.ok && dsResult.data) {
+            parsedResult = dsResult.data;
+            usedAiProvider = "DeepSeek Vision (deepseek-flash)";
+            console.log("Identifikasi satwa sukses via DeepSeek Vision API");
+          } else {
+            console.warn("DeepSeek Vision belum menghasilkan data, beralih ke cadangan:", dsResult.error);
+          }
+        } catch (dsErr: any) {
+          console.warn("DeepSeek Vision error, beralih ke cadangan:", dsErr?.message || dsErr);
+        }
+      }
+
+      // 2. CADANGAN 1: Cloudflare Workers AI Vision (jika DeepSeek tidak tersedia/terkendala)
+      if (!parsedResult && cloudflareApiToken && cloudflareAccountId) {
         try {
           const cfResult = await callCloudflareVision(
             cloudflareAccountId,
@@ -592,14 +616,15 @@ serve(async (req: Request) => {
           );
           if (cfResult.ok && cfResult.data) {
             parsedResult = cfResult.data;
-            console.log("Identifikasi satwa sukses via Cloudflare Workers AI Vision");
+            usedAiProvider = "Cloudflare Llama 3.2 Vision (Cadangan)";
+            console.log("Identifikasi satwa sukses via cadangan Cloudflare Workers AI Vision");
           }
-        } catch (cfErr) {
-          console.warn("Cloudflare Vision error, beralih ke Gemini:", cfErr);
+        } catch (cfErr: any) {
+          console.warn("Cloudflare Vision error:", cfErr?.message || cfErr);
         }
       }
 
-      // 2. Jika Cloudflare belum berhasil, gunakan Google Gemini Flash
+      // 3. CADANGAN 2: Google Gemini Flash (kompatibilitas gemini-3.8-flash & gemini-2.0-flash)
       if (!parsedResult) {
         const geminiPayload = {
           contents: [
@@ -640,42 +665,22 @@ serve(async (req: Request) => {
             geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
             "{}";
           parsedResult = extractCleanJson(rawJsonText);
+          usedAiProvider = "Google Gemini Flash (Cadangan)";
+          console.log("Identifikasi satwa sukses via cadangan Google Gemini Flash");
         } else {
           const errorText = await geminiResp.text();
-          console.warn("Gemini scan gagal, mencoba fallback DeepSeek Vision:", geminiResp.status, errorText);
-
-          // Fallback ke DeepSeek-V4.1-Flash Vision jika Gemini gagal
-          if (deepseekApiKey) {
-            try {
-              const dsResult = await callDeepSeekVision(
-                deepseekApiKey,
-                prompt,
-                mimeType,
-                imageBase64
-              );
-              if (dsResult.ok && dsResult.data) {
-                parsedResult = dsResult.data;
-                console.log("Identifikasi satwa sukses via fallback DeepSeek Vision");
-              }
-            } catch (dsErr) {
-              console.warn("DeepSeek Vision fallback error:", dsErr);
+          console.error("Seluruh provider AI Vision gagal:", geminiResp.status, errorText);
+          return new Response(
+            JSON.stringify({
+              error: "PROVIDER_ERROR",
+              message: `Layanan identifikasi AI DeepSeek/Gemini: ${errorText.substring(0, 160)}`,
+              details: errorText,
+            }),
+            {
+              status: geminiResp.status,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
             }
-          }
-
-          if (!parsedResult) {
-            console.error("Gemini scan provider error:", geminiResp.status, errorText);
-            return new Response(
-              JSON.stringify({
-                error: "PROVIDER_ERROR",
-                message: `Layanan identifikasi AI: ${errorText.substring(0, 160)}`,
-                details: errorText,
-              }),
-              {
-                status: geminiResp.status,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
-            );
-          }
+          );
         }
       }
 
@@ -878,6 +883,7 @@ serve(async (req: Request) => {
           photoSha256: photoSha256,
           quotaUsed: currentCount + 1,
           quotaMax: 20,
+          aiProvider: usedAiProvider,
         }),
         {
           status: 200,
@@ -1103,8 +1109,60 @@ serve(async (req: Request) => {
 
       let reply: string = "";
 
-      // 1. Coba Cloudflare MiniMax untuk Chat jika token dan account ID diset
-      if (cloudflareApiToken && cloudflareAccountId) {
+      // 1. PRIORITAS UTAMA: DeepSeek Chat (deepseek-flash / deepseek-chat)
+      if (deepseekApiKey) {
+        try {
+          const dsChatMessages: Array<{ role: string; content: string }> = [
+            {
+              role: "system",
+              content:
+                "Sistem Faunova: Kamu adalah pemandu konservasi satwa dan naturalis lapangan Faunova yang ramah, santun, dan berbasis sains. " +
+                `Pengguna sedang berdiskusi mengenai hasil observasi satwa berikut:\n` +
+                `- Nama Umum: ${animalInfo?.name || "Satwa Lapangan"}\n` +
+                `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
+                `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
+                `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
+                "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
+                "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
+                (animalInfo?.name || "satwa") +
+                "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
+                "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna, kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
+                "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek).",
+            },
+          ];
+
+          if (chatHistory && chatHistory.length > 0) {
+            for (const h of chatHistory) {
+              dsChatMessages.push({
+                role: h.role === "assistant" ? "assistant" : "user",
+                content: h.content,
+              });
+            }
+          }
+
+          dsChatMessages.push({
+            role: "user",
+            content: trimmedMessage,
+          });
+
+          const dsChatResult = await callDeepSeekChat(
+            deepseekApiKey,
+            dsChatMessages
+          );
+
+          if (dsChatResult.ok && dsChatResult.reply) {
+            reply = dsChatResult.reply;
+            console.log("Balasan chat sukses via DeepSeek Chat");
+          } else {
+            console.warn("DeepSeek Chat belum menghasilkan balasan, beralih ke cadangan:", dsChatResult.error);
+          }
+        } catch (dsErr: any) {
+          console.warn("DeepSeek Chat error, beralih ke cadangan:", dsErr?.message || dsErr);
+        }
+      }
+
+      // 2. CADANGAN 1: Cloudflare MiniMax untuk Chat jika token dan account ID diset
+      if (!reply && cloudflareApiToken && cloudflareAccountId) {
         try {
           const cfChatMessages: Array<{ role: string; content: string }> = [
             {
@@ -1149,12 +1207,12 @@ serve(async (req: Request) => {
             reply = cfChatResult.reply;
             console.log("Balasan chat sukses via Cloudflare Workers AI");
           }
-        } catch (cfChatErr) {
-          console.warn("Cloudflare MiniMax Chat error, beralih ke Gemini:", cfChatErr);
+        } catch (cfChatErr: any) {
+          console.warn("Cloudflare MiniMax Chat error, beralih ke Gemini:", cfChatErr?.message || cfChatErr);
         }
       }
 
-      // 2. Fallback ke Gemini jika Cloudflare MiniMax belum ada balasan
+      // 3. CADANGAN 2: Google Gemini (kompatibilitas gemini-2.0-flash & gemini-1.5-flash-latest)
       if (!reply) {
         const geminiChatPayload = {
           contents: geminiContents,
@@ -1184,57 +1242,9 @@ serve(async (req: Request) => {
           reply = rawReply.trim();
         } else {
           const errorText = await geminiResp.text();
-          console.warn("Gemini chat provider error, mencoba fallback DeepSeek:", geminiResp.status, errorText);
-
-          // 3. Fallback ke DeepSeek jika Gemini gagal / rate limited
-          if (deepseekApiKey) {
-            try {
-              const dsChatMessages: Array<{ role: string; content: string }> = [
-                {
-                  role: "system",
-                  content:
-                    "Sistem Faunova: Kamu adalah pemandu konservasi satwa dan naturalis lapangan Faunova yang ramah, santun, dan berbasis sains. " +
-                    `Pengguna sedang berdiskusi mengenai hasil observasi satwa berikut:\n` +
-                    `- Nama Umum: ${animalInfo?.name || "Satwa Lapangan"}\n` +
-                    `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
-                    `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
-                    `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
-                    "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
-                    "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
-                    (animalInfo?.name || "satwa") +
-                    "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
-                    "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna, kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
-                    "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek).",
-                },
-              ];
-
-              if (chatHistory && chatHistory.length > 0) {
-                for (const h of chatHistory) {
-                  dsChatMessages.push({
-                    role: h.role === "assistant" ? "assistant" : "user",
-                    content: h.content,
-                  });
-                }
-              }
-
-              dsChatMessages.push({
-                role: "user",
-                content: trimmedMessage,
-              });
-
-              const dsChatResult = await callDeepSeekChat(
-                deepseekApiKey,
-                dsChatMessages
-              );
-
-              if (dsChatResult.ok && dsChatResult.reply) {
-                reply = dsChatResult.reply;
-                console.log("Balasan chat sukses via fallback DeepSeek");
-              }
-            } catch (dsErr) {
-              console.warn("DeepSeek Chat fallback error:", dsErr);
-            }
-          }
+          console.error("Gemini chat provider error:", geminiResp.status, errorText);
+        }
+      }
 
           if (!reply) {
             console.error("Seluruh provider chat AI gagal");

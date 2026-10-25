@@ -255,8 +255,12 @@ class _ScanResultPageState extends State<ScanResultPage> {
                       const SizedBox(width: 6),
                       Text(
                         scanResult.isAnimal
-                            ? 'Terdeteksi AI Faunova'
-                            : 'AI: Bukan Satwa',
+                            ? (scanResult.aiProvider != null
+                                ? 'Terdeteksi ${scanResult.aiProvider}'
+                                : 'Terdeteksi DeepSeek Vision')
+                            : (scanResult.aiProvider != null
+                                ? '${scanResult.aiProvider}: Bukan Satwa'
+                                : 'DeepSeek: Bukan Satwa'),
                         style: AppTypography.labelCaption(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

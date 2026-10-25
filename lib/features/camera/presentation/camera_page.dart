@@ -258,7 +258,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
       // 4. Kirim ke Edge Function `ai-gateway`
       setState(() {
-        _processingStageMessage = 'Menganalisis satwa via Gemini AI...';
+        _processingStageMessage = 'Menganalisis satwa via DeepSeek AI...';
       });
 
       final scanResult = await ScanService.instance.scanAnimal(
@@ -834,7 +834,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           _buildPipelineStep(
             number: '3',
-            title: 'Validasi ai-gateway (Gemini API)',
+            title: 'Validasi ai-gateway (DeepSeek Vision API)',
             description: 'Objek bukan hewan (isAnimal: false) ditolak otomatis di sisi server.',
           ),
           const SizedBox(height: 8),

@@ -17,6 +17,7 @@ class ScanResultModel {
   final DateTime? receivedAt;
   final String? localPhotoPath;
   final String? imageBase64;
+  final String? aiProvider;
 
   const ScanResultModel({
     required this.scanId,
@@ -37,6 +38,7 @@ class ScanResultModel {
     this.receivedAt,
     this.localPhotoPath,
     this.imageBase64,
+    this.aiProvider,
   });
 
   int get quotaRemaining => (quotaMax - quotaUsed).clamp(0, quotaMax);
@@ -134,6 +136,9 @@ class ScanResultModel {
           : DateTime.now(),
       localPhotoPath: localPhotoPath,
       imageBase64: imageBase64,
+      aiProvider: json['aiProvider']?.toString() ??
+          resultObj['aiProvider']?.toString() ??
+          (isAnimalValue ? 'DeepSeek Vision (deepseek-flash)' : 'DeepSeek AI'),
     );
   }
 
@@ -155,6 +160,7 @@ class ScanResultModel {
       'quotaUsed': quotaUsed,
       'quotaMax': quotaMax,
       'receivedAt': receivedAt?.toIso8601String(),
+      'aiProvider': aiProvider,
     };
   }
 }
