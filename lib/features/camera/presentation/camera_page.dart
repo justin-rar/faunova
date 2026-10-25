@@ -41,7 +41,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   TargetSampleType _selectedTarget = TargetSampleType.butterflyAnimal;
 
   // Flash mode state
-  FlashMode _currentFlashMode = FlashMode.auto;
+  FlashMode _currentFlashMode = FlashMode.off;
 
   @override
   void initState() {
@@ -184,25 +184,38 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     if (_cameraController == null || !_cameraController!.value.isInitialized) return;
     FlashMode nextMode;
     switch (_currentFlashMode) {
-      case FlashMode.auto:
-        nextMode = FlashMode.always;
-        break;
-      case FlashMode.always:
-        nextMode = FlashMode.off;
-        break;
       case FlashMode.off:
-      default:
+        nextMode = FlashMode.torch;
+        break;
+      case FlashMode.torch:
+      case FlashMode.always:
         nextMode = FlashMode.auto;
+        break;
+      case FlashMode.auto:
+        nextMode = FlashMode.off;
         break;
     }
 
     try {
       await _cameraController!.setFlashMode(nextMode);
-      setState(() {
-        _currentFlashMode = nextMode;
-      });
+      if (mounted) {
+        setState(() {
+          _currentFlashMode = nextMode;
+        });
+      }
     } catch (e) {
-      debugPrint('Failed to set flash mode: $e');
+      debugPrint('Failed to set flash mode $nextMode: $e');
+      // Jika FlashMode.torch gagal (misal kamera depan atau tidak didukung hardware), coba fallback ke always
+      if (nextMode == FlashMode.torch) {
+        try {
+          await _cameraController!.setFlashMode(FlashMode.always);
+          if (mounted) {
+            setState(() {
+              _currentFlashMode = FlashMode.always;
+            });
+          }
+        } catch (_) {}
+      }
     }
   }
 
@@ -523,12 +536,15 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  _currentFlashMode == FlashMode.always
+                                  (_currentFlashMode == FlashMode.torch ||
+                                          _currentFlashMode == FlashMode.always)
                                       ? Icons.flash_on_rounded
-                                      : _currentFlashMode == FlashMode.off
-                                          ? Icons.flash_off_rounded
-                                          : Icons.flash_auto_rounded,
-                                  color: AppColors.emas,
+                                      : _currentFlashMode == FlashMode.auto
+                                          ? Icons.flash_auto_rounded
+                                          : Icons.flash_off_rounded,
+                                  color: _currentFlashMode == FlashMode.off
+                                      ? Colors.white70
+                                      : AppColors.emas,
                                   size: 18,
                                 ),
                               ),
