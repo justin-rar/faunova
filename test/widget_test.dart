@@ -1933,6 +1933,21 @@ void main() {
       expect(cachedBest, equals(result.bestQuizScore));
     });
 
+    test('QuizService: verifyQuestionAnswer memverifikasi benar/salah secara instan per-soal', () async {
+      final session = await QuizService.instance.startQuizSession();
+      final q0 = session.questions[0];
+
+      final check = await QuizService.instance.verifyQuestionAnswer(
+        sessionId: session.sessionId,
+        questionId: q0.id,
+        selectedOption: 0,
+      );
+
+      expect(check.correctOption, inInclusiveRange(0, 3));
+      expect(check.explanation, isNotEmpty);
+      expect(check.isCorrect, equals(0 == check.correctOption));
+    });
+
     testWidgets('QuizArenaPage: Menampilkan timer 15s, 3 nyawa, kartu soal, dan 4 opsi jawaban', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;

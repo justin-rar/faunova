@@ -30,6 +30,8 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
   int _accumulatedScore = 0;
 
   int? _selectedOption;
+  int? _revealedCorrectOption;
+  bool? _lastAnswerCorrect;
   bool _isAnswerLocked = false;
   bool _isSubmitting = false;
   QuizResultModel? _finalResult;
@@ -60,6 +62,8 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
     _countdownTimer?.cancel();
     _remainingMs = _questionDurationSeconds * 1000;
     _selectedOption = null;
+    _revealedCorrectOption = null;
+    _lastAnswerCorrect = null;
     _isAnswerLocked = false;
     _questionStopwatch.reset();
     _questionStopwatch.start();
@@ -77,7 +81,7 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
     });
   }
 
-  void _handleTimeout() {
+  Future<void> _handleTimeout() async {
     if (_isAnswerLocked) return;
     _isAnswerLocked = true;
     _questionStopwatch.stop();
@@ -91,21 +95,32 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
       ),
     );
 
-    // Kehilangan 1 nyawa karena kehabisan waktu
+    // Ambil kunci jawaban agar ditampilkan ke pengguna
+    final check = await QuizService.instance.verifyQuestionAnswer(
+      sessionId: widget.session.sessionId,
+      questionId: currentQ.id,
+      selectedOption: -1,
+    );
+
+    if (!mounted) return;
+
+    // Kehilangan 1 nyawa karena kehabisan waktu & combo reset ke 0
     setState(() {
       _lives--;
       _combo = 0;
+      _revealedCorrectOption = check.correctOption;
+      _lastAnswerCorrect = false;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Waktu 15 detik habis! Anda kehilangan 1 nyawa.'),
+        content: Text('Waktu 15 detik habis! Nyawa berkurang dan combo terhenti.'),
         backgroundColor: AppColors.merahStatus,
-        duration: Duration(milliseconds: 1200),
+        duration: Duration(milliseconds: 1000),
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       if (_lives <= 0) {
         _finishQuiz();
@@ -115,7 +130,7 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
     });
   }
 
-  void _onSelectOption(int index) {
+  Future<void> _onSelectOption(int index) async {
     if (_isAnswerLocked) return;
     _isAnswerLocked = true;
     _countdownTimer?.cancel();
@@ -124,9 +139,14 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
     final elapsed = _questionStopwatch.elapsedMilliseconds;
     final currentQ = widget.session.questions[_currentIndex];
 
-    setState(() {
-      _selectedOption = index;
-    });
+    // Evaluasi jawaban secara instan (Gaya Quizizz)
+    final check = await QuizService.instance.verifyQuestionAnswer(
+      sessionId: widget.session.sessionId,
+      questionId: currentQ.id,
+      selectedOption: index,
+    );
+
+    if (!mounted) return;
 
     _collectedAnswers.add(
       QuizAnswerInput(
@@ -136,16 +156,34 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
       ),
     );
 
-    // Simulasi combo untuk umpan balik visual instan
     setState(() {
-      _combo++;
-      if (_combo > _maxCombo) _maxCombo = _combo;
-      _accumulatedScore += 100 + (_combo * 25);
+      _selectedOption = index;
+      _revealedCorrectOption = check.correctOption;
+      _lastAnswerCorrect = check.isCorrect;
+
+      if (check.isCorrect) {
+        // Jawaban Benar: Combo bertambah, bonus bertambah
+        _combo++;
+        if (_combo > _maxCombo) _maxCombo = _combo;
+        int speedBonus = 0;
+        if (elapsed > 0 && elapsed < 8000) {
+          speedBonus = ((8000 - elapsed) / 100).round();
+        }
+        _accumulatedScore += 100 + (_combo * 25) + speedBonus;
+      } else {
+        // Jawaban Salah: COMBO RESET KE 0! Nyawa berkurang 1!
+        _combo = 0;
+        _lives--;
+      }
     });
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
-      _advanceToNextQuestion();
+      if (_lives <= 0) {
+        _finishQuiz();
+      } else {
+        _advanceToNextQuestion();
+      }
     });
   }
 
@@ -153,6 +191,9 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
     if (_currentIndex + 1 < widget.session.questions.length && _lives > 0) {
       setState(() {
         _currentIndex++;
+        _selectedOption = null;
+        _revealedCorrectOption = null;
+        _lastAnswerCorrect = null;
       });
       _startQuestionTimer();
     } else {
@@ -445,6 +486,58 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
           const labels = ['A', 'B', 'C', 'D'];
           final optionText = currentQ.options[index];
           final isSelected = _selectedOption == index;
+          final isRevealedCorrect = _revealedCorrectOption != null && _revealedCorrectOption == index;
+          final isSelectedWrong = isSelected && _lastAnswerCorrect == false;
+
+          // Palet warna responsif gaya Quizizz (tetap selaras palet Faunova)
+          Color bgColor = AppColors.surfaceContainerLowest;
+          Color borderColor = AppColors.surfaceContainerHighest;
+          Color badgeColor = AppColors.surfaceContainer;
+          Color badgeBorderColor = AppColors.surfaceContainerHighest;
+          Color textColor = AppColors.teksGelap;
+          Color badgeTextColor = AppColors.teksGelap;
+          Widget badgeChild = Text(
+            labels[index],
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: badgeTextColor,
+            ),
+          );
+
+          if (_revealedCorrectOption != null) {
+            if (isRevealedCorrect) {
+              // Jawaban Benar (Hijau Lembut / Berhasil)
+              bgColor = const Color(0xFFE8F5E9);
+              borderColor = AppColors.sageTua;
+              badgeColor = AppColors.sageTua;
+              badgeBorderColor = AppColors.sageTua;
+              textColor = AppColors.sageTua;
+              badgeChild = const Icon(Icons.check_rounded, size: 18, color: Colors.white);
+            } else if (isSelectedWrong) {
+              // Jawaban Salah yang dipilih pengguna (Merah Status)
+              bgColor = const Color(0xFFFFEBEE);
+              borderColor = AppColors.merahStatus;
+              badgeColor = AppColors.merahStatus;
+              badgeBorderColor = AppColors.merahStatus;
+              textColor = AppColors.merahStatus;
+              badgeChild = const Icon(Icons.close_rounded, size: 18, color: Colors.white);
+            }
+          } else if (isSelected) {
+            bgColor = AppColors.emas;
+            borderColor = AppColors.emasTua;
+            badgeColor = AppColors.teksGelap;
+            badgeBorderColor = AppColors.teksGelap;
+            badgeTextColor = Colors.white;
+            badgeChild = Text(
+              labels[index],
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: badgeTextColor,
+              ),
+            );
+          }
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -455,13 +548,11 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.emas : AppColors.surfaceContainerLowest,
+                  color: bgColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected
-                        ? AppColors.emasTua
-                        : AppColors.surfaceContainerHighest,
-                    width: isSelected ? 1.8 : 1.0,
+                    color: borderColor,
+                    width: (isSelected || isRevealedCorrect) ? 1.8 : 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -477,22 +568,15 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.teksGelap : AppColors.surfaceContainer,
+                        color: badgeColor,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isSelected ? AppColors.teksGelap : AppColors.surfaceContainerHighest,
+                          color: badgeBorderColor,
                           width: 0.8,
                         ),
                       ),
                       child: Center(
-                        child: Text(
-                          labels[index],
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? Colors.white : AppColors.teksGelap,
-                          ),
-                        ),
+                        child: badgeChild,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -501,8 +585,8 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
                         optionText,
                         style: AppTypography.bodyMedium(
                           fontSize: 13.5,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: AppColors.teksGelap,
+                          fontWeight: (isSelected || isRevealedCorrect) ? FontWeight.w700 : FontWeight.w500,
+                          color: textColor,
                         ),
                       ),
                     ),

@@ -1696,3 +1696,30 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 
 ### 3. Langkah Berikutnya
 - Melanjutkan latihan alur demo lengkap pada perangkat HP fisik (`flutter run`) dan pengambilan 12 tangkapan layar untuk laporan akhir.
+
+---
+
+## Sesi Penyempurnaan Arena Kuis: Evaluasi Instan & Combo Streak (Gaya Quizizz) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Penyelarasan Mekanisme Combo Streak & Nyawa (Gaya Quizizz)**:
+  - Mengubah perilaku saat pemain memilih opsi jawaban di Arena Kuis (`QuizArenaPage`):
+    - Jika jawaban **Benar**: Opsi yang dipilih berubah warna menjadi hijau lembut (`#E8F5E9`) dengan garis tepi sage tua (`#5C7457`) dan ikon centang putih (`Icons.check_rounded`), combo bertambah (`_combo++`), bonus combo & kecepatan terakumulasi.
+    - Jika jawaban **Salah**: Opsi yang dipilih berubah warna menjadi merah status (`#FFFFEBEE`) dengan garis tepi merah (`#B3261E`) dan ikon silang putih (`Icons.close_rounded`), **combo streak seketika di-reset kembali ke 0 (`_combo = 0`)**, nyawa berkurang 1 hati (`_lives--`), dan kunci jawaban yang benar otomatis disorot hijau agar pemain langsung mempelajari jawaban yang tepat.
+    - Jika 3 nyawa habis, kuis otomatis berakhir dan menampilkan hasil evaluasi akhir.
+- **RPC Evaluasi Instan Server (`supabase/migrations/023_verify_quiz_question_rpc.sql`)**:
+  - Dibuat RPC `public.verify_quiz_question(p_session_id, p_question_id, p_selected_option)` berstatus `SECURITY DEFINER` dengan validasi kepemilikan sesi dan pemeriksaan status `in_progress`.
+  - Mengembalikan status evaluasi `is_correct`, `correct_option`, dan `explanation` untuk soal tersebut tanpa membocorkan kunci soal-soal lainnya.
+- **Dukungan Layanan & Mode Luring/Demo (`QuizService`)**:
+  - Menambahkan method `verifyQuestionAnswer` pada `QuizService`.
+  - Mendukung mode online RPC Supabase dan fallback instan untuk sesi demo offline (`_mockQuestionsBank`).
+- **Verifikasi & Pengujian**:
+  - `flutter analyze`: **No issues found! (0 issues)**.
+  - `flutter test`: **125/125 pengujian lulus (100% pass)** termasuk unit test `verifyQuestionAnswer`.
+
+### 2. Belum Teruji / Membutuhkan HP Fisik
+- Mengamati animasi transisi kartu soal dan haptik pada HP fisik saat jawaban salah/benar dipilih.
+
+### 3. Langkah Berikutnya
+- Melakukan Hot Restart (`R`) pada sesi `flutter run` di HP nirkabel untuk mencoba langsung pengalaman bermain kuis gaya Quizizz.
+

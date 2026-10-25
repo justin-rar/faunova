@@ -23,6 +23,18 @@ class QuizException implements Exception {
   String toString() => message;
 }
 
+class QuizAnswerCheckResult {
+  final bool isCorrect;
+  final int correctOption;
+  final String explanation;
+
+  const QuizAnswerCheckResult({
+    required this.isCorrect,
+    required this.correctOption,
+    required this.explanation,
+  });
+}
+
 class QuizService {
   static final QuizService instance = QuizService._internal();
   QuizService._internal();
@@ -99,6 +111,56 @@ class QuizService {
       debugPrint('QuizService finishQuizSession error: $e, beralih ke evaluator demo offline.');
       return _finishDemoQuizSession(sessionId, answers);
     }
+  }
+
+  /// Memverifikasi satu jawaban kuis secara instan (gaya Quizizz)
+  /// Mendukung RPC server online dan fallback evaluasi bank soal lokal/demo
+  Future<QuizAnswerCheckResult> verifyQuestionAnswer({
+    required String sessionId,
+    required String questionId,
+    required int selectedOption,
+  }) async {
+    final client = _getSupabaseClient();
+    final user = client?.auth.currentUser;
+
+    if (!AppConfig.isDemoMode && client != null && user != null && !sessionId.startsWith('demo-session-')) {
+      try {
+        final response = await client.rpc(
+          'verify_quiz_question',
+          params: {
+            'p_session_id': sessionId,
+            'p_question_id': questionId,
+            'p_selected_option': selectedOption,
+          },
+        );
+
+        if (response != null && response is Map) {
+          final data = Map<String, dynamic>.from(response);
+          return QuizAnswerCheckResult(
+            isCorrect: data['is_correct'] as bool? ?? false,
+            correctOption: (data['correct_option'] as num?)?.toInt() ?? -1,
+            explanation: data['explanation'] as String? ?? '',
+          );
+        }
+      } catch (e) {
+        debugPrint('verifyQuestionAnswer server error: $e, beralih ke evaluasi lokal.');
+      }
+    }
+
+    // Evaluasi lokal (Mode Demo / Offline / Fallback)
+    final q = _mockQuestionsBank.firstWhere(
+      (item) => item['id'] == questionId,
+      orElse: () => _mockQuestionsBank.first,
+    );
+
+    final correctOpt = (q['correct_option'] as num?)?.toInt() ?? 0;
+    final isCorrect = (selectedOption == correctOpt);
+
+    return QuizAnswerCheckResult(
+      isCorrect: isCorrect,
+      correctOption: correctOpt,
+      explanation: q['explanation'] as String? ?? '',
+    );
   }
 
   /// Mendapatkan skor kuis tertinggi pengguna dari Hive terenkripsi
