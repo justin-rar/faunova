@@ -356,5 +356,229 @@ class QuizService {
       'correct_option': 0,
       'explanation': 'Nyctixalus margaritifer dinamai mutiara karena bintik-bintik putih menonjol di kulit cokelat kemerahannya.'
     },
+    {
+      'id': 'mock-q-13',
+      'category': 'Mamalia',
+      'question': 'Tarsius (Tarsius spectrumgurskyae) adalah primata karnivora terkecil yang matanya tidak dapat melirik, namun dapat memutar kepalanya hingga...',
+      'options': ['180 derajat ke kiri dan ke kanan', '90 derajat total', '45 derajat saja', '360 derajat putaran penuh sekaligus'],
+      'correct_option': 0,
+      'explanation': 'Tarsius memiliki leher sangat fleksibel yang dapat berputar 180 derajat ke kiri maupun ke kanan untuk mengawasi mangsa di kegelapan malam.'
+    },
+    {
+      'id': 'mock-q-14',
+      'category': 'Mamalia',
+      'question': 'Babirusa (Babyrousa babyrussa) adalah satwa unik endemik Sulawesi dengan ciri khas taring atas melengkung yang tumbuh menembus...',
+      'options': ['Rahang bawah bagian depan', 'Gusi belakang geraham', 'Kulit moncong bagian atas', 'Tulang pelipis mata'],
+      'correct_option': 2,
+      'explanation': 'Pada Babirusa jantan, taring atas tumbuh mencuat menembus kulit moncong atas dan melengkung ke arah dahi.'
+    },
+    {
+      'id': 'mock-q-15',
+      'category': 'Mamalia',
+      'question': 'Pesut Mahakam (Orcaella brevirostris) adalah mamalia lumba-lumba air tawar langka berstatus Kritis (CR) yang mendiami aliran sungai...',
+      'options': ['Sungai Kapuas di Kalimantan Barat', 'Sungai Mahakam di Kalimantan Timur', 'Sungai Barito di Kalimantan Selatan', 'Sungai Musi di Sumatera Selatan'],
+      'correct_option': 1,
+      'explanation': 'Pesut Mahakam hidup di perairan tawar Sungai Mahakam, Kalimantan Timur, dan populasinya sangat rentan terancam kepunahan.'
+    },
+    {
+      'id': 'mock-q-16',
+      'category': 'Aves',
+      'question': 'Kasuari Gelambir Ganda (Casuarius casuarius) dari Papua memiliki pertahanan kaki yang sangat berbahaya berupa...',
+      'options': ['Sengatan racun di tumit', 'Cakar tengah lurus tajam menyerupai belati', 'Selaput renang keras bergerigi', 'Kelenjar getah perekat mangsa'],
+      'correct_option': 1,
+      'explanation': 'Jari kaki bagian dalam Kasuari dilengkapi cakar lurus tajam hingga 12 cm yang sangat mematikan saat menendang predator.'
+    },
+    {
+      'id': 'mock-q-17',
+      'category': 'Aves',
+      'question': 'Elang Jawa (Nisaetus bartelsi) adalah burung pemangsa endemik Pulau Jawa yang menjadi figur inspirasi lambang nasional Indonesia yaitu...',
+      'options': ['Burung Maleo', 'Cenderawasih Emas', 'Burung Garuda', 'Kakatua Putih'],
+      'correct_option': 2,
+      'explanation': 'Jambul khas dan corak Elang Jawa menjadikannya satwa langka yang diidentikkan dengan lambang negara Burung Garuda.'
+    },
+    {
+      'id': 'mock-q-18',
+      'category': 'Biogeografi',
+      'question': 'Garis khayal yang membatasi fauna tipe Peralihan (Wallacea) dengan fauna tipe Australis di kawasan timur kepulauan Indonesia disebut...',
+      'options': ['Garis Wallace', 'Garis Weber', 'Garis Lydekker', 'Garis Khatulistiwa'],
+      'correct_option': 1,
+      'explanation': 'Garis Weber menggambarkan batas persebaran fauna Australis dengan kawasan pulau peralihan Wallacea di Indonesia tengah.'
+    },
+    {
+      'id': 'mock-q-19',
+      'category': 'Ikan',
+      'question': 'Coelacanth Sulawesi (Latimeria menadoensis) sering dijuluki "fosil hidup" karena morfologinya tidak banyak berubah sejak masa purba, ditemukan di perairan...',
+      'options': ['Selat Sunda', 'Teluk Cenderawasih', 'Laut Jawa', 'Manado Tua, Sulawesi Utara'],
+      'correct_option': 3,
+      'explanation': 'Spesimen Coelacanth hidup ditemukan di perairan pulau vulkanik Manado Tua pada akhir dekade 1990-an.'
+    },
+    {
+      'id': 'mock-q-20',
+      'category': 'Mamalia',
+      'question': 'Trenggiling Jawa (Manis javanica) melindungi dirinya dari ancaman predator dengan menggulung tubuh dan mengandalkan sisik keras berbahan...',
+      'options': ['Keratin (protein penyusun kuku dan rambut)', 'Kalsium karbonat tempurung', 'Lapisan kitin exoskeleton', 'Serat kolagen bertulang rawan'],
+      'correct_option': 0,
+      'explanation': 'Sisik trenggiling tersusun dari keratin padat, bahan yang sama dengan kuku manusia dan tanduk badak, sangat kuat menahan gigitan predator.'
+    },
+    {
+      'id': 'mock-q-21',
+      'category': 'Aves',
+      'question': 'Kakatua Raja (Probosciger aterrimus) memiliki ciri fisik unik burung kakatua hitam berukuran besar dari Papua yang paruhnya berfungsi memecah...',
+      'options': ['Daging bangkai mamalia besar', 'Biji kenari keras dan kacang hutan berkayu', 'Cangkang kerang laut tebal', 'Kulit kura-kura sungai'],
+      'correct_option': 1,
+      'explanation': 'Paruh Kakatua Raja sangat kokoh dengan daya tekan besar untuk membuka biji kenari hutan yang berkulit amat tebal.'
+    },
+    {
+      'id': 'mock-q-22',
+      'category': 'Ikan',
+      'question': 'Ikan Arwana Super Red (Scleropages formosus) yang terkenal bernilai tinggi di kalangan pehobi merupakan spesies endemik dari...',
+      'options': ['Danau Toba, Sumatera Utara', 'Sungai Kapuas dan Danau Sentarum, Kalimantan Barat', 'Danau Matano, Sulawesi Selatan', 'Sungai Mamberamo, Papua'],
+      'correct_option': 1,
+      'explanation': 'Varietas Arwana Super Red asli hidup endemik di sistem perairan DAS Sungai Kapuas dan Danau Sentarum, Kalimantan Barat.'
+    },
+    {
+      'id': 'mock-q-23',
+      'category': 'Aves',
+      'question': 'Burung Rangkong / Enggang Badak (Buceros rhinoceros) memiliki tonjolan mirip tanduk di atas paruhnya yang disebut casque, yang berfungsi untuk...',
+      'options': ['Memperkeras resonansi suara panggilan dan atraksi kawin', 'Menyimpan cadangan air minum darurat', 'Mengikis tanah liat tebing', 'Menghasilkan racun pertahanan diri'],
+      'correct_option': 0,
+      'explanation': 'Casque berongga pada burung Rangkong berfungsi sebagai ruang resonansi akustik untuk memperkuat panggilan suara di hutan lebat.'
+    },
+    {
+      'id': 'mock-q-24',
+      'category': 'Mamalia',
+      'question': 'Macan Dahan Kalimantan (Neofelis diardi) adalah kucing liar penghuni pohon (arboreal) yang memiliki proporsi taring...',
+      'options': ['Terpendek di antara keluarga kucing', 'Paling rapuh dan tidak bergerigi', 'Terpanjang dibanding ukuran tengkoraknya di antara felidae hidup', 'Hanya tumbuh pada jantan dewasa'],
+      'correct_option': 2,
+      'explanation': 'Proporsi gigi taring Macan Dahan terhadap ukuran kepalanya adalah yang terpanjang di antara seluruh spesies kucing liar yang hidup.'
+    },
+    {
+      'id': 'mock-q-25',
+      'category': 'Mamalia',
+      'question': 'Kanguru Pohon Wondiwoi (Dendrolagus mayri) adalah mamalia berkantung (marsupial) endemik Papua yang hidup di...',
+      'options': ['Rawa bakau pantai air payau', 'Tajuk pepohonan hutan pegunungan tinggi', 'Gua-gua kapur bawah tanah', 'Padang rumput terbuka dataran rendah'],
+      'correct_option': 1,
+      'explanation': 'Kanguru pohon beradaptasi dengan kaki depan yang kuat dan ekor panjang untuk memanjat di antara tajuk pohon hutan pegunungan Papua.'
+    },
+    {
+      'id': 'mock-q-26',
+      'category': 'Reptilia',
+      'question': 'Kura-kura Moncong Babi (Carettochelys insculpta) memiliki hidung berdaging fleksibel menyerupai babi yang berguna untuk...',
+      'options': ['Snorkel mengambil udara saat tubuh terkubur di lumpur sungai', 'Alat penyengat mangsa berdaya listrik', 'Menggali lubang sarang di bebatuan keras', 'Menghasilkan bau penolak buaya'],
+      'correct_option': 0,
+      'explanation': 'Moncong panjang seperti snorkel memungkinkan kura-kura ini bernapas di permukaan air saat tubuhnya tersembunyi di dasar lumpur.'
+    },
+    {
+      'id': 'mock-q-27',
+      'category': 'Amfibi',
+      'question': 'Katak Terbang Jawa (Rhacophorus reinwardtii) dapat melayang meluncur dari satu dahan ke dahan lain menggunakan...',
+      'options': ['Selaput lebar di antara jari-jari kaki dan lipatan kulit paha', 'Sayap berbulu halus di bagian dada', 'Ekor panjang berotot kuat', 'Kantung udara di bawah tenggorokan'],
+      'correct_option': 0,
+      'explanation': 'Selaput kaki lebar berfungsi layaknya parasut kecil sehingga katak pohon ini mampu meluncur di udara hingga puluhan meter.'
+    },
+    {
+      'id': 'mock-q-28',
+      'category': 'Mamalia',
+      'question': 'Banteng Jawa (Bos javanicus) memiliki penanda visual khas yang paling mudah dikenali di alam liar berupa...',
+      'options': ['Garis loreng hitam di punggung', 'Tanduk yang selalu bercabang tiga', 'Bercak putih bundar seperti cermin di bagian pantat', 'Bulu leher lebat seperti surai singa'],
+      'correct_option': 2,
+      'explanation': 'Banteng Jawa memiliki warna putih kontras pada pantat (rump patch) serta pola kaos kaki putih di keempat kakinya.'
+    },
+    {
+      'id': 'mock-q-29',
+      'category': 'Mamalia',
+      'question': 'Kuskus Beruang Sulawesi (Ailurops ursinus) adalah hewan marsupial kanopi hutan Sulawesi yang bergerak lambat dan beraktivitas saat...',
+      'options': ['Hanya saat fajar menyingsing', 'Siang hari (diurnal) dengan memakan dedaunan muda', 'Malam hari di dasar tanah', 'Tidur selama 6 bulan di musim kemarau'],
+      'correct_option': 1,
+      'explanation': 'Berbeda dengan kuskus lain yang nokturnal, Kuskus Beruang aktif di siang hari memakan daun-daun muda di kanopi hutan.'
+    },
+    {
+      'id': 'mock-q-30',
+      'category': 'Aves',
+      'question': 'Cenderawasih Merah (Paradisaea rubra) yang memiliki sepasang bulu kawat ekor ganda melengkung merupakan satwa endemik pulau...',
+      'options': ['Waigeo dan Batanta di Kepulauan Raja Ampat', 'Pulau Bali bagian barat', 'Pulau Sumba di Nusa Tenggara', 'Kepulauan Mentawai di barat Sumatera'],
+      'correct_option': 0,
+      'explanation': 'Cenderawasih Merah hanya hidup secara endemik di hutan Pulau Waigeo dan Batanta, Raja Ampat, Papua Barat Daya.'
+    },
+    {
+      'id': 'mock-q-31',
+      'category': 'Reptilia',
+      'question': 'Buaya Muara (Crocodylus porosus) dikenal sebagai reptil hidup terbesar di bumi yang memiliki adaptasi kelenjar garam khusus di lidahnya untuk...',
+      'options': ['Mendeteksi getaran gelombang sonar', 'Mengeluarkan kelebihan garam sehingga bisa berenang jauh di laut lepas', 'Menghasilkan bisa neurotoksin beracun', 'Memecah cangkang penyu laut'],
+      'correct_option': 1,
+      'explanation': 'Kelenjar garam lingual membantu buaya muara berenang melintasi selat dan samudra antar-pulau.'
+    },
+    {
+      'id': 'mock-q-32',
+      'category': 'Konservasi',
+      'question': 'Taman Nasional Ujung Kulon yang terletak di provinsi Banten merupakan benteng pertahanan terakhir di dunia bagi satwa langka...',
+      'options': ['Gajah Kerdil Borneo', 'Badak Jawa (Rhinoceros sondaicus)', 'Harimau Bali', 'Orangutan Tapanuli'],
+      'correct_option': 1,
+      'explanation': 'Taman Nasional Ujung Kulon adalah satu-satunya habitat alami yang tersisa di planet bumi bagi populasi liar Badak Jawa.'
+    },
+    {
+      'id': 'mock-q-33',
+      'category': 'Reptilia',
+      'question': 'Biawak Pohon Biru (Varanus macraei) adalah kadal pemanjat yang memiliki pola sisik biru pirus cerah dengan ekor prehensil, endemik pulau...',
+      'options': ['Pulau Batanta, Kepulauan Raja Ampat', 'Pulau Komodo, NTT', 'Pulau Nias, Sumatera', 'Pulau Madura, Jawa Timur'],
+      'correct_option': 0,
+      'explanation': 'Varanus macraei ditemukan pertama kali pada tahun 2001 di Pulau Batanta, Raja Ampat, dan mahir memanjat pohon menggunakan ekornya.'
+    },
+    {
+      'id': 'mock-q-34',
+      'category': 'Mamalia',
+      'question': 'Gajah Sumatera (Elephas maximus sumatranus) memiliki ciri pembeda fisik dengan Gajah Afrika, di antaranya adalah...',
+      'options': ['Telinga berukuran lebih kecil dan memiliki dua tonjolan di dahi', 'Tidak pernah memiliki gading pada jantan', 'Memiliki bulu lebat di sekujur tubuh', 'Memiliki dua lubang belalai terpisah'],
+      'correct_option': 0,
+      'explanation': 'Gajah Sumatera memiliki daun telinga yang jauh lebih kecil daripada Gajah Afrika dan punggung yang berbentuk melengkung cembung.'
+    },
+    {
+      'id': 'mock-q-35',
+      'category': 'Reptilia',
+      'question': 'Penyu Belimbing (Dermochelys coriacea) adalah penyu laut terbesar di dunia yang memiliki keunikan fisik tempurung berupa...',
+      'options': ['Karapas bertanduk runcing seperti duri landak', 'Karapas lunak menyerupai kulit tebal kenyal tanpa sisik keras', 'Tempurung tembus pandang berbahan kalsium cair', 'Tempurung berbentuk bola bulat sempurna'],
+      'correct_option': 1,
+      'explanation': 'Penyu Belimbing memiliki karapas berbahan kulit tebal kenyal fleksibel dengan 7 lunas membujur.'
+    },
+    {
+      'id': 'mock-q-36',
+      'category': 'Konservasi',
+      'question': 'Dalam konvensi perdagangan satwa liar internasional CITES, spesies yang masuk dalam daftar "Appendix I" memiliki arti...',
+      'options': ['Bebas diperjualbelikan antarnegara tanpa izin resmi', 'Terancam punah dan dilarang keras untuk perdagangan komersial internasional', 'Populasinya sangat melimpah dan boleh diburu', 'Hanya berlaku untuk satwa peliharaan domestik'],
+      'correct_option': 1,
+      'explanation': 'Appendix I mencakup spesies satwa liar paling terancam punah yang dilarang keras untuk diperdagangkan secara komersial.'
+    },
+    {
+      'id': 'mock-q-37',
+      'category': 'Mamalia',
+      'question': 'Rusa Bawean (Axis kuhlii) adalah spesies rusa berpostur pendek dengan tanduk bercabang tiga yang hidup secara endemik terbatas di...',
+      'options': ['Pulau Bawean di perairan Laut Jawa', 'Pulau Weh di ujung Aceh', 'Pulau Karimunjawa di Jawa Tengah', 'Pulau Maratua di Kalimantan Timur'],
+      'correct_option': 0,
+      'explanation': 'Rusa Bawean berstatus Kritis (CR) dan hanya hidup di perbukitan Pulau Bawean, sekitar 120 km utara Gresik, Jawa Timur.'
+    },
+    {
+      'id': 'mock-q-38',
+      'category': 'Reptilia',
+      'question': 'Tokek dan cecak mampu menempel kuat di permukaan kaca atau dinding vertikal berkat jutaan rambut halus mikro di telapak kakinya yang memanfaatkan gaya...',
+      'options': ['Gaya magnetik statis bumi', 'Gaya molekuler Van der Waals', 'Lapisan lem cairan beracun', 'Tekanan vakum penyedot udara'],
+      'correct_option': 1,
+      'explanation': 'Spatulae mikroskopis pada telapak kaki tokek menghasilkan interaksi molekuler gaya Van der Waals dengan permukaan dinding.'
+    },
+    {
+      'id': 'mock-q-39',
+      'category': 'Konservasi',
+      'question': 'Taman Nasional Lorentz yang merupakan taman nasional terluas di Asia Tenggara dan diakui sebagai Situs Warisan Dunia UNESCO terletak di kepulauan...',
+      'options': ['Sulawesi bagian selatan', 'Sumatera bagian barat', 'Kalimantan bagian timur', 'Papua (membentang dari Puncak Carstensz hingga pesisir)'],
+      'correct_option': 3,
+      'explanation': 'Taman Nasional Lorentz di Papua memiliki rentang ekosistem terlengkap di kawasan Pasifik dari gletser salju abadi hingga pesisir tropis.'
+    },
+    {
+      'id': 'mock-q-40',
+      'category': 'Aves',
+      'question': 'Burung Maleo (Macrocephalon maleo) memiliki benjolan tanduk hitam keras di atas kepalanya yang diyakini para ahli berfungsi sebagai...',
+      'options': ['Sensor pendeteksi suhu pasir geotermal tempat bertelur', 'Senjata mematikan untuk berburu serangga', 'Kantung penyimpan makanan cadangan', 'Alat penampung air hujan saat badai'],
+      'correct_option': 0,
+      'explanation': 'Benjolan di kepala Maleo diyakini membantu burung mendeteksi panas bumi pasir vulkanik yang pas untuk menetaskan telurnya.'
+    },
   ];
 }
