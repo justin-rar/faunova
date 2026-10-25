@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../../features/camera/models/capture_model.dart';
@@ -164,20 +165,65 @@ class CaptureService {
     if (photoPath != null && photoPath.isNotEmpty) {
       final localFile = File(photoPath);
       if (localFile.existsSync()) {
+        final fileExt = photoPath.contains('.') ? photoPath.split('.').last : 'jpg';
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final storagePath = '$userId/${scanId}_$timestamp.$fileExt';
+        bool uploadSucceeded = false;
+
+        // 1. Coba upload langsung via klien Supabase Storage
         try {
-          final fileExt = photoPath.contains('.') ? photoPath.split('.').last : 'jpg';
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final storagePath = '$userId/${scanId}_$timestamp.$fileExt';
           await client.storage.from('captures').upload(
             storagePath,
             localFile,
             fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
           );
           effectivePhotoPath = 'captures/$storagePath';
+          uploadSucceeded = true;
         } catch (e) {
-          debugPrint('CaptureService: Gagal upload ke Supabase Storage: $e');
-          throw CaptureException(
-            'Gagal mengunggah foto satwa ke cloud storage ($e). Pastikan koneksi internet stabil.',
+          debugPrint('CaptureService: Client storage upload gagal ($e), mencoba via ai-gateway service role...');
+        }
+
+        // 2. Jika klien upload gagal (misal RLS 403), upload via Edge Function ai-gateway (Service Role)
+        if (!uploadSucceeded) {
+          try {
+            final bytes = await localFile.readAsBytes();
+            final base64Image = base64Encode(bytes);
+            final session = client.auth.currentSession;
+            final token = session?.accessToken;
+
+            final resp = await http.post(
+              Uri.parse('${AppConfig.supabaseUrl}/functions/v1/ai-gateway'),
+              headers: {
+                'Content-Type': 'application/json',
+                if (token != null) 'Authorization': 'Bearer $token',
+                'apikey': AppConfig.supabaseAnonKey,
+              },
+              body: jsonEncode({
+                'mode': 'upload_photo',
+                'scanId': scanId,
+                'imageBase64': base64Image,
+                'mimeType': fileExt.toLowerCase() == 'png' ? 'image/png' : 'image/jpeg',
+              }),
+            );
+
+            if (resp.statusCode == 200) {
+              final data = jsonDecode(resp.body);
+              if (data['photoObjectPath'] != null) {
+                effectivePhotoPath = data['photoObjectPath'].toString();
+                uploadSucceeded = true;
+                debugPrint('CaptureService: Berhasil upload via ai-gateway service role: $effectivePhotoPath');
+              }
+            } else {
+              debugPrint('CaptureService: ai-gateway upload gagal (${resp.statusCode}): ${resp.body}');
+            }
+          } catch (e) {
+            debugPrint('CaptureService: ai-gateway upload exception: $e');
+          }
+        }
+
+        if (!uploadSucceeded) {
+          throw const CaptureException(
+            'Gagal mengunggah foto satwa ke cloud storage. Pastikan koneksi internet stabil.',
             code: 'STORAGE_UPLOAD_ERROR',
           );
         }

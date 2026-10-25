@@ -37,7 +37,18 @@ interface ResetQuotaRequestBody {
   userId?: string;
 }
 
-type RequestBody = ScanRequestBody | ChatRequestBody | ResetQuotaRequestBody;
+interface UploadPhotoRequestBody {
+  mode: "upload_photo";
+  imageBase64: string;
+  mimeType?: string;
+  scanId?: string;
+}
+
+type RequestBody =
+  | ScanRequestBody
+  | ChatRequestBody
+  | ResetQuotaRequestBody
+  | UploadPhotoRequestBody;
 
 // Format tanggal WIB (UTC+7)
 function getWibDateString(): string {
@@ -619,6 +630,85 @@ serve(async (req: Request) => {
     }
 
     // =========================================================================
+    // MODE UPLOAD PHOTO: Upload Foto Tangkapan Satwa ke Storage (Service Role)
+    // =========================================================================
+    if (body.mode === "upload_photo") {
+      const { imageBase64, mimeType = "image/jpeg", scanId } = body;
+      if (!imageBase64) {
+        return new Response(
+          JSON.stringify({
+            error: "VALIDATION_ERROR",
+            message: "Foto (imageBase64) wajib disertakan.",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      try {
+        const binaryStr = atob(imageBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        const ext = mimeType.includes("png") ? "png" : "jpg";
+        const timestamp = Date.now();
+        const filename = scanId ? `${scanId}_${timestamp}.${ext}` : `${crypto.randomUUID()}.${ext}`;
+        const storagePath = `${user.id}/${filename}`;
+
+        const { error: uploadError } = await adminClient.storage
+          .from("captures")
+          .upload(storagePath, bytes, {
+            contentType: mimeType,
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error("ai-gateway upload_photo error:", uploadError);
+          return new Response(
+            JSON.stringify({
+              error: "UPLOAD_FAILED",
+              message: uploadError.message,
+            }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+
+        const effectivePath = `captures/${storagePath}`;
+        return new Response(
+          JSON.stringify({
+            success: true,
+            photoObjectPath: effectivePath,
+            storagePath: storagePath,
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } catch (err: any) {
+        console.error("ai-gateway upload_photo exception:", err);
+        return new Response(
+          JSON.stringify({
+            error: "SERVER_ERROR",
+            message: err?.message || "Gagal memproses unggah foto.",
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+
+    // =========================================================================
     // MODE SCAN: Identifikasi Hewan dari Foto
     // =========================================================================
     if (body.mode === "scan") {
@@ -1015,6 +1105,38 @@ serve(async (req: Request) => {
         );
       }
 
+      // Unggah foto scan otomatis ke Supabase Storage (bucket captures) via service role
+      let uploadedPhotoPath: string | null = null;
+      try {
+        const binaryStr = atob(imageBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const ext = mimeType.includes("png") ? "png" : "jpg";
+        const storagePath = `${user.id}/${newScan.id}.${ext}`;
+        const { error: uploadErr } = await adminClient.storage
+          .from("captures")
+          .upload(storagePath, bytes, {
+            contentType: mimeType,
+            upsert: true,
+          });
+
+        if (!uploadErr) {
+          uploadedPhotoPath = `captures/${storagePath}`;
+          await adminClient
+            .from("scans")
+            .update({ temp_object_path: uploadedPhotoPath })
+            .eq("id", newScan.id);
+          console.log(`Foto scan ${newScan.id} otomatis diunggah ke ${uploadedPhotoPath}`);
+        } else {
+          console.warn("Gagal auto-upload foto scan:", uploadErr);
+        }
+      } catch (uploadEx) {
+        console.warn("Exception auto-upload foto scan:", uploadEx);
+      }
+
       // Generate 5 soal kuis AI secara otomatis untuk memperluas bank soal (Plan Crowdsourced Quiz)
       if (isAnimal && parsedResult?.name && parsedResult?.categoryOrSpecies) {
         (async () => {
@@ -1106,6 +1228,7 @@ serve(async (req: Request) => {
           isAnimal: isAnimal,
           result: parsedResult,
           photoSha256: photoSha256,
+          photoObjectPath: uploadedPhotoPath,
           quotaUsed: newQuotaUsed,
           quotaMax: 20,
           aiProvider: usedAiProvider,
