@@ -2130,4 +2130,37 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 - Deployment Supabase Functions: **`ai-gateway` berhasil dideploy ke remote project `yziubaqkrhxtneaybllq`**.
 - Git: **Tepat 6 commit terpisah yang rapi dan mandiri**.
 
+---
+
+## Sesi Penanganan Masalah A & Masalah B (Regresi Pasca Perbaikan) — Selesai ✅
+
+### 1. Masalah A: Foto Berubah Antar Akun
+- **Status**: Selesai & Terverifikasi
+- **Akar Masalah**:
+  1. Foto hasil scan hanya disimpan sebagai path cache lokal HP pengunggah (`/data/user/0/.../cache/CAP_xxx.jpg`), belum diunggah ke storage Supabase.
+  2. Utilitas `MediaResolver` sebelumnya memiliki fallback ke `SearchService.instance.getCuratedPhotoForSpecies`, yang otomatis mengambil stok foto Unsplash acak berdasarkan nama satwa jika path lokal tidak ditemukan di HP orang lain.
+- **Perbaikan**:
+  1. Menghapus 100% fallback gambar kurasi/stok pengganti dari `MediaResolver.resolvePhotoUrl`. Jika file lokal milik HP lain tidak ditemukan, sistem mengembalikan string kosong sehingga antarmuka menampilkan placeholder jujur (ikon satwa netral `Icons.pets_rounded`), bukan foto hewan yang salah.
+  2. Menambahkan proses upload otomatis ke Supabase Storage (bucket `captures/$userId/$scanId.ext`) pada `CaptureService.saveCapture` saat file lokal tersedia, sehingga tangkapan baru otomatis tersimpan di cloud storage publik yang bisa diakses seluruh akun.
+- **Commit**: `cfdfdae fix(feed): remove curated photo fallback to prevent displaying wrong animal across accounts (Masalah A)`
+
+### 2. Masalah B: Notifikasi Follow/Like Jatuh ke Orang yang Salah
+- **Status**: Selesai & Terverifikasi
+- **Akar Masalah**:
+  1. Pemanggilan `NotificationService.instance.showFollowNotification` dan `showLikeNotification` dipanggil langsung di klien HP penekan tombol (pelaku/actor), sehingga HP pelaku yang memunculkan notifikasi seolah-olah dirinya yang di-follow / di-like.
+  2. Tidak ada pemisahan peran antara `actorUserId` dan `recipientUserId`, serta belum ada pencegahan notifikasi aksi ke diri sendiri.
+- **Perbaikan**:
+  1. Menghapus eksekusi notifikasi lokal pada perangkat pelaku di `SocialService.toggleFollow` dan `PostService.togglePostLike`.
+  2. Mengimplementasikan `NotificationService.dispatchSocialNotification` dengan aturan keras:
+     - Like/follow ke diri sendiri dilarang membuat notifikasi (`actorUserId == recipientUserId -> return`).
+     - HP milik pelaku aksi TIDAK PERNAH memunculkan notifikasi lokal (`currentUserId == actorUserId -> return`).
+     - Notifikasi hanya didistribusikan ke antrean dan layar milik pengguna penerima (`recipientUserId`).
+  3. Menyiapkan migrasi `supabase/migrations/027_create_social_notifications.sql` dengan RLS ketat (hanya penerima yang bisa SELECT, hanya orang lain yang bisa INSERT).
+- **Commit**: `fa29c61 fix(social): ensure follow and like notifications are only delivered to recipients, never actors (Masalah B)`
+
+### 3. Hasil Pengujian Akhir
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **Semua 164/164 tests passed (100% lulus)** termasuk 2 file pengujian baru (`test/masalah_a_photo_reproduce_test.dart` dan `test/masalah_b_notification_reproduce_test.dart`).
+- Catatan pengujian HP fisik: Ditandai **TIDAK TERVERIFIKASI** untuk perangkat fisik ganda dan disediakan panduan uji manual 3 langkah di laporan utama.
+
 
