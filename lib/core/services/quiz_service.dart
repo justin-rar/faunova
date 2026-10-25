@@ -580,5 +580,286 @@ class QuizService {
       'correct_option': 0,
       'explanation': 'Benjolan di kepala Maleo diyakini membantu burung mendeteksi panas bumi pasir vulkanik yang pas untuk menetaskan telurnya.'
     },
+    {
+      'id': 'mock-q-41',
+      'category': 'Mamalia',
+      'question': 'Kukang Jawa (Nycticebus javanicus) adalah satu-satunya primata berbisa di dunia yang mengeluarkan cairan bisa berbahaya dari...',
+      'options': ['Kelenjar brakial di lipatan siku bagian dalam', 'Kantung khusus di bawah lidah', 'Ujung kuku jemari kaki belakang', 'Kelenjar aroma di ekor'],
+      'correct_option': 0,
+      'explanation': 'Kukang menjilat kelenjar brakial di sikunya lalu mencampurnya dengan air liur untuk menghasilkan gigitan berbisa mematikan.'
+    },
+    {
+      'id': 'mock-q-42',
+      'category': 'Mamalia',
+      'question': 'Lutung Jawa (Trachypithecus auratus) yang baru lahir memiliki keunikan fisik yang sangat mencolok dibanding induknya yang hitam pekat yaitu...',
+      'options': ['Bulu berwarna oranye keemasan terang benderang', 'Tidak memiliki ekor sama sekali', 'Memiliki cakar tajam seperti kucing', 'Tubuh bercahaya di malam hari'],
+      'correct_option': 0,
+      'explanation': 'Bayi Lutung Jawa lahir dengan bulu berwarna oranye terang mencolok agar mudah diawasi oleh kawanan di rimbunnya hutan.'
+    },
+    {
+      'id': 'mock-q-43',
+      'category': 'Mamalia',
+      'question': 'Tapir Asia (Tapirus indicus) memiliki corak warna dua warna (hitam dan pelana putih di punggung) yang berfungsi sebagai...',
+      'options': ['Kamuflase disrupsi visual pemecah siluet di malam hari', 'Penyerap radiasi sinar matahari siang', 'Penolak gigitan nyamuk hutan lebat', 'Penanda hierarki kepemimpinan kawanan'],
+      'correct_option': 0,
+      'explanation': 'Pola hitam-putih kontras memecah siluet tubuh tapir di bawah sinar rembulan di hutan sehingga predator sulit mengenali bentuk tubuhnya.'
+    },
+    {
+      'id': 'mock-q-44',
+      'category': 'Biota Laut',
+      'question': 'Pari Manta Karang (Mobula alfredi) memiliki corak bintik hitam unik di bagian perutnya yang dimanfaatkan para peneliti untuk...',
+      'options': ['Identifikasi individu satwa menyerupai sidik jari manusia', 'Menghasilkan sengatan listrik pertahanan diri', 'Menarik perhatian mangsa ikan kecil', 'Menentukan perkiraan umur tulang ikan'],
+      'correct_option': 0,
+      'explanation': 'Pola bintik di perut Pari Manta bersifat permanen dan unik untuk setiap individu, menjadi dasar metode foto-identifikasi populasi di alam.'
+    },
+    {
+      'id': 'mock-q-45',
+      'category': 'Mamalia',
+      'question': 'Kucing Batu (Pardofelis marmorata) adalah kucing liar arboreal Indonesia yang memiliki adaptasi ekor sangat khas yaitu...',
+      'options': ['Sangat panjang dan tebal berotot untuk keseimbangan di dahan', 'Sangat pendek seperti ekor kelinci', 'Bergerigi tajam untuk mencengkeram ranting', 'Berwarna putih polos tanpa corak'],
+      'correct_option': 0,
+      'explanation': 'Ekor Kucing Batu panjangnya menyamai panjang tubuhnya dan berfungsi sebagai penyeimbang sempurna saat melompat di tajuk pohon tinggi.'
+    },
+    {
+      'id': 'mock-q-46',
+      'category': 'Aves',
+      'question': 'Burung Paok Bergaris (Pitta guajana) adalah burung endemik lantai hutan Jawa yang mencari makan berupa cacing dan serangga di antara...',
+      'options': ['Seresah tumpukan daun kering lantai hutan', 'Tajuk puncak tertinggi pohon beringin', 'Batang pohon pinus berlumut', 'Bebatuan licin dasar air terjun'],
+      'correct_option': 0,
+      'explanation': 'Burung Paok banyak menghabiskan waktu melompat-lompat di lantai hutan yang lembap untuk membongkar seresah daun mencari mangsa.'
+    },
+    {
+      'id': 'mock-q-47',
+      'category': 'Reptilia',
+      'question': 'Tuntong Laut (Batagur borneoensis) jantan dewasa mengalami perubahan warna dramatis saat musim kawin berupa...',
+      'options': ['Warna kepala berubah putih terang dengan garis merah di antara mata', 'Tempurung berubah hijau cerah bercahaya', 'Leher memanjang dua kali ukuran semula', 'Kaki berubah keemasan mengilap'],
+      'correct_option': 0,
+      'explanation': 'Perubahan warna kepala Tuntong jantan menjadi putih mencolok dengan corak merah terang berfungsi sebagai sinyal visual memikat betina.'
+    },
+    {
+      'id': 'mock-q-48',
+      'category': 'Biota Laut',
+      'question': 'Hiu Paus (Rhincodon typus) yang sering dijumpai di perairan Gorontalo dan Papua adalah ikan terbesar di dunia yang memakan...',
+      'options': ['Plankton dan ikan kecil melalui tapis insang', 'Bangkai mamalia paus besar', 'Singa laut dan penyu dewasa', 'Terumbu karang dan rumput laut'],
+      'correct_option': 0,
+      'explanation': 'Hiu Paus adalah pemakan saring (filter feeder) yang tidak memangsa satwa besar melainkan menyaring plankton di permukaan air.'
+    },
+    {
+      'id': 'mock-q-49',
+      'category': 'Invertebrata',
+      'question': 'Laba-laba Pelompat (Salticidae) memiliki sepasang mata utama depan berukuran sangat besar yang memungkinkannya...',
+      'options': ['Melihat warna dan memiliki persepsi kedalaman 3D yang sangat tajam', 'Melihat dalam kegelapan total tanpa cahaya', 'Menembakkan racun dari kejauhan', 'Mendeteksi gelombang radio mangsa'],
+      'correct_option': 0,
+      'explanation': 'Laba-laba pelompat memiliki ketajaman visual terbaik di antara semua arthropoda untuk memperhitungkan jarak lompatan saat menerkam.'
+    },
+    {
+      'id': 'mock-q-50',
+      'category': 'Aves',
+      'question': 'Burung Kacamata Wangi-wangi (Zosterops flavissimus) adalah burung endemik Kepulauan Wakatobi dengan ciri khas...',
+      'options': ['Lingkaran bulu putih halus melingkar di sekeliling matanya', 'Ekor kaku melengkung berbentuk sabit', 'Paruh bergerigi pemakan ikan kecil', 'Jambul merah jambu di dahi'],
+      'correct_option': 0,
+      'explanation': 'Ciri utama genus Zosterops adalah cincin kacamata putih bersih yang mengelilingi bola mata.'
+    },
+    {
+      'id': 'mock-q-51',
+      'category': 'Aves',
+      'question': 'Burung Kasuari di Papua selain dapat berlari kencang di daratan juga memiliki kemampuan fisik yang jarang diketahui yaitu...',
+      'options': ['Mampu berenang dengan lincah menyeberangi sungai lebar dan teluk laut', 'Mampu terbang melayang rendah di malam hari', 'Mampu memanjat pohon kelapa menggunakan sayap', 'Bisa menggali terowongan bawah tanah'],
+      'correct_option': 0,
+      'explanation': 'Kasuari adalah perenang yang sangat andal dan sering terlihat menyeberangi sungai deras atau perairan pesisir di Papua.'
+    },
+    {
+      'id': 'mock-q-52',
+      'category': 'Reptilia',
+      'question': 'Komodo (Varanus komodoensis) membunuh mangsa berukuran besar seperti kerbau dan rusa dengan mengandalkan gigitan yang mengandung...',
+      'options': ['Kelenjar bisa antikoagulan yang mencegah pembekuan darah', 'Bisa hemotoksin penembus tulang', 'Bisa neurotoksin penyengat saraf seketika', 'Zat asam korosif penghancur kulit'],
+      'correct_option': 0,
+      'explanation': 'Komodo memiliki kelenjar bisa di rahang bawah yang mengeluarkan senyawa racun antikoagulan yang menurunkan tekanan darah mangsa.'
+    },
+    {
+      'id': 'mock-q-53',
+      'category': 'Mamalia',
+      'question': 'Gajah Kerdil Borneo (Elephas maximus borneensis) memiliki ciri morfologis khas dibanding gajah Asia lainnya yaitu...',
+      'options': ['Ekor sangat panjang yang menyentuh tanah dan gading lebih lurus', 'Telinga dua kali lebih lebar dari gajah Afrika', 'Memiliki dua punuk lemak di punggung', 'Tidak pernah memiliki rambut sama sekali'],
+      'correct_option': 0,
+      'explanation': 'Gajah Kerdil Kalimantan memiliki postur membulat, ekor panjang menjuntai hingga tanah, dan temperamen lebih ramah.'
+    },
+    {
+      'id': 'mock-q-54',
+      'category': 'Ikan',
+      'question': 'Ikan Arwana Asia (Scleropages formosus) memiliki sepasang sungut (barbel) di ujung bibir bawahnya yang berguna untuk...',
+      'options': ['Mendeteksi riak getaran mangsa di permukaan air', 'Menghasilkan sengatan listrik pertahanan', 'Bernapas mengambil udara di musim kemarau', 'Mengaitkan tubuh di celah bebatuan arus deras'],
+      'correct_option': 0,
+      'explanation': 'Sungut Arwana merupakan organ sensorik mekanoreseptor sensitif untuk mendeteksi mangsa yang jatuh di permukaan air.'
+    },
+    {
+      'id': 'mock-q-55',
+      'category': 'Reptilia',
+      'question': 'Kura-kura Hutan Sulawesi (Leucocephalon yuwonoi) jantan dewasa memiliki ciri unik pada kepalanya berupa...',
+      'options': ['Warna kepala memutih kontras menyerupai tengkorak', 'Tanduk bercabang tiga di atas hidung', 'Kantung kulit yang bisa mengembang di dagu', 'Mata merah menyala di kegelapan'],
+      'correct_option': 0,
+      'explanation': 'Jantan dewasa spesies langka ini memiliki kepala berwarna kuning pucat keputihan yang sangat kontras dengan leher dan tubuhnya.'
+    },
+    {
+      'id': 'mock-q-56',
+      'category': 'Invertebrata',
+      'question': 'Kupu-kupu Sayap Burung Peri (Ornithoptera chimaera) adalah spesies kupu-kupu raksasa dengan sayap hijau keemasan yang hidup di dataran tinggi pulau...',
+      'options': ['Papua', 'Jawa', 'Sumatera', 'Nusa Tenggara'],
+      'correct_option': 0,
+      'explanation': 'Genus Ornithoptera adalah kupu-kupu megah yang hidup di hutan pegunungan Pulau Papua dan dilindungi undang-undang.'
+    },
+    {
+      'id': 'mock-q-57',
+      'category': 'Mamalia',
+      'question': 'Siamang (Symphalangus syndactylus) di hutan Sumatera memiliki kantung tenggorokan besar (gular sac) yang berfungsi untuk...',
+      'options': ['Menghasilkan resonansi suara panggilan duet yang terdengar hingga 2 km', 'Menyimpan cadangan buah dan air', 'Menghangatkan tubuh saat suhu dingin', 'Mengembangkan tubuh untuk menakut-nakuti macan'],
+      'correct_option': 0,
+      'explanation': 'Kantung gular dapat mengembang seukuran kepala siamang untuk memperkeras resonansi suara panggilan melintasi kanopi hutan.'
+    },
+    {
+      'id': 'mock-q-58',
+      'category': 'Mamalia',
+      'question': 'Pesut Mahakam memiliki bentuk kepala yang berbeda dari lumba-lumba laut pada umumnya, yaitu...',
+      'options': ['Membulat tumpul tanpa moncong paruh yang memanjang', 'Moncong sangat panjang menyerupai paruh burung', 'Memiliki cula tajam di atas dahi', 'Pipih melebar menyerupai ikan pari'],
+      'correct_option': 0,
+      'explanation': 'Pesut Mahakam memiliki dahi membulat tinggi (melon) dan tidak memiliki moncong panjang khas lumba-lumba laut.'
+    },
+    {
+      'id': 'mock-q-59',
+      'category': 'Konservasi',
+      'question': 'Taman Nasional Komodo yang dibentuk pada tahun 1980 melindungi habitat alami biawak purba Komodo di kepulauan...',
+      'options': ['Pulau Komodo, Rinca, Padar, Gili Motang, dan Nusa Kode', 'Kepulauan Mentawai dan Nias', 'Kepulauan Karimunjawa dan Bawean', 'Kepulauan Derawan dan Maratua'],
+      'correct_option': 0,
+      'explanation': 'Taman Nasional Komodo mencakup gugusan Pulau Komodo, Rinca, Padar serta puluhan pulau kecil di Selat Sape, NTT.'
+    },
+    {
+      'id': 'mock-q-60',
+      'category': 'Reptilia',
+      'question': 'Bunglon Sisir (Gonocephalus chamaeleontinus) mengandalkan pertahanan utama dari ancaman predator hutan berupa...',
+      'options': ['Kamuflase mimikri menyatu sempurna dengan lumut dan kulit kayu', 'Bisa gigitan neurotoksik mematikan', 'Kemampuan memutuskan ekor berulang kali', 'Lompatan jauh di atas permukaan air'],
+      'correct_option': 0,
+      'explanation': 'Kadal bermahkota sisir ini memiliki pola warna dan tekstur kulit kasar yang meniru lumut dan kulit pohon hutan hujan tropis.'
+    },
   ];
+
+  /// Membuat dan menambahkan soal kuis baru secara dinamis saat satwa berhasil diidentifikasi AI (Crowdsourced Quiz Bank)
+  Future<int> generateDynamicQuestionsForAnimal({
+    required String animalName,
+    required String speciesName,
+    String? category,
+    String? description,
+    String? additionalFact,
+  }) async {
+    final client = _getSupabaseClient();
+    final user = client?.auth.currentUser;
+
+    final firstGenus = speciesName.trim().split(' ').first;
+
+    // Paket 5 soal ilmiah otomatis seputar satwa yang baru saja difoto
+    final generatedQuestions = [
+      {
+        'category': category ?? 'Fauna',
+        'question': 'Satwa "$animalName" ($speciesName) diklasifikasikan ke dalam taksonomi genus...',
+        'options': [
+          firstGenus,
+          'Panthera',
+          'Varanus',
+          'Macaca',
+        ],
+        'correct_option': 0,
+        'explanation': '$animalName diklasifikasikan ke dalam genus $firstGenus.',
+      },
+      {
+        'category': category ?? 'Fauna',
+        'question': 'Berdasarkan pengamatan lapangan, adaptasi utama satwa "$animalName" ($speciesName) adalah...',
+        'options': [
+          description?.isNotEmpty == true ? description! : 'Beradaptasi secara alami pada ekosistem hutan tropis Indonesia.',
+          'Hidup di kutub es tanpa vegetasi tanaman.',
+          'Hanya mengonsumsi bebatuan vulkanik kering.',
+          'Memiliki sayap berselaput untuk menyelam di palung laut.',
+        ],
+        'correct_option': 0,
+        'explanation': '$animalName: ${description ?? 'Satwa khas ekosistem nusantara.'}',
+      },
+      {
+        'category': 'Konservasi',
+        'question': 'Fakta unik biologi mengenai satwa "$animalName" di alam liar adalah...',
+        'options': [
+          additionalFact?.isNotEmpty == true ? additionalFact! : 'Memiliki peran penting menjaga keseimbangan rantai makanan habitat aslinya.',
+          'Dapat memancarkan sinar laser saat musim kemarau.',
+          'Tidak memerlukan air minum sepanjang masa hidupnya.',
+          'Dapat terbang melintasi samudra dalam hitungan menit.',
+        ],
+        'correct_option': 0,
+        'explanation': additionalFact ?? 'Satwa ini memiliki peranan penting dalam keanekaragaman hayati.',
+      },
+      {
+        'category': category ?? 'Fauna',
+        'question': 'Di habitat alaminya, satwa "$animalName" berfungsi penting menjaga kelestarian alam sebagai...',
+        'options': [
+          'Bagian dari rantai makanan dan keseimbangan biodiversitas ekosistem',
+          'Hama perusak mutlak yang harus dimusnahkan',
+          'Parasit mematikan bagi semua pohon hutan',
+          'Satwa pengganggu tanpa peranan ekologis',
+        ],
+        'correct_option': 0,
+        'explanation': 'Setiap satwa seperti $animalName memiliki peran spesifik menjaga kelangsungan ekosistem alam.',
+      },
+      {
+        'category': 'Taksonomi',
+        'question': 'Nama ilmiah binomial resmi yang diakui dalam zoologi internasional untuk "$animalName" adalah...',
+        'options': [
+          speciesName,
+          'Canis lupus familiaris',
+          'Felis catus domesticus',
+          'Gallus gallus domesticus',
+        ],
+        'correct_option': 0,
+        'explanation': 'Tata nama ilmiah resmi untuk satwa $animalName adalah $speciesName.',
+      },
+    ];
+
+    // 1. Simpan ke database Supabase jika online (tabel public.quiz_questions)
+    if (client != null && user != null && !AppConfig.isDemoMode) {
+      try {
+        final toInsert = generatedQuestions.map((q) => {
+          'category': q['category'],
+          'question': q['question'],
+          'options': q['options'],
+          'correct_option': q['correct_option'],
+          'explanation': q['explanation'],
+          'is_active': true,
+        }).toList();
+
+        await client.from('quiz_questions').upsert(
+          toInsert,
+          onConflict: 'question',
+          ignoreDuplicates: true,
+        );
+        debugPrint('Sukses menyuntikkan ${generatedQuestions.length} soal kuis AI baru untuk satwa $animalName ke server.');
+      } catch (e) {
+        debugPrint('Catatan: Gagal menyimpan soal dinamis ke Supabase: $e');
+      }
+    }
+
+    // 2. Simpan juga ke bank memori lokal aplikasi agar bisa dimainkan langsung
+    int addedCount = 0;
+    for (final q in generatedQuestions) {
+      final exists = _mockQuestionsBank.any((existing) => existing['question'] == q['question']);
+      if (!exists) {
+        _mockQuestionsBank.add({
+          'id': 'dynamic-q-${DateTime.now().millisecondsSinceEpoch}-$addedCount',
+          'category': q['category'],
+          'question': q['question'],
+          'options': q['options'],
+          'correct_option': q['correct_option'],
+          'explanation': q['explanation'],
+        });
+        addedCount++;
+      }
+    }
+
+    return addedCount;
+  }
 }
+

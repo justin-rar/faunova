@@ -1948,6 +1948,21 @@ void main() {
       expect(check.isCorrect, equals(0 == check.correctOption));
     });
 
+    test('QuizService: generateDynamicQuestionsForAnimal membuat 5 soal baru seputar satwa yang difoto', () async {
+      final added = await QuizService.instance.generateDynamicQuestionsForAnimal(
+        animalName: 'Kucing Emas Asia',
+        speciesName: 'Catopuma temminckii',
+        category: 'Mamalia',
+        description: 'Kucing liar misterius berbulu cokelat keemasan di hutan Sumatera.',
+        additionalFact: 'Sering berkomunikasi menggunakan desisan dan vokalisasi kompleks.',
+      );
+
+      expect(added, equals(5));
+
+      final session = await QuizService.instance.startQuizSession();
+      expect(session.questions.length, equals(10));
+    });
+
     testWidgets('QuizArenaPage: Menampilkan timer 15s, 3 nyawa, kartu soal, dan 4 opsi jawaban', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;

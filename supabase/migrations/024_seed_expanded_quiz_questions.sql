@@ -199,5 +199,146 @@ INSERT INTO public.quiz_questions (category, question, options, correct_option, 
     '["Sensor pendeteksi suhu pasir geotermal tempat bertelur", "Senjata mematikan untuk berburu serangga", "Kantung penyimpan makanan cadangan", "Alat penampung air hujan saat badai"]'::jsonb,
     0,
     'Benjolan (knob) di kepala Maleo diduga membantu merasakan panas bumi atau suhu pasir yang ideal untuk menetaskan telurnya.'
+),
+(
+    'Mamalia',
+    'Kukang Jawa (Nycticebus javanicus) adalah satu-satunya primata berbisa di dunia yang mengeluarkan cairan bisa berbahaya dari...',
+    '["Kelenjar brakial di lipatan siku bagian dalam", "Kantung khusus di bawah lidah", "Ujung kuku jemari kaki belakang", "Kelenjar aroma di ekor"]'::jsonb,
+    0,
+    'Kukang menjilat kelenjar brakial di sikunya lalu mencampurnya dengan air liur untuk menghasilkan gigitan berbisa yang dapat memicu syok anafilaktik.'
+),
+(
+    'Mamalia',
+    'Lutung Jawa (Trachypithecus auratus) yang baru lahir memiliki keunikan fisik yang sangat mencolok dibanding induknya yang hitam pekat yaitu...',
+    '["Bulu berwarna oranye keemasan terang benderang", "Tidak memiliki ekor sama sekali", "Memiliki cakar tajam seperti kucing", "Tubuh bercahaya di malam hari"]'::jsonb,
+    0,
+    'Bayi Lutung Jawa lahir dengan bulu berwarna oranye terang mencolok, yang memudahkan kelompok menjaga dan mengawasi bayi di antara rimbunnya hutan.'
+),
+(
+    'Mamalia',
+    'Tapir Asia (Tapirus indicus) memiliki corak warna dua warna (hitam dan pelana putih di punggung) yang berfungsi sebagai...',
+    '["Kamuflase disrupsi visual pemecah siluet di malam hari", "Penyerap radiasi sinar matahari siang", "Penolak gigitan nyamuk hutan lebat", "Penanda hierarki kepemimpinan kawanan"]'::jsonb,
+    0,
+    'Pola hitam-putih kontras memecah siluet tubuh tapir di bawah sinar rembulan di hutan sehingga predator sulit mengenali bentuk tubuh utuhnya.'
+),
+(
+    'Biota Laut',
+    'Pari Manta Karang (Mobula alfredi) memiliki corak bintik hitam unik di bagian perutnya yang dimanfaatkan para peneliti untuk...',
+    '["Identifikasi individu satwa menyerupai sidik jari manusia", "Menghasilkan sengatan listrik pertahanan diri", "Menarik perhatian mangsa ikan kecil", "Menentukan perkiraan umur tulang ikan"]'::jsonb,
+    0,
+    'Pola bintik di perut Pari Manta bersifat permanen dan unik untuk setiap individu, menjadi dasar metode foto-identifikasi populasi di alam.'
+),
+(
+    'Mamalia',
+    'Kucing Batu (Pardofelis marmorata) adalah kucing liar arboreal Indonesia yang memiliki adaptasi ekor sangat khas yaitu...',
+    '["Sangat panjang dan tebal berotot untuk keseimbangan di dahan", "Sangat pendek seperti ekor kelinci", "Bergerigi tajam untuk mencengkeram ranting", "Berwarna putih polos tanpa corak"]'::jsonb,
+    0,
+    'Ekor Kucing Batu panjangnya menyamai panjang tubuhnya dan berfungsi sebagai penyeimbang sempurna saat melompat di tajuk pohon tinggi.'
+),
+(
+    'Aves',
+    'Burung Paok Bergaris (Pitta guajana) adalah burung endemik lantai hutan Jawa yang mencari makan berupa cacing dan serangga di antara...',
+    '["Seresah tumpukan daun kering lantai hutan", "Tajuk puncak tertinggi pohon beringin", "Batang pohon pinus berlumut", "Bebatuan licin dasar air terjun"]'::jsonb,
+    0,
+    'Burung Paok banyak menghabiskan waktu melompat-lompat di lantai hutan yang lembap untuk membongkar seresah daun mencari invertebrata.'
+),
+(
+    'Reptilia',
+    'Tuntong Laut (Batagur borneoensis) jantan dewasa mengalami perubahan warna dramatis saat musim kawin berupa...',
+    '["Warna kepala berubah putih terang dengan garis merah di antara mata", "Tempurung berubah hijau cerah bercahaya", "Leher memanjang dua kali ukuran semula", "Kaki berubah keemasan mengilap"]'::jsonb,
+    0,
+    'Perubahan warna kepala Tuntong jantan menjadi putih mencolok dengan corak merah terang berfungsi sebagai sinyal visual memikat betina.'
+),
+(
+    'Biota Laut',
+    'Hiu Paus (Rhincodon typus) yang sering dijumpai di perairan Gorontalo dan Papua adalah ikan terbesar di dunia yang memakan...',
+    '["Plankton dan ikan kecil melalui tapis insang", "Bangkai mamalia paus besar", "Singa laut dan penyu dewasa", "Terumbu karang dan rumput laut"]'::jsonb,
+    0,
+    'Meskipun bertubuh raksasa hingga 12 meter lebih, Hiu Paus adalah pemakan saring (filter feeder) yang tidak memangsa satwa besar.'
+),
+(
+    'Invertebrata',
+    'Laba-laba Pelompat (Salticidae) memiliki sepasang mata utama depan berukuran sangat besar yang memungkinkannya...',
+    '["Melihat warna dan memiliki persepsi kedalaman 3D yang sangat tajam", "Melihat dalam kegelapan total tanpa cahaya", "Menembakkan racun dari kejauhan", "Mendeteksi gelombang radio mangsa"]'::jsonb,
+    0,
+    'Laba-laba pelompat memiliki ketajaman visual terbaik di antara semua arthropoda untuk memperhitungkan jarak lompatan saat menerkam mangsa.'
+),
+(
+    'Aves',
+    'Burung Kacamata Wangi-wangi (Zosterops flavissimus) adalah burung endemik Kepulauan Wakatobi dengan ciri khas...',
+    '["Lingkaran bulu putih halus melingkar di sekeliling matanya", "Ekor kaku melengkung berbentuk sabit", "Paruh bergerigi pemakan ikan kecil", "Jambul merah jambu di dahi"]'::jsonb,
+    0,
+    'Ciri utama genus Zosterops adalah cincin kacamata putih bersih yang mengelilingi bola mata.'
+),
+(
+    'Aves',
+    'Burung Kasuari di Papua selain dapat berlari kencang di daratan juga memiliki kemampuan fisik yang jarang diketahui yaitu...',
+    '["Mampu berenang dengan lincah menyeberangi sungai lebar dan teluk laut", "Mampu terbang melayang rendah di malam hari", "Mampu memanjat pohon kelapa menggunakan sayap", "Bisa menggali terowongan bawah tanah"]'::jsonb,
+    0,
+    'Kasuari adalah perenang yang sangat andal dan sering terlihat menyeberangi sungai deras atau perairan pesisir di Papua.'
+),
+(
+    'Reptilia',
+    'Komodo (Varanus komodoensis) membunuh mangsa berukuran besar seperti kerbau dan rusa dengan mengandalkan gigitan yang mengandung...',
+    '["Kelenjar bisa antikoagulan yang mencegah pembekuan darah", "Bisa hemotoksin penembus tulang", "Bisa neurotoksin penyengat saraf seketika", "Zat asam korosif penghancur kulit"]'::jsonb,
+    0,
+    'Riset modern membuktikan Komodo memiliki kelenjar bisa di rahang bawah yang mengeluarkan senyawa racun yang menurunkan tekanan darah dan mencegah darah membeku.'
+),
+(
+    'Mamalia',
+    'Gajah Kerdil Borneo (Elephas maximus borneensis) memiliki ciri morfologis khas dibanding gajah Asia lainnya yaitu...',
+    '["Ekor sangat panjang yang menyentuh tanah dan gading lebih lurus", "Telinga dua kali lebih lebar dari gajah Afrika", "Memiliki dua punuk lemak di punggung", "Tidak pernah memiliki rambut sama sekali"]'::jsonb,
+    0,
+    'Gajah Kerdil Kalimantan memiliki postur lebih membulat (baby-faced), ekor panjang menjuntai hingga tanah, dan temperamen lebih jinak.'
+),
+(
+    'Ikan',
+    'Ikan Arwana Asia (Scleropages formosus) memiliki sepasang sungut (barbel) di ujung bibir bawahnya yang berguna untuk...',
+    '["Mendeteksi riak getaran mangsa di permukaan air", "Menghasilkan sengatan listrik pertahanan", "Bernapas mengambil udara di musim kemarau", "Mengaitkan tubuh di celah bebatuan arus deras"]'::jsonb,
+    0,
+    'Sungut Arwana merupakan organ sensorik mekanoreseptor sensitif untuk mendeteksi serangga atau katak yang jatuh di permukaan air.'
+),
+(
+    'Reptilia',
+    'Kura-kura Hutan Sulawesi (Leucocephalon yuwonoi) jantan dewasa memiliki ciri unik pada kepalanya berupa...',
+    '["Warna kepala memutih kontras menyerupai tengkorak", "Tanduk bercabang tiga di atas hidung", "Kantung kulit yang bisa mengembang di dagu", "Mata merah menyala di kegelapan"]'::jsonb,
+    0,
+    'Jantan dewasa spesies langka ini memiliki kepala berwarna kuning pucat keputihan yang sangat kontras dengan leher dan tubuhnya.'
+),
+(
+    'Invertebrata',
+    'Kupu-kupu Sayap Burung Peri (Ornithoptera chimaera) adalah spesies kupu-kupu raksasa dengan sayap hijau keemasan yang hidup di dataran tinggi pulau...',
+    '["Papua", "Jawa", "Sumatera", "Nusa Tenggara"]'::jsonb,
+    0,
+    'Genus Ornithoptera (kupu-kupu sayap burung) adalah serangga megah yang hidup di hutan pegunungan Pulau Papua dan dilindungi ketat.'
+),
+(
+    'Mamalia',
+    'Siamang (Symphalangus syndactylus) di hutan Sumatera memiliki kantung tenggorokan besar (gular sac) yang berfungsi untuk...',
+    '["Menghasilkan resonansi suara panggilan duet yang terdengar hingga 2 km", "Menyimpan cadangan buah dan air", "Menghangatkan tubuh saat suhu dingin", "Mengembangkan tubuh untuk menakut-nakuti macan"]'::jsonb,
+    0,
+    'Kantung gular dapat mengembang seukuran kepala siamang untuk memperkeras resonansi suara panggilan teritorial melintasi kanopi hutan.'
+),
+(
+    'Mamalia',
+    'Pesut Mahakam memiliki bentuk kepala yang berbeda dari lumba-lumba laut pada umumnya, yaitu...',
+    '["Membulat tumpul tanpa moncong paruh yang memanjang", "Moncong sangat panjang menyerupai paruh burung", "Memiliki cula tajam di atas dahi", "Pipih melebar menyerupai ikan pari"]'::jsonb,
+    0,
+    'Pesut Mahakam (Orcaella brevirostris) memiliki dahi membulat tinggi (melon) dan tidak memiliki moncong moncong panjang khas lumba-lumba laut.'
+),
+(
+    'Konservasi',
+    'Taman Nasional Komodo yang dibentuk pada tahun 1980 melindungi habitat alami biawak purba Komodo di kepulauan...',
+    '["Pulau Komodo, Rinca, Padar, Gili Motang, dan Nusa Kode", "Kepulauan Mentawai dan Nias", "Kepulauan Karimunjawa dan Bawean", "Kepulauan Derawan dan Maratua"]'::jsonb,
+    0,
+    'Taman Nasional Komodo mencakup gugusan tiga pulau besar (Komodo, Rinca, Padar) serta puluhan pulau kecil di Selat Sape, NTT.'
+),
+(
+    'Reptilia',
+    'Bunglon Sisir (Gonocephalus chamaeleontinus) mengandalkan pertahanan utama dari ancaman predator hutan berupa...',
+    '["Kamuflase mimikri menyatu sempurna dengan lumut dan kulit kayu", "Bisa gigitan neurotoksik mematikan", "Kemampuan memutuskan ekor berulang kali", "Lompatan jauh di atas permukaan air"]'::jsonb,
+    0,
+    'Kadal bermahkota sisir ini memiliki pola warna dan tekstur kulit kasar yang meniru lumut dan kulit pohon hutan hujan tropis Jawa-Sumatera.'
 )
 ON CONFLICT (question) DO NOTHING;
+

@@ -8,6 +8,7 @@ import '../../../core/widgets/glass_app_bar.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/capture_model.dart';
 import '../models/scan_result_model.dart';
+import '../../../core/services/quiz_service.dart';
 import 'scan_chat_page.dart';
 
 class ScanResultPage extends StatefulWidget {
@@ -27,6 +28,19 @@ class _ScanResultPageState extends State<ScanResultPage> {
   CaptureModel? _savedCapture;
 
   ScanResultModel get scanResult => widget.scanResult;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.scanResult.isAnimal && widget.scanResult.name != null) {
+      QuizService.instance.generateDynamicQuestionsForAnimal(
+        animalName: widget.scanResult.name!,
+        speciesName: widget.scanResult.categoryOrSpecies ?? widget.scanResult.name!,
+        description: widget.scanResult.description,
+        additionalFact: widget.scanResult.additionalFact,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -427,6 +441,33 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 desc.toLowerCase().contains('malam') ? 'Nokturnal' : 'Spesimen Lapangan',
               ),
             ],
+          ),
+
+          // Lencana AI Dynamic Quiz Generator
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.emas.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.emasTua.withValues(alpha: 0.4), width: 0.9),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.emasTua),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'AI otomatis menambahkan 5 soal kuis baru seputar satwa ini ke Bank Soal!',
+                    style: AppTypography.labelCaption(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.emasTua,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

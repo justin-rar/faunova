@@ -785,6 +785,90 @@ serve(async (req: Request) => {
         );
       }
 
+      // Generate 5 soal kuis AI secara otomatis untuk memperluas bank soal (Plan Crowdsourced Quiz)
+      if (isAnimal && parsedResult?.name && parsedResult?.categoryOrSpecies) {
+        (async () => {
+          try {
+            const animalName = parsedResult.name;
+            const speciesName = parsedResult.categoryOrSpecies;
+            const desc = parsedResult.description || "";
+            const fact = parsedResult.additionalFact || "";
+            const firstGenus = speciesName.trim().split(" ")[0] || "Fauna";
+
+            const generatedQuestions = [
+              {
+                category: "Fauna",
+                question: `Satwa "${animalName}" (${speciesName}) diklasifikasikan ke dalam taksonomi genus...`,
+                options: [firstGenus, "Panthera", "Varanus", "Macaca"],
+                correct_option: 0,
+                explanation: `${animalName} diklasifikasikan ke dalam genus ${firstGenus}.`,
+                is_active: true,
+              },
+              {
+                category: "Fauna",
+                question: `Berdasarkan pengamatan lapangan, adaptasi utama satwa "${animalName}" (${speciesName}) adalah...`,
+                options: [
+                  desc || "Beradaptasi secara alami pada ekosistem hutan tropis Indonesia.",
+                  "Hidup di kutub es tanpa vegetasi tanaman.",
+                  "Hanya mengonsumsi bebatuan vulkanik kering.",
+                  "Memiliki sayap berselaput untuk menyelam di palung laut.",
+                ],
+                correct_option: 0,
+                explanation: `${animalName}: ${desc || "Satwa khas ekosistem nusantara."}`,
+                is_active: true,
+              },
+              {
+                category: "Konservasi",
+                question: `Fakta unik biologi mengenai satwa "${animalName}" di alam liar adalah...`,
+                options: [
+                  fact || "Memiliki peran penting menjaga keseimbangan rantai makanan habitat aslinya.",
+                  "Dapat memancarkan sinar laser saat musim kemarau.",
+                  "Tidak memerlukan air minum sepanjang masa hidupnya.",
+                  "Dapat terbang melintasi samudra dalam hitungan menit.",
+                ],
+                correct_option: 0,
+                explanation: fact || "Satwa ini memiliki peranan penting dalam keanekaragaman hayati.",
+                is_active: true,
+              },
+              {
+                category: "Fauna",
+                question: `Di habitat alaminya, satwa "${animalName}" berfungsi penting menjaga kelestarian alam sebagai...`,
+                options: [
+                  "Bagian dari rantai makanan dan keseimbangan biodiversitas ekosistem",
+                  "Hama perusak mutlak yang harus dimusnahkan",
+                  "Parasit mematikan bagi semua pohon hutan",
+                  "Satwa pengganggu tanpa peranan ekologis",
+                ],
+                correct_option: 0,
+                explanation: `Setiap satwa seperti ${animalName} memiliki peran spesifik menjaga kelangsungan ekosistem alam.`,
+                is_active: true,
+              },
+              {
+                category: "Taksonomi",
+                question: `Nama ilmiah binomial resmi yang diakui dalam zoologi internasional untuk "${animalName}" adalah...`,
+                options: [
+                  speciesName,
+                  "Canis lupus familiaris",
+                  "Felis catus domesticus",
+                  "Gallus gallus domesticus",
+                ],
+                correct_option: 0,
+                explanation: `Tata nama ilmiah resmi untuk satwa ${animalName} adalah ${speciesName}.`,
+                is_active: true,
+              },
+            ];
+
+            await adminClient.from("quiz_questions").upsert(
+              generatedQuestions,
+              { onConflict: "question", ignoreDuplicates: true }
+            );
+            console.log(`Berhasil menambahkan 5 soal kuis dinamis untuk ${animalName} ke database.`);
+          } catch (quizErr) {
+            console.warn("Gagal membuat soal kuis dinamis di background:", quizErr);
+          }
+        })();
+      }
+
       return new Response(
         JSON.stringify({
           scanId: newScan.id,

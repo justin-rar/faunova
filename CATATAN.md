@@ -1742,8 +1742,8 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 - **Integrasi Logo di Antarmuka Aplikasi**:
   - `LoginPage`: Emblem login kini menampilkan logo resmi Faunova berbingkai emas halus.
   - `AppSettingsSheet`: Kartu Tentang Faunova kini memuat logo resmi aplikasi.
-- **Pembaruan Bank Kuis (40 Soal)**:
-  - Bank soal lokal diperluas menjadi 40 soal taksonomi dan biogeografi satwa Indonesia.
+- **Pembaruan Bank Kuis (60 Soal)**:
+  - Bank soal lokal diperluas menjadi 60 soal taksonomi dan biogeografi satwa Indonesia.
   - Migrasi `024_seed_expanded_quiz_questions.sql` dibuat untuk Supabase.
 - **Verifikasi**:
   - `flutter analyze`: **0 issues / Bersih total**.
@@ -1755,5 +1755,28 @@ Sesuai `scope.md` baris 33 (*Uji berisiko: Edge Function ke Gemini dengan foto a
 
 ### 3. Langkah Berikutnya
 - Jika ingin ikon aplikasi di home screen HP berganti, jalankan kembali `flutter run` dari awal agar APK baru dengan ikon launcher terpasang di HP.
+
+---
+
+## Sesi Bank Soal Kuis AI Dinamis (Crowdsourced dari Foto Satwa) & 60 Soal Kurasi — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Bank Soal Terkurasi Diperbanyak (60 Soal Lengkap)**:
+  - `supabase/migrations/024_seed_expanded_quiz_questions.sql` diperluas memuat 60 soal seputar Mamalia, Aves, Reptilia, Amfibi, Biota Laut, Invertebrata, dan Konservasi Satwa Nusantara (termasuk Komodo, Badak Jawa, Tuntong Laut, Hiu Paus Gorontalo, Kucing Emas Asia, Siamang, Pesut Mahakam, dll).
+  - Sinkronisasi `_mockQuestionsBank` di `QuizService` untuk mode demo/luring dengan total 60 butir soal acak berbobot 10 per ronde.
+- **Fitur Bank Soal AI Dinamis (AI-Generated Crowdsourced Quiz Bank)**:
+  - Setiap kali pengguna memotret satwa dan hasil scan diverifikasi (`isAnimal: true`), sistem AI Faunova secara otomatis mengekstrak ciri morfologi, taksonomi, dan fakta unik satwa tersebut untuk merumuskan **5 soal kuis baru** dengan 4 opsi pilihan ganda dan kunci jawaban ilmiah yang valid.
+  - Sisi Client: `generateDynamicQuestionsForAnimal` di `QuizService` menambahkan soal secara langsung ke bank soal lokal dan mengunggahnya ke tabel Supabase `quiz_questions`.
+  - Sisi Server: Edge Function `ai-gateway` menjalankan pembuatan 5 soal kuis satwa di background dan menyimpannya ke tabel `quiz_questions` di Supabase.
+  - Tampilan UI: Pada layar hasil scan (`ScanResultPage`), terdapat badge notifikasi elegan beraksen emas *"✨ AI otomatis menambahkan 5 soal kuis baru seputar satwa ini ke Bank Soal!"*.
+- **Pengujian & Verifikasi**:
+  - `flutter analyze`: **0 issues found**.
+  - `flutter test`: **126/126 pengujian lulus (100% pass)**, termasuk unit test pembuatan 5 soal dinamis per satwa yang difoto.
+
+### 2. Belum Teruji / Membutuhkan HP Fisik
+- Mengamati pemotretan satwa langsung di lapangan dan memeriksa kemunculan soal satwa tersebut saat masuk ke Arena Kuis.
+
+### 3. Langkah Berikutnya
+- Melakukan Hot Restart (`R`) pada sesi `flutter run` di HP untuk menikmati penambahan soal dan integrasi kuis AI dinamis.
 
 
