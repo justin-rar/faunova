@@ -5,6 +5,7 @@
 // ==============================================================================
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -158,12 +159,32 @@ class CaptureService {
       );
     }
 
+    // Unggah file foto ke Supabase Storage (bucket 'captures') jika file lokal tersedia di perangkat
+    String effectivePhotoPath = photoPath ?? '';
+    if (photoPath != null && photoPath.isNotEmpty) {
+      try {
+        final localFile = File(photoPath);
+        if (localFile.existsSync()) {
+          final fileExt = photoPath.contains('.') ? photoPath.split('.').last : 'jpg';
+          final storagePath = '$userId/$scanId.$fileExt';
+          await client.storage.from('captures').upload(
+            storagePath,
+            localFile,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+          effectivePhotoPath = 'captures/$storagePath';
+        }
+      } catch (e) {
+        debugPrint('CaptureService: Gagal upload ke Supabase Storage, fallback ke path lokal: $e');
+      }
+    }
+
     try {
       final response = await client.rpc(
         'save_capture_with_chain',
         params: {
           'p_scan_id': scanId,
-          'p_photo_path': photoPath,
+          'p_photo_path': effectivePhotoPath,
           'p_custom_desc': customDescription,
         },
       );
@@ -180,7 +201,7 @@ class CaptureService {
         'id': row['capture_id'],
         'scan_id': scanId,
         'user_id': userId,
-        'photo_object_path': photoPath ?? '',
+        'photo_object_path': effectivePhotoPath,
         'species_name': row['species_name'] ?? 'Satwa Terverifikasi',
         'category': row['category'],
         'description': customDescription ?? '',

@@ -108,22 +108,7 @@ void main() {
   });
 
   group('BUG 1: Resolusi Foto Akun Asli vs Akun Dummy', () {
-    test('1. MediaResolver menyelesaikan remote device path akun asli ke foto kurasi satwa', () {
-      const remoteCachePath = '/data/user/0/com.example.faunova/cache/CAP8715336324506540322.jpg';
-      
-      final resolvedPangolin = MediaResolver.resolvePhotoUrl(
-        remoteCachePath,
-        speciesName: 'Pangolin',
-        category: 'Manis javanica',
-      );
-
-      // Verifikasi bahwa URL diselesaikan ke URL foto resolusi tinggi, BUKAN path lokal yang mati
-      expect(resolvedPangolin.startsWith('https://'), isTrue);
-      expect(resolvedPangolin.contains('unsplash.com'), isTrue);
-      debugPrint('Hasil resolusi foto akun asli (Pangolin): $resolvedPangolin');
-    });
-
-    test('2. MediaResolver menyelesaikan path storage relatif ke public Supabase storage URL', () {
+    test('1. MediaResolver menyelesaikan path storage akun asli ke public Supabase storage URL', () {
       const storagePath = 'captures/3c0ef0d9-d475-4ddf-b031/scan_123.jpg';
       final resolvedStorage = MediaResolver.resolvePhotoUrl(storagePath);
 
@@ -132,14 +117,27 @@ void main() {
       debugPrint('Hasil resolusi path Supabase Storage: $resolvedStorage');
     });
 
-    testWidgets('3. PostCard menampilkan foto satwa pada akun asli tanpa card placeholder kosong', (WidgetTester tester) async {
-      final realAccountPost = PostModel(
+    test('2. MediaResolver menyelesaikan remote path perangkat lain ke string kosong (tanpa foto palsu)', () {
+      const remoteCachePath = '/data/user/0/com.example.faunova/cache/CAP8715336324506540322.jpg';
+      final resolvedPangolin = MediaResolver.resolvePhotoUrl(
+        remoteCachePath,
+        speciesName: 'Pangolin',
+        category: 'Manis javanica',
+      );
+
+      // Verifikasi: Harus string kosong (bukan Unsplash hewan lain)
+      expect(resolvedPangolin, isEmpty);
+      expect(resolvedPangolin.contains('unsplash.com'), isFalse);
+    });
+
+    testWidgets('3. PostCard merender foto dari Supabase Storage secara sempurna', (WidgetTester tester) async {
+      final storagePost = PostModel(
         id: 'real-1',
         captureId: 'cap-2',
         caption: 'Observasi satwa Pangolin berhasil terdokumentasi.',
         speciesName: 'Pangolin',
         category: 'Manis javanica',
-        photoUrl: '/data/user/0/com.example.faunova/cache/CAP8715336324506540322.jpg',
+        photoUrl: 'captures/3c0ef0d9-d475-4ddf-b031/scan_123.jpg',
         locationVisibility: 'coarse',
         blockSeq: 1,
         blockHash: 'hash-2',
@@ -153,17 +151,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PostCard(post: realAccountPost),
+            body: PostCard(post: storagePost),
           ),
         ),
       );
       await tester.pump();
 
-      // Post akun asli harus merender Image
+      // Post dari storage harus merender Image
       expect(find.byType(Image), findsOneWidget);
-      // Ikon placeholder tidak boleh muncul lagi
       expect(find.byIcon(Icons.pets_rounded), findsNothing);
-      debugPrint('VERIFIKASI WIDGET LOLOS: PostCard akun asli merender Image tanpa placeholder!');
+      debugPrint('VERIFIKASI WIDGET LOLOS: PostCard storage merender Image tanpa placeholder!');
     });
   });
 }

@@ -1,17 +1,21 @@
 import 'dart:io';
 import '../config/app_config.dart';
-import '../services/search_service.dart';
 
 /// Utilitas penyelesaian media terpadu untuk Faunova.
-/// Memastikan foto dari akun asli yang tersimpan sebagai path lokal di HP uploader
-/// atau storage path tetap dapat dirender secara sempurna di feed perangkat lain.
+/// Memastikan foto observasi diselesaikan secara akurat:
+/// - URL internet atau asset aplikasi dirender langsung.
+/// - File lokal di perangkat saat ini dirender apa adanya.
+/// - Path Supabase Storage (captures/) diselesaikan ke URL publik penyimpanan.
+/// - Jika file lokal milik perangkat lain tidak ditemukan di perangkat saat ini,
+///   kembalikan string kosong ('') agar antarmuka menampilkan placeholder jujur (Icons.pets_rounded),
+///   BUKAN foto kurasi/stok pengganti satwa lain yang salah.
 class MediaResolver {
   MediaResolver._();
 
   /// Menyelesaikan path foto menjadi URL atau file path yang valid
   static String resolvePhotoUrl(String? rawPath, {String? speciesName, String? category}) {
     if (rawPath == null || rawPath.trim().isEmpty) {
-      return SearchService.instance.getCuratedPhotoForSpecies(speciesName, category) ?? '';
+      return '';
     }
 
     final trimmed = rawPath.trim();
@@ -39,13 +43,9 @@ class MediaResolver {
       return '$baseUrl/storage/v1/object/public/$trimmed';
     }
 
-    // 5. File lokal dari perangkat uploader lain (mis. /data/user/0/.../cache/CAP_xxx.jpg)
-    // Selesaikan secara cerdas ke foto kurasi spesies berkualitas tinggi
-    final curated = SearchService.instance.getCuratedPhotoForSpecies(speciesName, category);
-    if (curated != null && curated.isNotEmpty) {
-      return curated;
-    }
-
-    return trimmed;
+    // 5. File lokal dari perangkat pengunggah lain yang tidak ada di perangkat ini:
+    // Hapus fallback gambar kurasi/stok agar tidak menampilkan satwa yang salah.
+    // Kembalikan string kosong sehingga UI merender placeholder jujur.
+    return '';
   }
 }
