@@ -340,7 +340,7 @@ async function callGemini(
   );
 }
 
-// Panggil DeepSeek API untuk Chat Tanya-Jawab (Fallback jika Gemini sibuk/limit)
+// Panggil DeepSeek API untuk Chat Tanya-Jawab (deepseek-chat V3 utama, deepseek-flash cadangan)
 async function callDeepSeekChat(
   apiKey: string,
   messages: Array<{ role: string; content: string }>,
@@ -348,14 +348,14 @@ async function callDeepSeekChat(
 ): Promise<{ ok: boolean; reply?: string; error?: string }> {
   try {
     const completionsUrl = "https://api.deepseek.com/chat/completions";
-    const models = ["deepseek-flash", "deepseek-chat"];
+    const models = ["deepseek-chat", "deepseek-flash"];
 
     for (const model of models) {
       try {
         const payload = {
           model: model,
           messages: messages,
-          temperature: 0.6,
+          temperature: 0.2,
           max_tokens: 1000,
         };
 
@@ -394,7 +394,7 @@ async function callDeepSeekChat(
   return { ok: false, error: "DeepSeek Chat tidak menghasilkan respons" };
 }
 
-// Panggil DeepSeek API untuk Identifikasi Satwa Vision (DeepSeek-V4.1-Flash multimodal)
+// Panggil DeepSeek API untuk Identifikasi Satwa Vision (Multimodal Flash)
 async function callDeepSeekVision(
   apiKey: string,
   prompt: string,
@@ -403,12 +403,12 @@ async function callDeepSeekVision(
   timeoutMs = 30000
 ): Promise<{ ok: boolean; data?: any; error?: string }> {
   const completionsUrl = "https://api.deepseek.com/chat/completions";
-  const models = ["deepseek-flash", "deepseek-v4-flash-vision-exp", "deepseek-chat"];
+  const models = ["deepseek-flash", "deepseek-chat", "deepseek-v4-flash-vision-exp"];
   let lastErrText = "";
 
   for (const model of models) {
     try {
-      const payload = {
+      const payload: any = {
         model: model,
         messages: [
           {
@@ -468,16 +468,24 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const rawDeepSeekKey = Deno.env.get("DEEPSEEK_API_KEY")?.trim();
+    const rawGeminiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
     const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN");
     const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
-    const deepseekApiKey = Deno.env.get("DEEPSEEK_API_KEY");
 
-    if (!supabaseUrl || !geminiApiKey) {
+    // Deteksi cerdas: jika pengguna mengganti nilai di GEMINI_API_KEY dengan token DeepSeek
+    // (yang biasanya berawalan 'sk-') atau memasukkannya ke DEEPSEEK_API_KEY
+    const deepseekApiKey =
+      rawDeepSeekKey ||
+      (rawGeminiKey && rawGeminiKey.startsWith("sk-") ? rawGeminiKey : undefined);
+    const geminiApiKey =
+      rawGeminiKey && !rawGeminiKey.startsWith("sk-") ? rawGeminiKey : undefined;
+
+    if (!supabaseUrl || (!deepseekApiKey && !geminiApiKey)) {
       return new Response(
         JSON.stringify({
           error: "CONFIGURATION_ERROR",
-          message: "Server environment variables are incomplete.",
+          message: "Kredensial API DeepSeek atau Gemini belum terkonfigurasi di server.",
         }),
         {
           status: 500,
@@ -777,12 +785,35 @@ serve(async (req: Request) => {
         "}";
 
       let parsedResult: any = null;
-      let usedAiProvider = "Google Gemini Flash";
+      let usedAiProvider = "DeepSeek Vision";
 
-      // 1. PRIORITAS UTAMA: Google Gemini Flash (Multimodal Vision)
-      if (geminiApiKey) {
+      // 1. PRIORITAS UTAMA: DeepSeek Vision API (Multimodal Flash)
+      if (deepseekApiKey) {
         try {
-          console.log("Menganalisis foto satwa dengan Google Gemini Flash...");
+          console.log("Menganalisis foto satwa dengan DeepSeek Vision...");
+          const dsResult = await callDeepSeekVision(
+            deepseekApiKey,
+            prompt,
+            mimeType,
+            imageBase64,
+            30000
+          );
+          if (dsResult.ok && dsResult.data) {
+            parsedResult = dsResult.data;
+            usedAiProvider = "DeepSeek Vision";
+            console.log("Identifikasi satwa sukses via DeepSeek Vision");
+          } else {
+            console.warn("DeepSeek Vision belum menghasilkan data:", dsResult.error, "Mencoba fallback...");
+          }
+        } catch (dsErr: any) {
+          console.warn("DeepSeek Vision exception:", dsErr?.message || dsErr, "Mencoba fallback...");
+        }
+      }
+
+      // 2. CADANGAN 1: Google Gemini Flash (Multimodal Vision jika DeepSeek terkendala)
+      if (!parsedResult && geminiApiKey) {
+        try {
+          console.log("Mencoba cadangan Google Gemini Flash...");
           const geminiPayload = {
             contents: [
               {
@@ -822,18 +853,18 @@ serve(async (req: Request) => {
               geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
               "{}";
             parsedResult = extractCleanJson(rawJsonText);
-            usedAiProvider = "Google Gemini Flash";
-            console.log("Identifikasi satwa sukses via Google Gemini Flash");
+            usedAiProvider = "Google Gemini Flash (Cadangan)";
+            console.log("Identifikasi satwa sukses via cadangan Google Gemini Flash");
           } else {
             const errorText = await geminiResp.text();
-            console.warn("Google Gemini Flash gagal status", geminiResp.status, errorText, "Mencoba fallback...");
+            console.warn("Google Gemini Flash cadangan gagal status", geminiResp.status, errorText, "Mencoba fallback...");
           }
         } catch (geminiErr: any) {
           console.warn("Google Gemini Flash exception:", geminiErr?.message || geminiErr, "Mencoba fallback...");
         }
       }
 
-      // 2. CADANGAN 1: Cloudflare Workers AI Vision (jika Gemini terkendala)
+      // 3. CADANGAN 2: Cloudflare Workers AI Vision (jika DeepSeek dan Gemini terkendala)
       if (!parsedResult && cloudflareApiToken && cloudflareAccountId) {
         try {
           console.log("Mencoba cadangan Cloudflare Workers AI Vision...");
@@ -851,29 +882,6 @@ serve(async (req: Request) => {
           }
         } catch (cfErr: any) {
           console.warn("Cloudflare Vision error:", cfErr?.message || cfErr);
-        }
-      }
-
-      // 3. CADANGAN 2: DeepSeek Vision API (jika Gemini dan Cloudflare terkendala)
-      if (!parsedResult && deepseekApiKey) {
-        try {
-          console.log("Mencoba cadangan DeepSeek Vision API...");
-          const dsResult = await callDeepSeekVision(
-            deepseekApiKey,
-            prompt,
-            mimeType,
-            imageBase64,
-            30000
-          );
-          if (dsResult.ok && dsResult.data) {
-            parsedResult = dsResult.data;
-            usedAiProvider = "DeepSeek Vision (Cadangan)";
-            console.log("Identifikasi satwa sukses via cadangan DeepSeek Vision API");
-          } else {
-            console.warn("DeepSeek Vision cadangan belum menghasilkan data:", dsResult.error);
-          }
-        } catch (dsErr: any) {
-          console.warn("DeepSeek Vision cadangan error:", dsErr?.message || dsErr);
         }
       }
 
@@ -1333,28 +1341,70 @@ serve(async (req: Request) => {
         reply = offTopicRejection;
       }
 
-      // 1. PRIORITAS UTAMA: Google Gemini Flash (Multi-turn Conversation)
+      const systemInstructionText =
+        "PERAN UTAMA: Kamu adalah Naturalis dan Pemandu Konservasi Satwa Faunova yang ramah, sopan, dan berwawasan ilmiah.\n" +
+        `Konteks Satwa yang Sedang Diobservasi:\n` +
+        `- Nama Satwa: ${animalInfo?.name || "Satwa Lapangan"}\n` +
+        `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
+        `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
+        `- Catatan Lapangan: ${animalInfo?.additionalFact || "-"}\n\n` +
+        "ATURAN MUTLAK GUARDRAIL (SANGAT KETAT / ZERO TOLERANCE):\n" +
+        "1. FOKUS HANYA PADA DUNIA SATWA: Kamu HANYA BOLEH menjawab pertanyaan seputar satwa ini (" +
+        (animalInfo?.name || "satwa") +
+        "), atau dunia satwa liar / biologi satwa (habitat, anatomi, pola makan, taksonomi, perlindungan).\n" +
+        "2. LARANGAN KERAS TOPIK LAIN: DILARANG KERAS menjawab topik pemrograman/coding, rumus matematika, fisika/kimia non-biologi, resep masakan, politik, teknologi umum, atau pertanyaan di luar fauna!\n" +
+        "3. WAJIB MENOLAK TOPIK DI LUAR SATWA: Jika pengguna menanyakan topik di luar fauna (misalnya tentang coding, pemrograman, matematika, resep, atau obrolan umum), KAMU WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
+        "Gunakan persis kalimat penolakan ini:\n" +
+        "\"Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, dan ekologinya. Silakan ajukan pertanyaan yang berkaitan dengan " +
+        (animalInfo?.name || "satwa ini") +
+        " ya!\"\n" +
+        "4. FORMAT RESPONS: Bahasa Indonesia yang lugas, hangat, edukatif, dan ringkas (1-2 paragraf pendek). JANGAN PERNAH menyertakan potongan kode program sama sekali.";
+
+      // 1. PRIORITAS UTAMA: DeepSeek Chat (deepseek-chat / deepseek-flash)
+      if (!reply && deepseekApiKey) {
+        try {
+          console.log("Mengirim pesan chat ke DeepSeek Chat...");
+          const dsChatMessages: Array<{ role: string; content: string }> = [
+            {
+              role: "system",
+              content: systemInstructionText,
+            },
+          ];
+
+          if (chatHistory && chatHistory.length > 0) {
+            for (const h of chatHistory) {
+              dsChatMessages.push({
+                role: h.role === "assistant" ? "assistant" : "user",
+                content: h.content,
+              });
+            }
+          }
+
+          dsChatMessages.push({
+            role: "user",
+            content: trimmedMessage,
+          });
+
+          const dsChatResult = await callDeepSeekChat(
+            deepseekApiKey,
+            dsChatMessages
+          );
+
+          if (dsChatResult.ok && dsChatResult.reply) {
+            reply = dsChatResult.reply;
+            console.log("Balasan chat sukses via DeepSeek Chat");
+          } else {
+            console.warn("DeepSeek Chat belum menghasilkan balasan:", dsChatResult.error, "Mencoba fallback...");
+          }
+        } catch (dsErr: any) {
+          console.warn("DeepSeek Chat exception:", dsErr?.message || dsErr, "Mencoba fallback...");
+        }
+      }
+
+      // 2. CADANGAN 1: Google Gemini Flash (Multi-turn Conversation jika DeepSeek terkendala)
       if (!reply && geminiApiKey) {
         try {
-          const systemInstructionText =
-            "PERAN UTAMA: Kamu adalah Naturalis dan Pemandu Konservasi Satwa Faunova yang ramah, sopan, dan berwawasan ilmiah.\n" +
-            `Konteks Satwa yang Sedang Diobservasi:\n` +
-            `- Nama Satwa: ${animalInfo?.name || "Satwa Lapangan"}\n` +
-            `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
-            `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
-            `- Catatan Lapangan: ${animalInfo?.additionalFact || "-"}\n\n` +
-            "ATURAN MUTLAK GUARDRAIL (SANGAT KETAT / ZERO TOLERANCE):\n" +
-            "1. FOKUS HANYA PADA DUNIA SATWA: Kamu HANYA BOLEH menjawab pertanyaan seputar satwa ini (" +
-            (animalInfo?.name || "satwa") +
-            "), atau dunia satwa liar / biologi satwa (habitat, anatomi, pola makan, taksonomi, perlindungan).\n" +
-            "2. LARANGAN KERAS TOPIK LAIN: DILARANG KERAS menjawab topik pemrograman/coding, rumus matematika, fisika/kimia non-biologi, resep masakan, politik, teknologi umum, atau pertanyaan di luar fauna!\n" +
-            "3. WAJIB MENOLAK TOPIK DI LUAR SATWA: Jika pengguna menanyakan topik di luar fauna (misalnya tentang coding, pemrograman, matematika, resep, atau obrolan umum), KAMU WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
-            "Gunakan persis kalimat penolakan ini:\n" +
-            "\"Maaf, sebagai pemandu konservasi satwa Faunova, saya hanya dapat membantu menjawab pertanyaan seputar satwa, habitat, dan ekologinya. Silakan ajukan pertanyaan yang berkaitan dengan " +
-            (animalInfo?.name || "satwa ini") +
-            " ya!\"\n" +
-            "4. FORMAT RESPONS: Bahasa Indonesia yang lugas, hangat, edukatif, dan ringkas (1-2 paragraf pendek). JANGAN PERNAH menyertakan potongan kode program sama sekali.";
-
+          console.log("Mencoba cadangan Google Gemini Flash untuk chat...");
           const geminiChatPayload = {
             systemInstruction: {
               parts: [{ text: systemInstructionText }],
@@ -1384,35 +1434,23 @@ serve(async (req: Request) => {
               geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
               "Maaf, asisten tidak dapat memberikan penjelasan saat ini.";
             reply = rawReply.trim();
-            console.log("Balasan chat sukses via Google Gemini Flash");
+            console.log("Balasan chat sukses via cadangan Google Gemini Flash");
           } else {
             const errorText = await geminiResp.text();
-            console.warn("Gemini chat error, mencoba provider cadangan:", geminiResp.status, errorText);
+            console.warn("Gemini chat cadangan error, mencoba provider berikutnya:", geminiResp.status, errorText);
           }
         } catch (geminiChatErr: any) {
           console.warn("Gemini chat exception:", geminiChatErr?.message || geminiChatErr);
         }
       }
 
-      // 2. CADANGAN 1: Cloudflare MiniMax / Llama untuk Chat jika token dan account ID diset
+      // 3. CADANGAN 2: Cloudflare MiniMax / Llama untuk Chat jika token dan account ID diset
       if (!reply && cloudflareApiToken && cloudflareAccountId) {
         try {
           const cfChatMessages: Array<{ role: string; content: string }> = [
             {
               role: "system",
-              content:
-                "Sistem Faunova: Kamu adalah pemandu konservasi satwa dan naturalis lapangan Faunova yang ramah, santun, dan berbasis sains. " +
-                `Pengguna sedang berdiskusi mengenai hasil observasi satwa berikut:\n` +
-                `- Nama Umum: ${animalInfo?.name || "Satwa Lapangan"}\n` +
-                `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
-                `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
-                `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
-                "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
-                "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
-                (animalInfo?.name || "satwa") +
-                "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
-                "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna, kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
-                "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek).",
+              content: systemInstructionText,
             },
           ];
 
@@ -1441,59 +1479,7 @@ serve(async (req: Request) => {
             console.log("Balasan chat sukses via cadangan Cloudflare Workers AI");
           }
         } catch (cfChatErr: any) {
-          console.warn("Cloudflare MiniMax Chat error, beralih ke cadangan:", cfChatErr?.message || cfChatErr);
-        }
-      }
-
-      // 3. CADANGAN 2: DeepSeek Chat (deepseek-flash / deepseek-chat)
-      if (!reply && deepseekApiKey) {
-        try {
-          const dsChatMessages: Array<{ role: string; content: string }> = [
-            {
-              role: "system",
-              content:
-                "Sistem Faunova: Kamu adalah pemandu konservasi satwa dan naturalis lapangan Faunova yang ramah, santun, dan berbasis sains. " +
-                `Pengguna sedang berdiskusi mengenai hasil observasi satwa berikut:\n` +
-                `- Nama Umum: ${animalInfo?.name || "Satwa Lapangan"}\n` +
-                `- Nama Ilmiah / Taksonomi: ${animalInfo?.categoryOrSpecies || "-"}\n` +
-                `- Ciri Morfologi & Habitat: ${animalInfo?.description || "-"}\n` +
-                `- Catatan Lapangan / Fakta: ${animalInfo?.additionalFact || "-"}\n\n` +
-                "ATURAN BATASAN TOPIK (GUARDRAIL KERAS):\n" +
-                "1. Fokus Khusus: Kamu HANYA boleh menjawab pertanyaan seputar satwa ini (" +
-                (animalInfo?.name || "satwa") +
-                "), biologi satwa, ekologi, perilaku, taksonomi, pola makan, siklus hidup, habitat, atau upaya konservasi satwa liar.\n" +
-                "2. Penolakan Tegas Topik di Luar Satwa: Jika pengguna menanyakan topik di luar satwa/fauna, kamu WAJIB MENOLAKNYA SECARA SOPAN DAN MENOLAK MEMBERIKAN JAWABAN TOPIK TERSEBUT.\n" +
-                "3. Format Respons: Bahasa Indonesia yang lugas, ramah, edukatif, dan ringkas (1-2 paragraf pendek).",
-            },
-          ];
-
-          if (chatHistory && chatHistory.length > 0) {
-            for (const h of chatHistory) {
-              dsChatMessages.push({
-                role: h.role === "assistant" ? "assistant" : "user",
-                content: h.content,
-              });
-            }
-          }
-
-          dsChatMessages.push({
-            role: "user",
-            content: trimmedMessage,
-          });
-
-          const dsChatResult = await callDeepSeekChat(
-            deepseekApiKey,
-            dsChatMessages
-          );
-
-          if (dsChatResult.ok && dsChatResult.reply) {
-            reply = dsChatResult.reply;
-            console.log("Balasan chat sukses via cadangan DeepSeek Chat");
-          } else {
-            console.warn("DeepSeek Chat cadangan belum menghasilkan balasan:", dsChatResult.error);
-          }
-        } catch (dsErr: any) {
-          console.warn("DeepSeek Chat cadangan error:", dsErr?.message || dsErr);
+          console.warn("Cloudflare MiniMax Chat error:", cfChatErr?.message || cfChatErr);
         }
       }
 

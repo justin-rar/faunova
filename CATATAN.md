@@ -2163,4 +2163,38 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 - `flutter test`: **Semua 164/164 tests passed (100% lulus)** termasuk 2 file pengujian baru (`test/masalah_a_photo_reproduce_test.dart` dan `test/masalah_b_notification_reproduce_test.dart`).
 - Catatan pengujian HP fisik: Ditandai **TIDAK TERVERIFIKASI** untuk perangkat fisik ganda dan disediakan panduan uji manual 3 langkah di laporan utama.
 
+---
+
+## Sesi Migrasi Mesin AI Utama ke DeepSeek API (Vision & Chat) — Selesai ✅
+
+### 1. Permintaan Pengguna
+- Pengguna telah membeli token DeepSeek seharga $2 dan memasukkan kredensialnya ke Supabase Edge Functions Secrets.
+- Mengubah mesin AI utama yang awalnya Google Gemini menjadi **DeepSeek** sebagai API prioritas utama untuk:
+  1. Deteksi gambar/observasi satwa (`mode: "scan"` via Multimodal Flash).
+  2. Tanya jawab AI seputar konservasi satwa (`mode: "chat"` via DeepSeek Chat).
+  3. Menjaga Google Gemini Flash dan Cloudflare sebagai cadangan otomatis (*graceful fallback*).
+
+### 2. Tindakan & Implementasi
+- **Edge Function `ai-gateway` (`supabase/functions/ai-gateway/index.ts`)**:
+  - **Deteksi Cerdas API Key**: Mendukung pembacaan dari `DEEPSEEK_API_KEY` maupun jika pengguna menimpa nilai `GEMINI_API_KEY` dengan token DeepSeek (`sk-...`). Server tidak akan melempar konfigurasi error jika salah satu kunci valid tersedia.
+  - **Prioritas 1 Mode Scan**: Menggunakan `callDeepSeekVision` dengan endpoint `https://api.deepseek.com/chat/completions` (model `deepseek-flash`, `deepseek-chat`, `deepseek-v4-flash-vision-exp`) dan format multimodal JSON terstruktur. Cadangan 1: Google Gemini Flash, Cadangan 2: Cloudflare Workers AI Vision.
+  - **Prioritas 1 Mode Chat**: Menggunakan `callDeepSeekChat` (model `deepseek-chat` V3 / `deepseek-flash`) dengan sistem instruksi konservasi satwa dan 3 lapis guardrail zoologi ketat. Cadangan 1: Google Gemini Flash, Cadangan 2: Cloudflare MiniMax/Llama.
+  - **Deployment Supabase**: Sukses dideploy ke cloud Supabase (`project-ref: yziubaqkrhxtneaybllq`) dengan status aktif normal.
+- **Pembaruan Teks Antarmuka & Klien Flutter**:
+  - `lib/core/services/scan_service.dart`: Fallback demo AI provider disetel ke `'DeepSeek Vision'`.
+  - `lib/features/camera/models/scan_result_model.dart`: Fallback provider model disetel ke `'DeepSeek Vision'`.
+  - `lib/features/camera/presentation/camera_page.dart`: Pesan proses pemotretan diubah menjadi `'Menganalisis satwa via DeepSeek AI...'` dan HUD langkah 3 menjadi `'Validasi ai-gateway (DeepSeek AI Vision)'`.
+  - `lib/features/camera/presentation/scan_result_page.dart`: Tag kartu foto disetel ke `'Terdeteksi DeepSeek Flash'` / `'DeepSeek: Bukan Satwa'`.
+  - `lib/features/profile/presentation/widgets/app_settings_sheet.dart`: Keterangan teknologi diperbarui menjadi DeepSeek AI Vision & Chat.
+  - `lib/features/profile/presentation/saran_kesan_page.dart`: Keterangan fitur diperbarui ke DeepSeek AI Gateway.
+
+### 3. Hasil Pengujian & Verifikasi
+- **Supabase Edge Function Deployment**: Berhasil terunggah dan aktif (`Deployed Functions` pada `ai-gateway`).
+- **Verifikasi Endpoint Cloud**: Uji cURL langsung ke endpoint produksi Supabase mengembalikan respons HTTP 200 OK.
+- `flutter analyze`: **0 issues found! (Bersih total)**.
+- `flutter test`: **Semua 164/164 tests passed (100% lulus)**.
+
+### 4. Langkah Berikutnya
+- Pengguna dapat langsung menekan tombol bidik foto satwa di kamera atau membuka fitur Tanya AI pada hasil observasi untuk menikmati identifikasi dan obrolan berbasis DeepSeek API.
+
 

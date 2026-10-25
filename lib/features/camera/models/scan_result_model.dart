@@ -145,7 +145,7 @@ class ScanResultModel {
       imageBase64: imageBase64,
       aiProvider: json['aiProvider']?.toString() ??
           resultObj['aiProvider']?.toString() ??
-          (isAnimalValue ? 'Google Gemini Flash' : 'Gemini AI'),
+          (isAnimalValue ? 'DeepSeek Vision' : 'DeepSeek AI'),
       confidence: (resultObj['confidence'] as num?)?.toDouble() ??
           (json['confidence'] as num?)?.toDouble() ??
           0.90,

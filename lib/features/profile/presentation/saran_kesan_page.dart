@@ -123,7 +123,7 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
       roleTitle: 'Feature Integration & Sensor Specialist',
       iconBadge: '⚡',
       responsibilities: [
-        'Integrasi Gemini 3.8 Flash Multimodal AI Gateway (Scan & Multi-Turn Chat)',
+        'Integrasi DeepSeek AI Vision & Chat Gateway (Scan & Multi-Turn Chat)',
         'Gerbang Pembayaran Midtrans Sandbox Snap & Verifikasi Signature SHA-512',
         'Sensor Fisik: Kompas Magnetometer, Mock GPS, dan Shake-to-Quiz Accelerometer',
         'Notifikasi Lokal Mandiri (Pengingat Streak 19:00 WIB & Tantangan 08:00 WIB)',
@@ -525,7 +525,7 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
           const SizedBox(height: 10),
           _buildImpressionItem(
             '3. Sinergi Fitur Mutakhir (AI Multimodal & Payment Sandbox)',
-            'Penerapan Gemini 3.8 Flash untuk identifikasi citra satwa liar secara terstruktur serta simulasi transaksi Midtrans Sandbox dengan verifikasi signature SHA-512 mengajarkan pentingnya validasi berlapis dan keandalan sistem.',
+            'Penerapan DeepSeek AI Vision untuk identifikasi citra satwa liar secara terstruktur serta simulasi transaksi Midtrans Sandbox dengan verifikasi signature SHA-512 mengajarkan pentingnya validasi berlapis dan keandalan sistem.',
           ),
         ],
       ),
