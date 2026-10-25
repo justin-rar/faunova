@@ -162,20 +162,25 @@ class CaptureService {
     // Unggah file foto ke Supabase Storage (bucket 'captures') jika file lokal tersedia di perangkat
     String effectivePhotoPath = photoPath ?? '';
     if (photoPath != null && photoPath.isNotEmpty) {
-      try {
-        final localFile = File(photoPath);
-        if (localFile.existsSync()) {
+      final localFile = File(photoPath);
+      if (localFile.existsSync()) {
+        try {
           final fileExt = photoPath.contains('.') ? photoPath.split('.').last : 'jpg';
-          final storagePath = '$userId/$scanId.$fileExt';
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final storagePath = '$userId/${scanId}_$timestamp.$fileExt';
           await client.storage.from('captures').upload(
             storagePath,
             localFile,
             fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
           );
           effectivePhotoPath = 'captures/$storagePath';
+        } catch (e) {
+          debugPrint('CaptureService: Gagal upload ke Supabase Storage: $e');
+          throw CaptureException(
+            'Gagal mengunggah foto satwa ke cloud storage ($e). Pastikan koneksi internet stabil.',
+            code: 'STORAGE_UPLOAD_ERROR',
+          );
         }
-      } catch (e) {
-        debugPrint('CaptureService: Gagal upload ke Supabase Storage, fallback ke path lokal: $e');
       }
     }
 

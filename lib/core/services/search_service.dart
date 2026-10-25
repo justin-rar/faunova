@@ -547,47 +547,5 @@ class SearchService {
     }
   }
 
-  /// Mengambil foto kurasi berkualitas tinggi untuk spesies satwa tertentu
-  /// Digunakan sebagai resolusi foto saat path lokal uploader berada di perangkat lain
-  String? getCuratedPhotoForSpecies(String? speciesName, [String? category]) {
-    if (speciesName == null || speciesName.trim().isEmpty) return null;
-    final cleanName = speciesName.trim().toLowerCase();
-    final cleanCat = (category ?? '').trim().toLowerCase();
-
-    // Penanganan khusus satwa umum di lapangan / demo
-    if (cleanName.contains('pangolin') || cleanName.contains('trenggiling') || cleanCat.contains('manis')) {
-      return 'https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?w=900&auto=format&fit=crop&q=80';
-    }
-    if (cleanName.contains('kucing') || cleanCat.contains('felis')) {
-      return 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=900&auto=format&fit=crop&q=80';
-    }
-    if (cleanName.contains('komodo') || cleanCat.contains('varanus')) {
-      return 'https://images.unsplash.com/photo-1544979590-37e9b47eb705?w=900&auto=format&fit=crop&q=80';
-    }
-    if (cleanName.contains('jalak') || cleanCat.contains('leucopsar')) {
-      return 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=900&auto=format&fit=crop&q=80';
-    }
-    if (cleanName.contains('harimau') || cleanCat.contains('panthera')) {
-      return 'https://images.unsplash.com/photo-1561731216-c3a4d99437d5?w=900&auto=format&fit=crop&q=80';
-    }
-    if (cleanName.contains('kupu') || cleanCat.contains('papilio') || cleanCat.contains('lepidoptera')) {
-      return 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=900&auto=format&fit=crop&q=80';
-    }
-
-    // Cari dari daftar katalog spesies kurasi
-    for (final sp in _demoSpecies) {
-      final sName = sp.speciesName.toLowerCase();
-      final sciName = sp.scientificName.toLowerCase();
-      if (sName == cleanName || sciName == cleanName || sName.contains(cleanName) || cleanName.contains(sName)) {
-        return sp.samplePhotoPath;
-      }
-      if (cleanCat.isNotEmpty && (sciName.contains(cleanCat) || sName.contains(cleanCat))) {
-        return sp.samplePhotoPath;
-      }
-    }
-
-    // Default fallback foto satwa umum
-    return 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=900&auto=format&fit=crop&q=80';
-  }
 }
 

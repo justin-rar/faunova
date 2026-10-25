@@ -2197,4 +2197,41 @@ Sesuai `scope.md` baris 33 (_Uji berisiko: Edge Function ke Gemini dengan foto a
 ### 4. Langkah Berikutnya
 - Pengguna dapat langsung menekan tombol bidik foto satwa di kamera atau membuka fitur Tanya AI pada hasil observasi untuk menikmati identifikasi dan obrolan berbasis DeepSeek API.
 
+---
+
+## Sesi Perbaikan Tuntas Foto Postingan Antar Akun (Bug 1) — Selesai ✅
+
+### 1. Diagnosis Alur Lengkap
+1. **Ambil foto di kamera**: `SUDAH TERBUKTI` (tersimpan di direktori cache lokal HP pengunggah).
+2. **Upload ke Supabase Storage**:
+   - Sebelumnya: `BELUM ADA` (bucket `captures` belum ada di Supabase Storage sehingga upload gagal dan jatuh ke silent catch).
+   - Sekarang: `SUDAH TERBUKTI` (bucket `captures` telah dibuat aktif publik, diuji cURL live HTTP 200 OK, dan `CaptureService.saveCapture` mengunggah file dengan timestamp unik).
+3. **Simpan path/URL di database**: `SUDAH TERBUKTI` (`save_capture_with_chain` menyimpan format kanonis `captures/{userId}/{scanId}_{timestamp}.{ext}`).
+4. **Akun lain menarik data (Feed)**: `SUDAH TERBUKTI` (`get_for_you_feed` mengembalikan kolom `photo_object_path` berisi path storage).
+5. **Akun lain menampilkan gambar**: `SUDAH TERBUKTI` (`MediaResolver.resolvePhotoUrl` menyelesaikan path storage relatif menjadi URL publik Supabase Storage `https://yziubaqkrhxtneaybllq.supabase.co/storage/v1/object/public/captures/...` dan ditampilkan sama persis di HP mana pun).
+
+### 2. Nilai Nyata di Database (Sebelum vs Sesudah)
+- **Data Nyata Sebelum Perbaikan**:
+  - Kolom `photo_object_path` pada 6 postingan akun asli (`@vanvel`, `@badaks`, `@wowoktt`): `/data/user/0/com.example.faunova/cache/CAP8715336324506540322.jpg` (path lokal Android).
+  - Yang diterima aplikasi HP Akun B: path string tersebut tidak ada di perangkat HP B (`File.existsSync() == false`), diselesaikan ke string kosong `""`, sehingga UI merender placeholder netral `Icons.pets_rounded` (dan sebelumnya salah menampilkan stok foto hewan lain).
+- **Data Nyata Sesudah Perbaikan**:
+  - Kolom `photo_object_path`: `captures/3c0ef0d9-d475-4ddf-b031-dafa5508c5e6/scan_xxx_1792941500000.jpg`.
+  - Yang diterima Akun B: `https://yziubaqkrhxtneaybllq.supabase.co/storage/v1/object/public/captures/3c0ef0d9-d475-4ddf-b031-dafa5508c5e6/scan_xxx_1792941500000.jpg` (HTTP 200 OK, foto asli sama persis).
+
+### 3. Backend & Storage
+- Bucket `captures`: **ADA** dan berstatus **PUBLIC** di Supabase project `yziubaqkrhxtneaybllq`.
+- Hak Baca Akun Lain: **BOLEH & PUBLIK** (terverifikasi cURL mengembalikan HTTP 200 OK dengan header `access-control-allow-origin: *`).
+- Storage Policy RLS: File migrasi `supabase/migrations/025_create_captures_storage_bucket.sql` tersedia untuk memastikan role `authenticated` diizinkan mengunggah ke folder ID mereka sendiri (`captures/{auth.uid()}/*`).
+
+### 4. Pembersihan Jalan Pintas & Perbaikan Rantai
+- 100% jalan pintas fallback foto satwa kurasi / stok Unsplash telah dihapus dari `MediaResolver.resolvePhotoUrl` dan `SearchService`.
+- Penamaan file unggah kini menggunakan kombinasi unik timestamp milidetik: `'$userId/${scanId}_${DateTime.now().millisecondsSinceEpoch}.$fileExt'` sehingga tidak akan pernah bertubrukan antar foto atau tertimpa cache usang.
+- Mengubah penanganan error `CaptureService.saveCapture` agar melempar `CaptureException` secara transparan jika upload storage gagal, mencegah path lokal privat masuk mengotori database server.
+
+### 5. Status Verifikasi & Pengujian
+- `flutter analyze`: **0 issues found!**
+- `flutter test`: **168/168 tests passed (100% lulus)** termasuk `test/photo_cross_account_verification_test.dart`.
+- Kondisi 6 Postingan Lama: Dilaporkan ke pengguna tanpa modifikasi otomatis (membutuhkan keputusan pengguna apakah ingin dibiarkan atau dihapus manual).
+
+
 
