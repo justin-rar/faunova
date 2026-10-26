@@ -371,7 +371,10 @@ class SocialService {
 
       final List<dynamic> data = response as List<dynamic>;
       if (data.isNotEmpty) {
-        return data.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+        return data
+            .map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .where((p) => !p.isTrashed && !p.isDeleted)
+            .toList();
       }
 
       // Jika data server masih kosong, gunakan fallback ramah
@@ -379,7 +382,7 @@ class SocialService {
         PostService.instance.initMockDemoPosts();
       }
       final allPosts = PostService.instance.demoPosts;
-      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId)).toList();
+      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId) && !p.isTrashed && !p.isDeleted).toList();
       return List<PostModel>.from(followingPosts);
     } catch (e) {
       debugPrint('fetchFollowingFeed error: $e');
@@ -492,7 +495,10 @@ class SocialService {
       );
 
       if (response is List) {
-        final posts = response.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+        final posts = response
+            .map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .where((p) => !p.isTrashed && !p.isDeleted)
+            .toList();
         return posts;
       }
     } catch (e) {
@@ -510,7 +516,10 @@ class SocialService {
       );
 
       if (response is List) {
-        final posts = response.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+        final posts = response
+            .map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .where((p) => !p.isTrashed && !p.isDeleted)
+            .toList();
         return posts;
       }
     } catch (e) {
@@ -518,7 +527,9 @@ class SocialService {
     }
 
     // 3. Fallback: ambil dari memory PostService demoPosts
-    return PostService.instance.demoPosts.where((p) => p.authorId == targetUserId).toList();
+    return PostService.instance.demoPosts
+        .where((p) => p.authorId == targetUserId && !p.isTrashed && !p.isDeleted)
+        .toList();
   }
 
   bool _isUuid(String id) {

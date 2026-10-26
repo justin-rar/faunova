@@ -20,6 +20,7 @@ import '../../feed/presentation/widgets/create_post_sheet.dart';
 import '../../../core/utils/media_resolver.dart';
 import '../../../core/services/trash_service.dart';
 import '../../../core/services/post_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'widgets/multi_timezone_card.dart';
 
 class CaptureDetailPage extends StatefulWidget {
@@ -35,8 +36,36 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
   bool _isVerifyingBlock = false;
   ChainVerificationResult? _blockVerification;
   bool _showHashDetails = false;
+  bool? _serverIsShared;
 
   CaptureModel get capture => widget.capture;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkServerShareStatus();
+  }
+
+  Future<void> _checkServerShareStatus() async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return;
+      final res = await client
+          .from('posts')
+          .select('id')
+          .eq('capture_id', capture.id)
+          .eq('user_id', userId)
+          .isFilter('deleted_at', null)
+          .isFilter('trashed_at', null)
+          .maybeSingle();
+      if (mounted) {
+        setState(() {
+          _serverIsShared = res != null;
+        });
+      }
+    } catch (_) {}
+  }
 
   Future<void> _verifyCurrentBlock() async {
     setState(() {
@@ -822,8 +851,10 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
     );
   }
 
-  bool get _isSharedLive =>
-      PostService.instance.demoPosts.any((p) => p.captureId == capture.id && !p.isTrashed);
+  bool get _isSharedLive {
+    if (_serverIsShared != null) return _serverIsShared!;
+    return PostService.instance.demoPosts.any((p) => p.captureId == capture.id && !p.isTrashed);
+  }
 
   Future<void> _handleTrashCapture() async {
     final isShared = _isSharedLive;
@@ -914,6 +945,7 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
             onPressed: () async {
               final result = await CreatePostSheet.show(context, capture: capture);
               if (result != null && mounted) {
+                await _checkServerShareStatus();
                 setState(() {});
               }
             },

@@ -263,9 +263,17 @@ class _SocialNotificationSheetState extends State<SocialNotificationSheet> {
         itemBuilder: (context, index) {
           final notif = _notifications[index];
           final isFollow = notif.type == 'follow';
-
           return InkWell(
             onTap: () {
+              if (notif.title.contains('Tidak Tersedia') || notif.body.contains('tidak lagi tersedia')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Postingan ini telah dipindahkan ke Sampah atau tidak lagi tersedia.'),
+                    backgroundColor: AppColors.sageTua,
+                  ),
+                );
+                return;
+              }
               if (notif.actorUserId.isNotEmpty) {
                 Navigator.pop(context);
                 Navigator.push(
@@ -335,10 +343,12 @@ class _SocialNotificationSheetState extends State<SocialNotificationSheet> {
                               TextSpan(
                                 text: isFollow
                                     ? ' mulai mengikuti linimasa satwa Anda.'
-                                    : (notif.speciesName != null &&
-                                            notif.speciesName!.isNotEmpty
-                                        ? ' menyukai tangkapan ${notif.speciesName} Anda.'
-                                        : ' menyukai postingan linimasa Anda.'),
+                                    : (notif.title.contains('Tidak Tersedia') || notif.body.contains('tidak lagi tersedia')
+                                        ? ' menyukai postingan Anda (postingan kini di Sampah / tidak lagi tersedia).'
+                                        : (notif.speciesName != null &&
+                                                notif.speciesName!.isNotEmpty
+                                            ? ' menyukai tangkapan ${notif.speciesName} Anda.'
+                                            : ' menyukai postingan linimasa Anda.')),
                               ),
                             ],
                           ),

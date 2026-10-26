@@ -605,16 +605,19 @@ class PostService {
         if (_demoPosts.isEmpty) {
           initMockDemoPosts();
         }
-        return List<PostModel>.from(_demoPosts);
+        return List<PostModel>.from(_demoPosts.where((p) => !p.isTrashed && !p.isDeleted));
       }
 
-      return data.map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+      return data
+          .map((item) => PostModel.fromJson(Map<String, dynamic>.from(item as Map)))
+          .where((p) => !p.isTrashed && !p.isDeleted)
+          .toList();
     } catch (e) {
       debugPrint('PostService fetchForYouFeed error: $e');
       if (_demoPosts.isEmpty) {
         initMockDemoPosts();
       }
-      return List<PostModel>.from(_demoPosts);
+      return List<PostModel>.from(_demoPosts.where((p) => !p.isTrashed && !p.isDeleted));
     }
   }
 
