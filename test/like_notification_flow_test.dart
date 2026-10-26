@@ -146,5 +146,131 @@ void main() {
 
       debugPrint('[SUKSES SKENARIO 4] Tidak ada regresi pada alur follow.');
     });
+
+    test('5. Siklus Berulang Like -> Unlike -> Like -> Unlike -> Like (Rapid): Banner muncul di setiap Like, tidak pernah di Unlike', () async {
+      int bannerCount = 0;
+      final capturedIds = <int>{};
+
+      // Pastikan target post terdaftar di demoPosts dan dalam status belum di-like
+      final targetPost = PostService.instance.demoPosts.first;
+      if (targetPost.isLikedByMe) {
+        await PostService.instance.togglePostLike(targetPost.id, targetAuthorId: ownerB);
+      }
+
+      // Handler simulasi penerimaan banner di HP Akun B
+      Future<void> simulateDeliverToB() async {
+        NotificationService.instance.setMockCurrentUserId(ownerB);
+        final delivered = await NotificationService.instance.deliverPendingNotificationsForUser(ownerB);
+        if (delivered.isNotEmpty) {
+          bannerCount++;
+          final record = NotificationService.instance.getScheduledRecord(NotificationConstants.idSocialLike);
+          if (record != null) {
+            capturedIds.add(record.id);
+            debugPrint('[BANNER SHOWN #$bannerCount] NotifId=${record.id}, Title="${record.title}"');
+          }
+        }
+      }
+
+      // Step 1: Like ke-1
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final like1Result = await PostService.instance.togglePostLike(targetPost.id, targetAuthorId: ownerB, speciesName: 'Badak Jawa');
+      expect(like1Result['is_liked'], isTrue);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(1), reason: 'Like ke-1 harus memicu banner');
+
+      // Step 2: Unlike ke-1
+      final preUnlikeBannerCount = bannerCount;
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final unlike1Result = await PostService.instance.togglePostLike(targetPost.id, targetAuthorId: ownerB, speciesName: 'Badak Jawa');
+      expect(unlike1Result['is_liked'], isFalse);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(preUnlikeBannerCount), reason: 'Unlike TIDAK BOLEH memicu banner');
+
+      // Step 3: Like ke-2 (Repeat Like)
+      await Future.delayed(const Duration(milliseconds: 10));
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final like2Result = await PostService.instance.togglePostLike(targetPost.id, targetAuthorId: ownerB, speciesName: 'Badak Jawa');
+      expect(like2Result['is_liked'], isTrue);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(2), reason: 'Repeat Like ke-2 HARUS memicu banner');
+
+      // Step 4: Unlike ke-2
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final unlike2Result = await PostService.instance.togglePostLike(targetPost.id, targetAuthorId: ownerB, speciesName: 'Badak Jawa');
+      expect(unlike2Result['is_liked'], isFalse);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(2), reason: 'Unlike kedua TIDAK BOLEH memicu banner');
+
+      // Step 5: Like ke-3 (Repeat Like)
+      await Future.delayed(const Duration(milliseconds: 10));
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final like3Result = await PostService.instance.togglePostLike(targetPost.id, targetAuthorId: ownerB, speciesName: 'Badak Jawa');
+      expect(like3Result['is_liked'], isTrue);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(3), reason: 'Repeat Like ke-3 HARUS memicu banner');
+
+      // Pastikan setiap kemunculan banner memiliki ID unik agar tidak disupresi Android OS
+      expect(capturedIds.length, equals(3), reason: 'Setiap kemunculan heads-up banner harus memiliki ID unik');
+      debugPrint('[SUKSES SKENARIO 5] Total 3 banner muncul untuk 3x like, 0 untuk unlike. Semua ID unik: $capturedIds');
+    });
+
+    test('6. Siklus Berulang Follow -> Unfollow -> Follow -> Unfollow -> Follow (Rapid): Banner muncul di setiap Follow', () async {
+      int bannerCount = 0;
+      final capturedIds = <int>{};
+      SocialService.instance.initMockDemoSocial();
+
+      Future<void> simulateDeliverToB() async {
+        NotificationService.instance.setMockCurrentUserId(ownerB);
+        final delivered = await NotificationService.instance.deliverPendingNotificationsForUser(ownerB);
+        if (delivered.isNotEmpty) {
+          bannerCount++;
+          final record = NotificationService.instance.getScheduledRecord(NotificationConstants.idSocialFollow);
+          if (record != null) {
+            capturedIds.add(record.id);
+            debugPrint('[BANNER FOLLOW SHOWN #$bannerCount] NotifId=${record.id}, Title="${record.title}"');
+          }
+        }
+      }
+
+      // Step 1: Follow ke-1
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final follow1 = await SocialService.instance.toggleFollow(ownerB);
+      expect(follow1['is_following'], isTrue);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(1));
+
+      // Step 2: Unfollow ke-1
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final unfollow1 = await SocialService.instance.toggleFollow(ownerB);
+      expect(unfollow1['is_following'], isFalse);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(1), reason: 'Unfollow tidak boleh memicu banner');
+
+      // Step 3: Follow ke-2 (Repeat Follow)
+      await Future.delayed(const Duration(milliseconds: 10));
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final follow2 = await SocialService.instance.toggleFollow(ownerB);
+      expect(follow2['is_following'], isTrue);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(2), reason: 'Repeat Follow ke-2 HARUS memicu banner');
+
+      // Step 4: Unfollow ke-2
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final unfollow2 = await SocialService.instance.toggleFollow(ownerB);
+      expect(unfollow2['is_following'], isFalse);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(2));
+
+      // Step 5: Follow ke-3 (Repeat Follow)
+      await Future.delayed(const Duration(milliseconds: 10));
+      NotificationService.instance.setMockCurrentUserId(actorA);
+      final follow3 = await SocialService.instance.toggleFollow(ownerB);
+      expect(follow3['is_following'], isTrue);
+      await simulateDeliverToB();
+      expect(bannerCount, equals(3), reason: 'Repeat Follow ke-3 HARUS memicu banner');
+
+      expect(capturedIds.length, equals(3));
+      debugPrint('[SUKSES SKENARIO 6] Total 3 banner muncul untuk 3x follow, 0 untuk unfollow. Semua ID unik: $capturedIds');
+    });
   });
 }

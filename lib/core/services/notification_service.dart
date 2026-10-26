@@ -153,6 +153,8 @@ class NotificationService {
   RealtimeChannel? _realtimeSubscription;
   final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
   final Set<String> _processedNotificationIds = {};
+  final Set<String> _processedNotificationEventKeys = {};
+  int _bannerOccurrenceCounter = 0;
   void Function(String payload)? _onNotificationTapped;
   String? _pendingTapPayload;
 
@@ -174,12 +176,52 @@ class NotificationService {
     }
   }
 
-  int _generateNotificationId(String notifId) {
+
+  /// Menghasilkan ID unik per kemunculan notifikasi agar Android OS
+  /// selalu menampilkannya sebagai heads-up banner baru, bahkan untuk repeat like/follow.
+  int _generateOccurrenceNotificationId(String baseId, DateTime timestamp) {
+    _bannerOccurrenceCounter++;
+    final compositeKey = '${baseId}_${timestamp.millisecondsSinceEpoch}_$_bannerOccurrenceCounter';
     var hash = 0;
-    for (var i = 0; i < notifId.length; i++) {
-      hash = (31 * hash + notifId.codeUnitAt(i)) & 0x7FFFFFFF;
+    for (var i = 0; i < compositeKey.length; i++) {
+      hash = (31 * hash + compositeKey.codeUnitAt(i)) & 0x7FFFFFFF;
     }
     return hash == 0 ? 1005 : hash;
+  }
+
+  /// Aturan terpusat untuk menentukan apakah banner notifikasi sosial boleh ditampilkan.
+  /// Memusatkan validasi pelaku, penerima, status baca, dan kemungkinan cooldown di satu tempat.
+  bool shouldDisplaySocialBanner({
+    required String actorUserId,
+    required String recipientUserId,
+    required bool isRead,
+    String? notificationId,
+    DateTime? eventTime,
+    bool checkCurrentDevice = true,
+  }) {
+    // 1. Aksi ke diri sendiri dilarang memunculkan banner
+    if (actorUserId == recipientUserId) {
+      return false;
+    }
+
+    // 2. Notifikasi yang sudah dibaca (misal event UPDATE saat mark as read) dilarang memunculkan banner
+    if (isRead) {
+      return false;
+    }
+
+    // 3. Perangkat pelaku yang melakukan aksi dilarang memunculkan banner
+    if (checkCurrentDevice) {
+      final currentUserId = _getCurrentUserId();
+      if (currentUserId != null && currentUserId == actorUserId) {
+        return false;
+      }
+      if (currentUserId != null && currentUserId != recipientUserId) {
+        return false;
+      }
+    }
+
+    // 4. Tempat penambahan aturan Cooldown / Rate Limiting di masa depan (jika diperlukan)
+    return true;
   }
 
   String? _mockCurrentUserId;
@@ -763,7 +805,7 @@ class NotificationService {
     final unread = queue.where((item) => !item.isRead).toList();
 
     for (final item in unread) {
-      await _deliverLocalSocialNotification(item);
+      await _deliverLocalSocialNotification(item, bypassDeviceCheck: true);
       final idx = queue.indexWhere((q) => q.id == item.id);
       if (idx != -1) {
         queue[idx] = SocialNotificationItem(
@@ -781,7 +823,7 @@ class NotificationService {
         );
       }
     }
-    return queue;
+    return unread;
   }
 
   /// Mengambil daftar notifikasi milik pengguna tertentu dengan filter penerima
@@ -794,6 +836,8 @@ class NotificationService {
   void clearNotificationQueues() {
     _userNotificationQueues.clear();
     _processedNotificationIds.clear();
+    _processedNotificationEventKeys.clear();
+    _bannerOccurrenceCounter = 0;
     unreadCountNotifier.value = 0;
   }
 
@@ -811,7 +855,7 @@ class NotificationService {
       _realtimeSubscription = client
           .channel('public:notifications:$userId')
           .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
+            event: PostgresChangeEvent.all, // Dengarkan INSERT dan UPDATE (repeat like/follow)
             schema: 'public',
             table: 'notifications',
             filter: PostgresChangeFilter(
@@ -820,14 +864,26 @@ class NotificationService {
               value: userId,
             ),
             callback: (payload) async {
-              debugPrint('NotificationService Realtime incoming: ${payload.newRecord}');
+              if (payload.eventType == PostgresChangeEvent.delete) return;
+
               final record = payload.newRecord;
+              if (record.isEmpty) return;
+
               final actorId = (record['actor_id'] ?? '').toString();
               final recipientId = (record['recipient_id'] ?? '').toString();
+              final isRead = record['is_read'] == true;
 
-              // Aturan keras: Pelaku sendiri tidak boleh menerima notifikasi
-              final currentUserId = _getCurrentUserId();
-              if (actorId == userId || actorId == recipientId || currentUserId == actorId) {
+              // Aturan keras: Jika event UPDATE hanya karena notifikasi ditandai telah dibaca, lewati banner
+              if (isRead) {
+                return;
+              }
+
+              if (!shouldDisplaySocialBanner(
+                actorUserId: actorId,
+                recipientUserId: recipientId,
+                isRead: isRead,
+                notificationId: record['id']?.toString(),
+              )) {
                 return;
               }
 
@@ -867,13 +923,15 @@ class NotificationService {
                     : DateTime.now(),
               );
 
-              // 1. Simpan ke antrean memori lokal penerima
+              // 1. Simpan ke antrean memori lokal penerima (perbarui urutan teratas jika sudah ada)
               _userNotificationQueues[userId] ??= [];
-              final exists = _userNotificationQueues[userId]!.any((n) => n.id == item.id);
-              if (!exists) {
-                _userNotificationQueues[userId]!.insert(0, item);
-                unreadCountNotifier.value++;
+              final q = _userNotificationQueues[userId]!;
+              final existingIdx = q.indexWhere((n) => n.id == item.id);
+              if (existingIdx != -1) {
+                q.removeAt(existingIdx);
               }
+              q.insert(0, item);
+              unreadCountNotifier.value = q.where((n) => !n.isRead).length;
 
               // 2. Tampilkan banner notifikasi lokal di layar HP penerima
               if (isSocialNotificationEnabled()) {
@@ -971,14 +1029,29 @@ class NotificationService {
     }
   }
 
-  Future<void> _deliverLocalSocialNotification(SocialNotificationItem item) async {
-    if (_processedNotificationIds.contains(item.id)) {
-      debugPrint('NotificationService: Notifikasi ${item.id} sudah pernah ditampilkan, lewati.');
+  Future<void> _deliverLocalSocialNotification(
+    SocialNotificationItem item, {
+    bool bypassDeviceCheck = false,
+  }) async {
+    final eventKey = '${item.id}_${item.createdAt.millisecondsSinceEpoch}';
+    if (_processedNotificationEventKeys.contains(eventKey)) {
+      debugPrint('NotificationService: Event $eventKey sudah pernah ditampilkan, lewati.');
       return;
     }
-    _processedNotificationIds.add(item.id);
+    _processedNotificationEventKeys.add(eventKey);
 
-    final notifId = _generateNotificationId(item.id);
+    if (!shouldDisplaySocialBanner(
+      actorUserId: item.actorUserId,
+      recipientUserId: item.recipientUserId,
+      isRead: item.isRead,
+      notificationId: item.id,
+      eventTime: item.createdAt,
+      checkCurrentDevice: !bypassDeviceCheck,
+    )) {
+      return;
+    }
+
+    final notifId = _generateOccurrenceNotificationId(item.id, item.createdAt);
     final standardId = item.type == 'follow'
         ? NotificationConstants.idSocialFollow
         : NotificationConstants.idSocialLike;
@@ -1169,6 +1242,7 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
       channelShowBadge: true,
+      onlyAlertOnce: false, // Menjamin heads-up floating banner selalu berdering/muncul untuk setiap kejadian
       ticker: isSocial ? 'Notifikasi Baru Faunova' : null,
       icon: '@mipmap/ic_launcher',
     );

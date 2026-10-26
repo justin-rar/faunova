@@ -2345,3 +2345,48 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
   2. Self-like (suka postingan sendiri): Diblokir total (tidak ada notifikasi).
   3. Siklus unlike & like kembali: Unlike tidak membuat notif, like kembali terdeduplikasi rapi (tetap 1 baris aktif).
   4. Skenario follow: Berjalan normal tanpa regresi.
+
+---
+
+## Sesi Perbaikan Floating Banner Heads-up pada Repeat Like / Follow — Selesai ✅
+
+### 1. Masalah yang Ditemukan
+- Pengguna melakukan Like / Follow pertama kali: Floating heads-up banner muncul di perangkat penerima.
+- Pengguna melakukan Unlike / Unfollow, lalu Like / Follow kembali: Antrean notifikasi in-app berhasil terperbarui, namun **floating heads-up banner tidak muncul** di perangkat penerima.
+- **Akar Masalah**:
+  1. **Event Realtime Terbatas ke INSERT**: Realtime listener hanya berlangganan ke `PostgresChangeEvent.insert`. Karena deduplikasi server pada repeat like/follow memperbarui baris yang sudah ada (`UPDATE notifications SET created_at = now(), is_read = false`), event ini diabaikan oleh listener klien.
+  2. **Supresi Cache ID Lokal**: Klien memeriksa `_processedNotificationIds.contains(item.id)`. Karena UUID baris notifikasi tetap sama pada repeat like/follow, klien menganggap notifikasi tersebut sudah pernah diproses dan mengabaikannya.
+  3. **Supresi Android Heads-up Banner (Notification ID Statis)**: Notification ID Android dihitung hanya dari string UUID baris notifikasi. Ketika ID notifikasi yang sama dipanggil kembali dengan `onlyAlertOnce: true` (default), sistem Android OS memperbarui teks di laci notifikasi tanpa menampilkan pop-up / floating banner heads-up berulang kali.
+
+### 2. Solusi yang Diterapkan
+- **Langganan Realtime Menyeluruh**:
+  - Mengubah listener pada `NotificationService.initRealtimeListener` menjadi `PostgresChangeEvent.all` untuk menangkap event INSERT maupun UPDATE repeat.
+  - Memfilter event `delete` dan update status dibaca (`is_read == true`) agar tidak memicu banner palsu.
+- **Logika Terpusat `shouldDisplaySocialBanner`**:
+  - Memusatkan aturan filter banner: menolak aksi ke diri sendiri (`actorUserId == recipientUserId`), menolak perangkat pelaku (`currentUserId == actorUserId`), dan menolak notifikasi yang sudah dibaca (`isRead == true`).
+- **Pemberian ID Unik Per Kemunculan & `onlyAlertOnce: false`**:
+  - Mengganti ID notifikasi Android statis dengan `_generateOccurrenceNotificationId(baseId, timestamp)` yang menggabungkan hash baseId, timestamp epoch, dan counter kejadian.
+  - Mengaktifkan `onlyAlertOnce: false` pada `AndroidNotificationDetails` untuk menjamin OS Android selalu membunyikan dan memunculkan pop-up melayang di setiap kejadian like/follow ulang.
+- **Deduplikasi Antrean Klien & Pelacakan Kunci Kejadian**:
+  - Melacak kunci unik per kejadian (`${item.id}_${item.createdAt.millisecondsSinceEpoch}`).
+  - Memperbarui posisi item yang di-like/follow ulang ke urutan paling atas di antrean in-app tanpa menduplikasi jumlah baris.
+
+### 3. Hasil Pengujian & Analisis
+- `flutter analyze`: **No issues found!** (Bersih total dalam 4.4 detik).
+- `flutter test`: **182/182 tests passed (100% lulus)**:
+  - `test/like_notification_flow_test.dart` (6 tes lulus sempurna):
+    1. Like A ke B: Notifikasi hanya masuk ke B.
+    2. Self-like: Diblokir total.
+    3. Unlike lalu Like kembali: Baris terdeduplikasi (tetap 1 baris aktif).
+    4. Skenario Follow: Berjalan normal tanpa regresi.
+    5. Rapid Like -> Unlike -> Like -> Unlike -> Like (3x): Tepat 3 banner muncul dengan ID unik berbeda, Unlike tidak memicu banner sama sekali.
+    6. Rapid Follow -> Unfollow -> Follow -> Unfollow -> Follow (3x): Tepat 3 banner muncul dengan ID unik berbeda, Unfollow tidak memicu banner.
+  - `test/bug2_social_notifications_test.dart`: 2/2 tests passed.
+  - `test/widget_test.dart` & test suite lainnya: 182/182 passed.
+
+### 4. Yang Belum Teruji (Memerlukan HP Fisik)
+- Pengujian visual banner melayang (*heads-up floating banner*) secara langsung di atas layar dua perangkat fisik Android yang saling terhubung dengan dua akun berbeda di Supabase Realtime.
+
+### 5. Langkah Selanjutnya
+- Melakukan verifikasi manual langsung dengan 2 akun di 2 perangkat fisik Android sesuai tabel skenario pengujian.
+
