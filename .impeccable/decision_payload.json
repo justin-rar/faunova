@@ -1,0 +1,144 @@
+{
+  "options": [
+    {
+      "id": "assigned-survey-ledger",
+      "kind": "assigned",
+      "label": "The Topographic Survey Ledger",
+      "thesis": "Observations mapped as surveyed benchmarks on an elevation grid, where the cryptographic hash-chain forms an unbroken survey traverse.",
+      "palette": [
+        "#1F2A1E",
+        "#5C7457",
+        "#C8A96B",
+        "#F7F4ED"
+      ],
+      "materials": [
+        "topographic contour lines",
+        "UTM benchmark stamp",
+        "traverse line"
+      ],
+      "viewport": "Crisp Android app screen with block #BLK-018 benchmark, observation plate with contour metadata, and verification seal.",
+      "risk": "Requires restraint so contour grids feel like precision field gear rather than GIS clutter.",
+      "comp": ".impeccable/mocks/decision/assigned-survey-ledger.png",
+      "raised": [
+        "ikebana: Active negative space discipline — zero decorative filler cards; the specimen photograph and cryptographic seal command the canvas.",
+        "hypercard: Tactile card structure — every observation is an indexable survey station with physical benchmark stamping."
+      ]
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "The Field Expedition Pocketbook",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "waterproof field notebook & taxonomic voucher sheets",
+      "thesis": "The indestructible field journal carried in tropical rainforest rain: waterproof graph paper, stamped taxonomic vouchers, and pencil-crisp data.",
+      "palette": [
+        "#2C3E2B",
+        "#8FA28A",
+        "#BF8E3B",
+        "#F7F4ED"
+      ],
+      "materials": [
+        "waterproof graph paper",
+        "taxonomic voucher stamp",
+        "brass clip"
+      ],
+      "viewport": "Field journal spread with grid backing, species photo voucher, tamper-evident hash ribbon, and observation notes.",
+      "risk": "High familiarity; risks leaning into cozy analog notebook tropes if cryptographic rigor is downplayed.",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-daylight",
+      "kind": "challenger",
+      "catalogId": "architecture-inhabitable-space-daylight-section",
+      "label": "Daylight & Habitat Strata",
+      "verdict": "competitive",
+      "lineage": "architectural daylight sections & canopy strata diagrams",
+      "thesis": "Observations organized by diurnal light and forest canopy strata: floor, understory, canopy, and emergent layer.",
+      "palette": [
+        "#1C241D",
+        "#DFB15B",
+        "#32444E",
+        "#F0EFEA"
+      ],
+      "materials": [
+        "habitat elevation section",
+        "canopy sun angle marks",
+        "strata ruler"
+      ],
+      "viewport": "Vertical habitat section with sightings pinned at their canopy layer and sun position.",
+      "case": "Fuses habitat ecology directly into feed browsing; highly intuitive for biodiversity students.",
+      "risk": "Can feel overly complex for casual street or backyard fauna sightings.",
+      "comp": ".impeccable/mocks/decision/challenger-daylight.png",
+      "hero": "https://impeccable.style/worlds/cards/architecture-inhabitable-space-daylight-section-hero.webp"
+    },
+    {
+      "id": "challenger-ikebana",
+      "kind": "challenger",
+      "catalogId": "growth-metamorphosis-branching-ikebana-ma-arrangement",
+      "label": "Ikebana Ma Alcove",
+      "verdict": "declined",
+      "lineage": "tokonoma alcove and ikebana arrangement",
+      "palette": [
+        "#E8E5DD",
+        "#685847",
+        "#3B5A82"
+      ],
+      "materials": [
+        "weathered wood",
+        "charged negative space"
+      ],
+      "case": "Fuses poorly: wildlife documentation requires verifiable social evidence, not minimalist floral contemplation.",
+      "kept": "Active negative space discipline.",
+      "hero": "https://impeccable.style/worlds/cards/growth-metamorphosis-branching-ikebana-ma-arrangement-hero.webp"
+    },
+    {
+      "id": "challenger-hypercard",
+      "kind": "challenger",
+      "catalogId": "medium-native-hypercard-stack-shoebox",
+      "label": "HyperCard Shoebox Stack",
+      "verdict": "declined",
+      "lineage": "HyperCard 1-bit stacks",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "1-bit dither",
+        "index cards"
+      ],
+      "case": "Fuses poorly: retro-computing 1-bit nostalgia clashes with modern cryptographic smartphone field journal.",
+      "kept": "Direct tactile card structure.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-hypercard-stack-shoebox-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "The Category Standard",
+    "thesis": "What social nature apps (iNaturalist + modern social timeline) ship, executed with clean typography and zero AI slop.",
+    "palette": [
+      "#FFFFFF",
+      "#111827",
+      "#2E7D32",
+      "#E5E7EB"
+    ],
+    "materials": [
+      "modern card",
+      "edge-to-edge photography"
+    ],
+    "viewport": "Clean social feed card with author row, observation photo carousel, species tag, and like/comment row.",
+    "risk": "Indistinguishable from conventional social apps by design.",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

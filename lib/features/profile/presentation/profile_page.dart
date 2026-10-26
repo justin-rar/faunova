@@ -206,9 +206,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      backgroundColor: AppColors.gading,
       appBar: GlassAppBar(
         centerTitle: true,
         title: const Text(
@@ -423,7 +422,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _loadMyPosts();
         },
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
           children: [
             // 1. Profile Header Card
             _buildProfileHeroCard(),

@@ -1,0 +1,938 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-10-26T17:57:26.968Z",
+  "comp": ".impeccable/mocks/canon-taxon-specimen.png",
+  "warnings": [
+    "region app-bar: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region tab-bar: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region card-container: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region verification-badge: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)"
+  ],
+  "uncoveredInkCells": [],
+  "compSize": {
+    "width": 768,
+    "height": 1376
+  },
+  "aspect": 0.5581,
+  "orientation": "portrait",
+  "palette": [
+    {
+      "hex": "#c4d4b9",
+      "coverage": 0.3769
+    },
+    {
+      "hex": "#566650",
+      "coverage": 0.2155
+    },
+    {
+      "hex": "#f5f5e7",
+      "coverage": 0.2124
+    },
+    {
+      "hex": "#0a0a08",
+      "coverage": 0.108
+    },
+    {
+      "hex": "#383f1b",
+      "coverage": 0.0871
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.083,
+      "strength": 0.2224
+    },
+    {
+      "y": 0.1179,
+      "strength": 0.8252
+    },
+    {
+      "y": 0.1834,
+      "strength": 1
+    },
+    {
+      "y": 0.2052,
+      "strength": 0.4104
+    },
+    {
+      "y": 0.2576,
+      "strength": 0.4852
+    },
+    {
+      "y": 0.2926,
+      "strength": 0.4572
+    },
+    {
+      "y": 0.3231,
+      "strength": 0.9169
+    },
+    {
+      "y": 0.6332,
+      "strength": 1
+    },
+    {
+      "y": 0.6856,
+      "strength": 0.3859
+    },
+    {
+      "y": 0.7336,
+      "strength": 0.3288
+    },
+    {
+      "y": 0.7904,
+      "strength": 0.4569
+    },
+    {
+      "y": 0.8341,
+      "strength": 0.4426
+    },
+    {
+      "y": 0.8821,
+      "strength": 0.2046
+    },
+    {
+      "y": 0.9345,
+      "strength": 1
+    }
+  ],
+  "regions": [
+    {
+      "id": "app-bar",
+      "kind": "chrome",
+      "note": "Top app bar with sage green background",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.083
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 768,
+        "h": 114
+      },
+      "aspect": 6.7368,
+      "palette": [
+        {
+          "hex": "#50634b",
+          "coverage": 0.9622
+        },
+        {
+          "hex": "#f3f5ec",
+          "coverage": 0.0311
+        },
+        {
+          "hex": "#919e90",
+          "coverage": 0.0052
+        },
+        {
+          "hex": "#707070",
+          "coverage": 0.001
+        },
+        {
+          "hex": "#b8c8b8",
+          "coverage": 0.0005
+        }
+      ],
+      "detail": {
+        "energy": 14.1544
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "wordmark",
+      "kind": "text",
+      "note": "Faunova app header title",
+      "grid": null,
+      "parentId": "app-bar",
+      "box": {
+        "x": 0.03,
+        "y": 0.03,
+        "w": 0.35,
+        "h": 0.045
+      },
+      "px": {
+        "x": 23,
+        "y": 41,
+        "w": 269,
+        "h": 62
+      },
+      "aspect": 4.3387,
+      "palette": [
+        {
+          "hex": "#566954",
+          "coverage": 0.9349
+        },
+        {
+          "hex": "#f3f7e8",
+          "coverage": 0.0445
+        },
+        {
+          "hex": "#95a291",
+          "coverage": 0.0122
+        },
+        {
+          "hex": "#c1c8b7",
+          "coverage": 0.0074
+        },
+        {
+          "hex": "#484838",
+          "coverage": 0.0011
+        }
+      ],
+      "detail": {
+        "energy": 11.3819
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 9,
+          "capHeightPx": 19,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.8954,
+          "advTall": 0.8954,
+          "advX": 0.4477,
+          "gap": 0.2239,
+          "xRatio": 0.5715,
+          "stemW": 0.2742,
+          "contrast": 1.2286,
+          "serif": 0.9547,
+          "densTall": 0.6151,
+          "densX": 0.6392,
+          "weight": 0.6151
+        },
+        "widthClass": "condensed",
+        "weightClass": "bold",
+        "chosen": {
+          "family": "Lexend Exa",
+          "weight": 700,
+          "fontSizePx": 27,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 7,
+            "capHeightPx": 19.2,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.8859,
+            "advTall": 0.7296,
+            "advX": 0.8859,
+            "gap": 0.2215,
+            "xRatio": 0.7744,
+            "stemW": 0.2601,
+            "contrast": 1.1869,
+            "serif": null,
+            "densTall": 0.6249,
+            "densX": 0.6713,
+            "weight": 0.6249
+          },
+          "stamp": "78533dbc62ca"
+        }
+      }
+    },
+    {
+      "id": "tab-bar",
+      "kind": "chrome",
+      "note": "Segmented feed tab bar",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0.083,
+        "w": 1,
+        "h": 0.095
+      },
+      "px": {
+        "x": 0,
+        "y": 114,
+        "w": 768,
+        "h": 131
+      },
+      "aspect": 5.8626,
+      "palette": [
+        {
+          "hex": "#586957",
+          "coverage": 0.7116
+        },
+        {
+          "hex": "#e9eadd",
+          "coverage": 0.2611
+        },
+        {
+          "hex": "#899888",
+          "coverage": 0.0139
+        },
+        {
+          "hex": "#242e1e",
+          "coverage": 0.0113
+        },
+        {
+          "hex": "#b1c1b1",
+          "coverage": 0.0021
+        }
+      ],
+      "detail": {
+        "energy": 18.1077
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "tab-untuk-kamu",
+      "kind": "control",
+      "note": "Active tab pill for Untuk Kamu",
+      "grid": null,
+      "parentId": "tab-bar",
+      "box": {
+        "x": 0,
+        "y": 0.09,
+        "w": 0.51,
+        "h": 0.075
+      },
+      "px": {
+        "x": 0,
+        "y": 124,
+        "w": 392,
+        "h": 103
+      },
+      "aspect": 3.8058,
+      "palette": [
+        {
+          "hex": "#e9e9dd",
+          "coverage": 0.5676
+        },
+        {
+          "hex": "#586957",
+          "coverage": 0.397
+        },
+        {
+          "hex": "#222e1d",
+          "coverage": 0.0233
+        },
+        {
+          "hex": "#818577",
+          "coverage": 0.0073
+        },
+        {
+          "hex": "#b7baaa",
+          "coverage": 0.0048
+        }
+      ],
+      "detail": {
+        "energy": 20.5099
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "tab-mengikuti",
+      "kind": "control",
+      "note": "Inactive tab pill for Mengikuti",
+      "grid": null,
+      "parentId": "tab-bar",
+      "box": {
+        "x": 0.52,
+        "y": 0.09,
+        "w": 0.48,
+        "h": 0.075
+      },
+      "px": {
+        "x": 399,
+        "y": 124,
+        "w": 369,
+        "h": 103
+      },
+      "aspect": 3.5825,
+      "palette": [
+        {
+          "hex": "#586957",
+          "coverage": 0.9671
+        },
+        {
+          "hex": "#edf2e3",
+          "coverage": 0.0215
+        },
+        {
+          "hex": "#b0c0b0",
+          "coverage": 0.0084
+        },
+        {
+          "hex": "#939c88",
+          "coverage": 0.003
+        }
+      ],
+      "detail": {
+        "energy": 10.3583
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "card-container",
+      "kind": "chrome",
+      "note": "Observation card rounded container in sage muda",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.03,
+        "y": 0.19,
+        "w": 0.94,
+        "h": 0.68
+      },
+      "px": {
+        "x": 23,
+        "y": 261,
+        "w": 722,
+        "h": 936
+      },
+      "aspect": 0.7714,
+      "palette": [
+        {
+          "hex": "#c5d4b9",
+          "coverage": 0.635
+        },
+        {
+          "hex": "#454a25",
+          "coverage": 0.12
+        },
+        {
+          "hex": "#676745",
+          "coverage": 0.09
+        },
+        {
+          "hex": "#f6f6e7",
+          "coverage": 0.0855
+        },
+        {
+          "hex": "#232e0d",
+          "coverage": 0.0695
+        }
+      ],
+      "detail": {
+        "energy": 35.4251
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "taxon-header",
+      "kind": "text",
+      "note": "Taxon classification header text Aves Falconiformes Accipitridae",
+      "grid": null,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.2,
+        "w": 0.72,
+        "h": 0.06
+      },
+      "px": {
+        "x": 46,
+        "y": 275,
+        "w": 553,
+        "h": 83
+      },
+      "aspect": 6.6627,
+      "palette": [
+        {
+          "hex": "#c8d7bb",
+          "coverage": 0.7956
+        },
+        {
+          "hex": "#f6f6e7",
+          "coverage": 0.1171
+        },
+        {
+          "hex": "#0a0b0a",
+          "coverage": 0.0689
+        },
+        {
+          "hex": "#8c9288",
+          "coverage": 0.0133
+        },
+        {
+          "hex": "#253121",
+          "coverage": 0.0053
+        }
+      ],
+      "detail": {
+        "energy": 37.4086
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "verification-badge",
+      "kind": "plate",
+      "note": "Gold verified seal badge icon",
+      "grid": null,
+      "bleed": true,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.78,
+        "y": 0.19,
+        "w": 0.18,
+        "h": 0.09
+      },
+      "px": {
+        "x": 599,
+        "y": 261,
+        "w": 138,
+        "h": 124
+      },
+      "aspect": 1.1129,
+      "palette": [
+        {
+          "hex": "#c8d8b9",
+          "coverage": 0.6387
+        },
+        {
+          "hex": "#f8f8e8",
+          "coverage": 0.2003
+        },
+        {
+          "hex": "#c6a867",
+          "coverage": 0.1553
+        },
+        {
+          "hex": "#f5e5bb",
+          "coverage": 0.0031
+        },
+        {
+          "hex": "#c5b892",
+          "coverage": 0.0026
+        }
+      ],
+      "detail": {
+        "energy": 2.2198
+      },
+      "medium": "raster",
+      "plate": "assets/plates/verification-badge.png",
+      "text": null
+    },
+    {
+      "id": "specimen-photo",
+      "kind": "plate",
+      "note": "Photograph of Javan Hawk-Eagle Elang Jawa in forest canopy",
+      "grid": null,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.28,
+        "w": 0.88,
+        "h": 0.34
+      },
+      "px": {
+        "x": 46,
+        "y": 385,
+        "w": 676,
+        "h": 468
+      },
+      "aspect": 1.4444,
+      "palette": [
+        {
+          "hex": "#494828",
+          "coverage": 0.2652
+        },
+        {
+          "hex": "#c7d5b9",
+          "coverage": 0.2296
+        },
+        {
+          "hex": "#6e704c",
+          "coverage": 0.2005
+        },
+        {
+          "hex": "#21240d",
+          "coverage": 0.1574
+        },
+        {
+          "hex": "#314413",
+          "coverage": 0.1473
+        }
+      ],
+      "detail": {
+        "energy": 43.3615
+      },
+      "medium": "raster",
+      "plate": "assets/plates/specimen-photo.png",
+      "text": null
+    },
+    {
+      "id": "species-title",
+      "kind": "text",
+      "note": "Species common name and binomial Elang Jawa (Nisaetus bartelsi)",
+      "grid": null,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.64,
+        "w": 0.65,
+        "h": 0.04
+      },
+      "px": {
+        "x": 46,
+        "y": 881,
+        "w": 499,
+        "h": 55
+      },
+      "aspect": 9.0727,
+      "palette": [
+        {
+          "hex": "#b9c8b0",
+          "coverage": 0.8891
+        },
+        {
+          "hex": "#0b0b0b",
+          "coverage": 0.0585
+        },
+        {
+          "hex": "#8e9586",
+          "coverage": 0.0322
+        },
+        {
+          "hex": "#333d2f",
+          "coverage": 0.0139
+        },
+        {
+          "hex": "#6a6d65",
+          "coverage": 0.0063
+        }
+      ],
+      "detail": {
+        "energy": 35.8686
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 28,
+          "capHeightPx": 20,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.625,
+          "advTall": 0.25,
+          "advX": 0.7,
+          "gap": 0.15,
+          "xRatio": 0.6136,
+          "stemW": 0.1669,
+          "contrast": 1.1078,
+          "serif": 0.9895,
+          "densTall": 0.54,
+          "densX": 0.5971,
+          "weight": 0.54
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "iucn-badge",
+      "kind": "control",
+      "note": "IUCN conservation status badge Terancam Punah",
+      "grid": null,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.69,
+        "w": 0.48,
+        "h": 0.04
+      },
+      "px": {
+        "x": 46,
+        "y": 949,
+        "w": 369,
+        "h": 55
+      },
+      "aspect": 6.7091,
+      "palette": [
+        {
+          "hex": "#b3c1ab",
+          "coverage": 0.8962
+        },
+        {
+          "hex": "#0b0b0b",
+          "coverage": 0.0487
+        },
+        {
+          "hex": "#475243",
+          "coverage": 0.0233
+        },
+        {
+          "hex": "#7f887b",
+          "coverage": 0.022
+        },
+        {
+          "hex": "#1e2717",
+          "coverage": 0.0099
+        }
+      ],
+      "detail": {
+        "energy": 34.2337
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "observer-row",
+      "kind": "text",
+      "note": "Observer username and verified badge",
+      "grid": null,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.74,
+        "w": 0.45,
+        "h": 0.04
+      },
+      "px": {
+        "x": 46,
+        "y": 1018,
+        "w": 346,
+        "h": 55
+      },
+      "aspect": 6.2909,
+      "palette": [
+        {
+          "hex": "#c4d4bb",
+          "coverage": 0.845
+        },
+        {
+          "hex": "#1d2818",
+          "coverage": 0.0718
+        },
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.0474
+        },
+        {
+          "hex": "#717f70",
+          "coverage": 0.0225
+        },
+        {
+          "hex": "#464b41",
+          "coverage": 0.0133
+        }
+      ],
+      "detail": {
+        "energy": 49.9162
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 15,
+          "capHeightPx": 24.2,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5791,
+          "advTall": 0.3619,
+          "advX": 0.5791,
+          "gap": 0.1344,
+          "xRatio": 0.7161,
+          "stemW": 0.13,
+          "contrast": 0.9975,
+          "serif": 0.998,
+          "densTall": 0.6273,
+          "densX": 0.4788,
+          "weight": 0.6273
+        },
+        "widthClass": "condensed",
+        "weightClass": "bold",
+        "chosen": {
+          "family": "PT Sans",
+          "weight": 400,
+          "fontSizePx": 34,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 13,
+            "capHeightPx": 24.1,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.5806,
+            "advTall": 0.3525,
+            "advX": 0.5806,
+            "gap": 0.1659,
+            "xRatio": 0.7208,
+            "stemW": 0.1312,
+            "contrast": 1.0439,
+            "serif": 0.9931,
+            "densTall": 0.6301,
+            "densX": 0.492,
+            "weight": 0.6301
+          },
+          "stamp": "db6bdb77d06b"
+        }
+      }
+    },
+    {
+      "id": "hash-chain-pill",
+      "kind": "control",
+      "note": "Cryptographic block hash pill #BLK-018 hash 7f8a...3e9b",
+      "grid": null,
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.79,
+        "w": 0.6,
+        "h": 0.045
+      },
+      "px": {
+        "x": 46,
+        "y": 1087,
+        "w": 461,
+        "h": 62
+      },
+      "aspect": 7.4355,
+      "palette": [
+        {
+          "hex": "#c9d8c0",
+          "coverage": 0.7917
+        },
+        {
+          "hex": "#0a1009",
+          "coverage": 0.1191
+        },
+        {
+          "hex": "#788676",
+          "coverage": 0.065
+        },
+        {
+          "hex": "#4d4f48",
+          "coverage": 0.0134
+        },
+        {
+          "hex": "#283424",
+          "coverage": 0.0109
+        }
+      ],
+      "detail": {
+        "energy": 71.2022
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "nav-bar",
+      "kind": "chrome",
+      "note": "Bottom navigation bar with icons",
+      "grid": null,
+      "box": {
+        "x": 0,
+        "y": 0.88,
+        "w": 1,
+        "h": 0.12
+      },
+      "px": {
+        "x": 0,
+        "y": 1211,
+        "w": 768,
+        "h": 165
+      },
+      "aspect": 4.6545,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.5355
+        },
+        {
+          "hex": "#f8f8e8",
+          "coverage": 0.4259
+        },
+        {
+          "hex": "#232f1f",
+          "coverage": 0.0226
+        },
+        {
+          "hex": "#898989",
+          "coverage": 0.0146
+        },
+        {
+          "hex": "#414141",
+          "coverage": 0.0013
+        }
+      ],
+      "detail": {
+        "energy": 22.4152
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    }
+  ],
+  "compSha256": "caa8a5ad39b64fd1349d3ea3c583a4ba035d37e121f7a585ff3a131af94210d5",
+  "regionsSource": {
+    "path": ".impeccable/build/regions.json",
+    "sha256": "a7bcf7007df8631f40ae7882879683a2962c417d0d31d61c72eca169aea93850"
+  }
+}

@@ -238,11 +238,10 @@ class _QuizArenaPageState extends State<QuizArenaPage> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 10;
+    const topPadding = 12.0;
 
     return Scaffold(
       backgroundColor: AppColors.gading,
-      extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, color: Colors.white),

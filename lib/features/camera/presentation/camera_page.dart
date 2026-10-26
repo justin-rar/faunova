@@ -350,10 +350,8 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
-
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      backgroundColor: AppColors.gading,
       appBar: const GlassAppBar(
         centerTitle: true,
         title: Text(
@@ -381,7 +379,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               });
             },
             child: ListView(
-              padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
               children: [
                 _buildTargetSelectorCard(),
                 const SizedBox(height: 12),

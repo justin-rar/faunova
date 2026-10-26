@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-27T01:25:30Z",
+  "title": "Design System: Faunova",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Sage Tua", "canonical": "#5C7457" },
+      "secondary": { "role": "secondary", "displayName": "Sage", "canonical": "#8FA28A" },
+      "surface": { "role": "surface", "displayName": "Sage Muda", "canonical": "#C7D3C0" },
+      "neutral-bg": { "role": "neutral", "displayName": "Gading", "canonical": "#F7F4ED" },
+      "accent": { "role": "accent", "displayName": "Emas", "canonical": "#C8A96B" },
+      "accent-dark": { "role": "accent", "displayName": "Emas Tua", "canonical": "#7F6326" },
+      "neutral-text": { "role": "neutral", "displayName": "Teks Gelap", "canonical": "#1F2A1E" },
+      "error": { "role": "error", "displayName": "Merah Status", "canonical": "#B3261E" },
+      "text-light": { "role": "neutral", "displayName": "Teks Putih", "canonical": "#FFFFFF" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Editorial", "purpose": "Judul editorial dan tajuk spesimen utama." },
+      "headline": { "displayName": "Headline Species", "purpose": "Nama satwa pada kartu observasi." },
+      "subhead": { "displayName": "Subhead Species", "purpose": "Nama latin ilmiah satwa (italic binomial)." },
+      "title": { "displayName": "Title UI", "purpose": "Header antarmuka dan judul seksi." },
+      "body": { "displayName": "Body Default", "purpose": "Teks deskripsi dan catatan lapangan." },
+      "label": { "displayName": "Label Prominent", "purpose": "Label tombol, chip, dan status." },
+      "caption": { "displayName": "Label Caption", "purpose": "Timestamp, koordinat grid, dan metadata mikro." }
+    },
+    "shadows": [
+      { "name": "card-subtle", "value": "0 4px 14px rgba(31,42,30,0.06)", "purpose": "Elevasi halus untuk kartu observasi lapangan." },
+      { "name": "header-subtle", "value": "0 1px 3px rgba(0,0,0,0.15)", "purpose": "Elevasi pemisah header solid." }
+    ],
+    "motion": [
+      { "name": "slide-pill", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Animasi meluncur kapsul navigasi bawah (300ms)." },
+      { "name": "like-spring", "value": "elastic-out", "purpose": "Animasi pop tombol like dan double tap." }
+    ]
+  }
+}

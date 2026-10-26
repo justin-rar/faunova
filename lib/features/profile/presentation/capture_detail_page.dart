@@ -112,11 +112,10 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
+    const topPadding = 14.0;
 
     return Scaffold(
       backgroundColor: AppColors.gading,
-      extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),

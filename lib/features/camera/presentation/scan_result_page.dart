@@ -46,7 +46,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.gading,
-      extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.teksPutih),
@@ -62,12 +61,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
         ),
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          MediaQuery.of(context).padding.top + kToolbarHeight + 14,
-          16,
-          40,
-        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 40),
         children: [
           // 1. Kartu Foto Satwa (Aspect Ratio 4:3 Field Journal)
           _buildPhotoCard(),

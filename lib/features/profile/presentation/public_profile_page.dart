@@ -154,11 +154,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
+    const topPadding = 14.0;
 
     return Scaffold(
       backgroundColor: AppColors.gading,
-      extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         leading: IconButton(
           icon: const Icon(
@@ -215,7 +214,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return RefreshIndicator(
       onRefresh: _loadProfileData,
-      edgeOffset: topPadding,
+      edgeOffset: 0,
       color: AppColors.sageTua,
       child: ListView(
         padding: EdgeInsets.fromLTRB(16, topPadding, 16, 40),

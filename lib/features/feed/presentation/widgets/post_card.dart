@@ -156,18 +156,19 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
+          color: AppColors.sageMuda,
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: AppColors.surfaceContainerHighest,
+            color: AppColors.sage.withValues(alpha: 0.40),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.teksGelap.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: AppColors.teksGelap.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -175,16 +176,19 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Author Header
-            _buildAuthorHeader(context),
+            // 1. Banner Taksonomi Terverifikasi & Menu Aksi
+            _buildTaxonomyBanner(context),
 
-            // 2. Foto Satwa & Snapped Location
+            // 2. Foto Spesimen & Fullscreen Overlay
             _buildPhotoSurface(context),
 
-            // 3. Taksonomi & Catatan Lapangan (Caption)
-            _buildBodyContent(context),
+            // 3. Nama Spesimen, Kategori, Status & Catatan Lapangan
+            _buildSpeciesInfo(context),
 
-            // 4. Tombol Aksi (Suka, Verifikasi Blok, Lokasi)
+            // 4. Baris Pengamat (Observer Row)
+            _buildObserverRow(context),
+
+            // 5. Baris Audit Rantai Blok & Aksi Sosial
             _buildActionBar(context),
           ],
         ),
@@ -192,233 +196,208 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAuthorHeader(BuildContext context) {
+  /// Banner atas dengan hierarki taksonomi terverifikasi & lencana emas (sesuai comp Opsi 2)
+  Widget _buildTaxonomyBanner(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PublicProfilePage(
-                      userId: post.authorId,
-                      initialAuthorName: post.authorName,
-                      initialAuthorUsername: post.authorUsername,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_outlined,
+                      size: 13,
+                      color: AppColors.sageTua,
                     ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'TAKSONOMI TERVERIFIKASI',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.7,
+                        color: AppColors.sageTua.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  post.category != null && post.category!.isNotEmpty
+                      ? '${post.category!} • ${post.speciesName}'
+                      : 'Fauna Terdata • ${post.speciesName}',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.teksGelap,
                   ),
-                );
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: Row(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Lencana Bintang Verifikasi Emas (Gold Verified Seal)
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: AppColors.emas,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.emasTua.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              size: 15,
+              color: AppColors.teksGelap,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Tombol Opsi / Laporkan / Pindahkan ke Sampah
+          _buildMoreOptionsMenu(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoreOptionsMenu(BuildContext context) {
+    String? myId;
+    try {
+      myId = Supabase.instance.client.auth.currentUser?.id;
+    } catch (_) {}
+
+    final isMyPost = (myId != null && myId == post.authorId) ||
+        post.authorId == '00000000-0000-0000-0000-000000000001' ||
+        post.authorUsername == 'arya_wallacea' ||
+        post.authorName == 'Saya (Kolektor)';
+
+    return PopupMenuButton<String>(
+      icon: Icon(
+        Icons.more_vert_rounded,
+        size: 20,
+        color: AppColors.teksGelap.withValues(alpha: 0.7),
+      ),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (val) async {
+        if (val == 'report') {
+          ReportPostSheet.show(
+            context,
+            post: post,
+            onReportSuccess: widget.onReported,
+          );
+        } else if (val == 'trash') {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogCtx) => AlertDialog(
+              backgroundColor: AppColors.gading,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
                 children: [
-                  AppAvatar(
-                    avatarPath: post.authorAvatar,
-                    displayName: post.authorName,
-                    radius: 19,
-                  ),
-                  const SizedBox(width: 10),
+                  Icon(Icons.delete_outline_rounded, color: AppColors.merahStatus, size: 24),
+                  SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                post.authorName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.teksGelap,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (post.isAuthorVerified) ...[
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.verified_rounded,
-                                color: Color(0xFF1E88E5),
-                                size: 15,
-                              ),
-                            ],
-                          ],
-                        ),
-                        Text(
-                          '@${post.authorUsername} • ${post.timeAgo}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.teksGelap.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Pindahkan ke Sampah?',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.teksGelap),
                     ),
                   ),
                 ],
               ),
+              content: Text(
+                'Postingan ini akan disembunyikan dari linimasa publik dan dipindahkan ke Sampah selama 30 hari.',
+                style: AppTypography.bodyDefault(color: AppColors.teksGelap),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx, false),
+                  child: Text('Batal', style: AppTypography.labelProminent(color: AppColors.teksGelap)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogCtx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.merahStatus,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Pindahkan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          // Badge Blok Rantai Kanonis
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.sageTua,
-              borderRadius: BorderRadius.circular(20),
-            ),
+          );
+
+          if (confirmed == true) {
+            try {
+              await TrashService.instance.trashPost(post.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Postingan dipindahkan ke Sampah (dapat dipulihkan dalam 30 hari).'),
+                    backgroundColor: AppColors.sageTua,
+                  ),
+                );
+                widget.onReported?.call(post.id);
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString()),
+                    backgroundColor: AppColors.merahStatus,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      },
+      itemBuilder: (context) => [
+        if (isMyPost)
+          PopupMenuItem<String>(
+            value: 'trash',
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.link_rounded, size: 12, color: AppColors.teksPutih),
-                const SizedBox(width: 4),
+                const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.merahStatus),
+                const SizedBox(width: 10),
                 Text(
-                  '#${post.blockSeq}',
-                  style: const TextStyle(
-                    color: AppColors.teksPutih,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                  'Pindahkan ke Sampah',
+                  style: AppTypography.bodyCompact(
+                    fontSize: 13,
+                    color: AppColors.merahStatus,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 2),
-          // Tombol Opsi / Laporkan Postingan / Pindahkan ke Sampah
-          Builder(
-            builder: (ctx) {
-              String? myId;
-              try {
-                myId = Supabase.instance.client.auth.currentUser?.id;
-              } catch (_) {}
-
-              final isMyPost = (myId != null && myId == post.authorId) ||
-                  post.authorId == '00000000-0000-0000-0000-000000000001' ||
-                  post.authorUsername == 'arya_wallacea' ||
-                  post.authorName == 'Saya (Kolektor)';
-
-              return PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_vert_rounded,
-                  size: 20,
-                  color: AppColors.teksGelap.withValues(alpha: 0.7),
+        PopupMenuItem<String>(
+          value: 'report',
+          child: Row(
+            children: [
+              const Icon(Icons.flag_outlined, size: 18, color: AppColors.merahStatus),
+              const SizedBox(width: 10),
+              Text(
+                'Laporkan Postingan',
+                style: AppTypography.bodyCompact(
+                  fontSize: 13,
+                  color: AppColors.merahStatus,
                 ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                onSelected: (val) async {
-                  if (val == 'report') {
-                    ReportPostSheet.show(
-                      context,
-                      post: post,
-                      onReportSuccess: widget.onReported,
-                    );
-                  } else if (val == 'trash') {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (dialogCtx) => AlertDialog(
-                        backgroundColor: AppColors.gading,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        title: const Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, color: AppColors.merahStatus, size: 24),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Pindahkan ke Sampah?',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.teksGelap),
-                              ),
-                            ),
-                          ],
-                        ),
-                        content: Text(
-                          'Postingan ini akan disembunyikan dari linimasa publik dan dipindahkan ke Sampah selama 30 hari.',
-                          style: AppTypography.bodyDefault(color: AppColors.teksGelap),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogCtx, false),
-                            child: Text('Batal', style: AppTypography.labelProminent(color: AppColors.teksGelap)),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(dialogCtx, true),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.merahStatus,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              elevation: 0,
-                            ),
-                            child: const Text('Pindahkan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirmed == true) {
-                      try {
-                        await TrashService.instance.trashPost(post.id);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Postingan dipindahkan ke Sampah (dapat dipulihkan dalam 30 hari).'),
-                              backgroundColor: AppColors.sageTua,
-                            ),
-                          );
-                          widget.onReported?.call(post.id);
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString()),
-                              backgroundColor: AppColors.merahStatus,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  }
-                },
-                itemBuilder: (context) => [
-                  if (isMyPost)
-                    PopupMenuItem<String>(
-                      value: 'trash',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.merahStatus),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Pindahkan ke Sampah',
-                            style: AppTypography.bodyCompact(
-                              fontSize: 13,
-                              color: AppColors.merahStatus,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  PopupMenuItem<String>(
-                    value: 'report',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.flag_outlined, size: 18, color: AppColors.merahStatus),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Laporkan Postingan',
-                          style: AppTypography.bodyCompact(
-                            fontSize: 13,
-                            color: AppColors.merahStatus,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -439,7 +418,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
-            color: AppColors.sageMuda.withValues(alpha: 0.5),
+            color: AppColors.sage.withValues(alpha: 0.35),
             child: const Center(
               child: SizedBox(
                 width: 28,
@@ -500,9 +479,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       },
       onDoubleTap: _handleDoubleTapPhoto,
       child: Container(
-        height: 220,
+        height: 240,
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -513,57 +492,35 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             children: [
               imageWidget,
 
-              // Indikator Layar Penuh
+              // Indikator Layar Penuh (Zoom)
               Positioned(
-                top: 8,
-                left: 8,
+                top: 10,
+                left: 10,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.55),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.fullscreen_rounded, size: 15, color: Colors.white),
+                  child: const Icon(Icons.fullscreen_rounded, size: 16, color: Colors.white),
                 ),
               ),
 
-              // Gradient halus bawah
+              // Gradient halus bawah foto
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: 60,
+                height: 50,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.65),
+                        Colors.black.withValues(alpha: 0.55),
                         Colors.transparent,
                       ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Top-right short hash
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    post.shortBlockHash,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      fontFamily: 'monospace',
                     ),
                   ),
                 ),
@@ -608,70 +565,124 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
         ),
       ),
     );
-}
+  }
 
-  Widget _buildBodyContent(BuildContext context) {
+  /// Bagian informasi spesimen: nama satwa, status IUCN, kategori & catatan lapangan
+  Widget _buildSpeciesInfo(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris Taksonomi: Nama Satwa & Nama Latin
+          // Nama Spesimen
+          Text(
+            post.speciesName,
+            style: AppTypography.headlineSpecies(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.teksGelap,
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Baris Chip Status IUCN & Kategori
           Wrap(
+            spacing: 6,
+            runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 2,
             children: [
-              Text(
-                post.speciesName,
-                style: AppTypography.headlineSpecies(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.teksGelap,
+              // Chip Status IUCN Terancam Punah
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.sageTua.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.sageTua.withValues(alpha: 0.35),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.sageTua,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      'IUCN Terancam Punah',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.teksGelap,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (post.category != null && post.category!.isNotEmpty)
-                Text(
-                  post.category!,
-                  style: AppTypography.subheadSpecies(
-                    fontSize: 13.5,
-                    color: AppColors.sageTua,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.gading,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.sage.withValues(alpha: 0.4),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    post.category!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.teksGelap,
+                    ),
                   ),
                 ),
             ],
           ),
           if (post.caption.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               post.caption,
               style: AppTypography.bodyDefault(
                 fontSize: 13.5,
-                color: AppColors.onSurfaceVariant,
+                color: AppColors.teksGelap.withValues(alpha: 0.88),
               ),
             ),
           ],
           if (post.hasLocation) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             InkWell(
               onTap: () => _openCoarseLocation(context),
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerHigh,
+                  color: AppColors.gading,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.sage.withValues(alpha: 0.5),
+                    width: 0.8,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.location_on_rounded, size: 14, color: AppColors.emasTua),
+                    const Icon(Icons.location_on_rounded, size: 13, color: AppColors.emasTua),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         post.areaLabel ?? 'Area Kasar Terverifikasi (Grid)',
-                        style: AppTypography.labelCaption(
-                          color: AppColors.teksGelap,
+                        style: const TextStyle(
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
+                          color: AppColors.teksGelap,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -687,20 +698,139 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 
+  /// Baris identitas pengamat (Observer Row) & nomor blok rantai
+  Widget _buildObserverRow(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PublicProfilePage(
+                      userId: post.authorId,
+                      initialAuthorName: post.authorName,
+                      initialAuthorUsername: post.authorUsername,
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Row(
+                children: [
+                  AppAvatar(
+                    avatarPath: post.authorAvatar,
+                    displayName: post.authorName,
+                    radius: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                post.authorName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.teksGelap,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (post.isAuthorVerified) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: Color(0xFF1E88E5),
+                                size: 14,
+                              ),
+                            ],
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '@${post.authorUsername}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.teksGelap.withValues(alpha: 0.7),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '• ${post.timeAgo}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.teksGelap.withValues(alpha: 0.65),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Badge Nomor Blok Rantai Kanonis
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.sageTua,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.link_rounded, size: 12, color: AppColors.teksPutih),
+                const SizedBox(width: 3),
+                Text(
+                  '#${post.blockSeq}',
+                  style: const TextStyle(
+                    color: AppColors.teksPutih,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baris audit rantai blok & tombol aksi (Action Bar)
   Widget _buildActionBar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 14, 10),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.sageMuda.withValues(alpha: 0.4),
         border: Border(
           top: BorderSide(
-            color: AppColors.surfaceContainerHighest,
+            color: AppColors.sage.withValues(alpha: 0.25),
             width: 1.0,
           ),
         ),
       ),
       child: Row(
         children: [
-          // Tombol Like dengan Animasi Pop & Bounce
+          // Tombol Suka Interaktif
           InkWell(
             onTap: widget.isLiking ? null : _handleLikeButtonTapped,
             borderRadius: BorderRadius.circular(10),
@@ -712,11 +842,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                     scale: _likeScaleAnimation,
                     child: Icon(
                       post.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      size: 21,
-                      color: post.isLikedByMe ? AppColors.merahStatus : AppColors.onSurfaceVariant,
+                      size: 20,
+                      color: post.isLikedByMe ? AppColors.merahStatus : AppColors.teksGelap,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 220),
                     transitionBuilder: (child, animation) {
@@ -737,36 +867,48 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
-          // Label Verifikasi Rantai
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.gading,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.sage.withValues(alpha: 0.4)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.shield_outlined, size: 12, color: AppColors.sageTua),
-                SizedBox(width: 4),
-                Text(
-                  'Koleksi Sah',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.sageTua,
-                  ),
+          // Lencana Koleksi Sah Kriptografi
+          InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Blok #${post.blockSeq} • SHA-256: ${post.blockHash}'),
+                  backgroundColor: AppColors.sageTua,
+                  duration: const Duration(seconds: 4),
                 ),
-              ],
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+              decoration: BoxDecoration(
+                color: AppColors.gading,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.sage.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.shield_outlined, size: 12, color: AppColors.sageTua),
+                  SizedBox(width: 4),
+                  Text(
+                    'Koleksi Sah',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.sageTua,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
           const Spacer(),
 
-          // Tombol Buka Peta Kasar (hanya jika ada lokasi)
+          // Tombol Buka Peta Area (hanya bila coarse)
           if (post.hasLocation)
             InkWell(
               onTap: () => _openCoarseLocation(context),
@@ -799,3 +941,4 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 }
+

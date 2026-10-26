@@ -207,7 +207,6 @@ class _ScanChatPageState extends State<ScanChatPage> {
 
     return Scaffold(
       backgroundColor: AppColors.gading,
-      extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         automaticallyImplyLeading: true,
         leading: IconButton(

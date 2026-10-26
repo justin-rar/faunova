@@ -209,7 +209,6 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.gading,
-      extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         automaticallyImplyLeading: true,
         leading: IconButton(
@@ -227,7 +226,7 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
         centerTitle: true,
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 100, 16, 40),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 40),
         physics: const ClampingScrollPhysics(),
         children: [
           // Banner Informasi Mata Kuliah

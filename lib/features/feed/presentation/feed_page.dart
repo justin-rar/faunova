@@ -11,7 +11,6 @@ import '../../../core/services/post_service.dart';
 import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
-import '../../../core/widgets/glass_app_bar.dart';
 import '../models/post_model.dart';
 import 'widgets/post_card.dart';
 import 'widgets/social_notification_sheet.dart';
@@ -187,45 +186,32 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(
+      backgroundColor: AppColors.gading,
+      appBar: AppBar(
+        backgroundColor: AppColors.sageTua,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
-        centerTitle: true,
-        leading: const SizedBox(width: 48),
-        title: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.center,
-          dividerColor: Colors.transparent,
-          indicatorSize: TabBarIndicatorSize.label,
-          indicator: const UnderlineTabIndicator(
-            borderSide: BorderSide(width: 3.0, color: Colors.white),
-            insets: EdgeInsets.symmetric(horizontal: 10),
-            borderRadius: BorderRadius.all(Radius.circular(3)),
-          ),
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withValues(alpha: 0.60),
-          labelStyle: const TextStyle(
-            fontSize: 16.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.2,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 15.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
-          ),
-          tabs: const [
-            Tab(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('Mengikuti'),
+        centerTitle: false,
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/faunova_logo.png',
+              height: 24,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.pets_rounded,
+                color: AppColors.teksPutih,
+                size: 22,
               ),
             ),
-            Tab(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('Untuk Kamu'),
+            const SizedBox(width: 8),
+            const Text(
+              'Faunova',
+              style: TextStyle(
+                color: AppColors.teksPutih,
+                fontWeight: FontWeight.w800,
+                fontSize: 19,
+                letterSpacing: 0.2,
               ),
             ),
           ],
@@ -243,8 +229,8 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
                       tooltip: 'Pusat Notifikasi Sosial',
                       icon: const Icon(
                         Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: 23,
+                        color: AppColors.teksPutih,
+                        size: 24,
                       ),
                       onPressed: () => SocialNotificationSheet.show(context),
                     ),
@@ -267,6 +253,47 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
             ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.teksGelap.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: AppColors.gading,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              labelColor: AppColors.teksGelap,
+              unselectedLabelColor: AppColors.teksPutih.withValues(alpha: 0.85),
+              labelStyle: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: const [
+                Tab(text: 'Mengikuti'),
+                Tab(text: 'Untuk Kamu'),
+              ],
+            ),
+          ),
+        ),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -279,7 +306,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildFollowingFeed() {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
+    const topPadding = 12.0;
     return AppStateView(
       status: _followingFeedStatus,
       loadingMessage: 'Sinkronisasi feed akun yang diikuti...',
@@ -392,7 +419,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildForYouFeed() {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
+    const topPadding = 12.0;
     return AppStateView(
       status: _forYouFeedStatus,
       loadingMessage: 'Sinkronisasi feed observasi satwa...',

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -24,40 +23,24 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: centerTitle,
-        automaticallyImplyLeading: automaticallyImplyLeading,
-        leading: leading,
-        title: title,
-        actions: actions,
-        bottom: bottom,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.sageTua.withValues(alpha: 0.78),
-                    AppColors.sageTua.withValues(alpha: 0.50),
-                  ],
-                ),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.20),
-                    width: 0.8,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+    return AppBar(
+      backgroundColor: AppColors.sageTua,
+      surfaceTintColor: Colors.transparent,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.15),
+      centerTitle: centerTitle,
+      automaticallyImplyLeading: automaticallyImplyLeading,
+      leading: leading,
+      title: title,
+      actions: actions,
+      bottom: bottom,
+      iconTheme: const IconThemeData(color: Colors.white),
+      actionsIconTheme: const IconThemeData(color: Colors.white),
+      titleTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 16.5,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.3,
       ),
     );
   }

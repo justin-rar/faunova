@@ -1,0 +1,173 @@
+{
+  "draft": false,
+  "regions": [
+    {
+      "id": "app-bar",
+      "kind": "chrome",
+      "container": true,
+      "box": {
+        "x": 0.0,
+        "y": 0.0,
+        "w": 1.0,
+        "h": 0.083
+      },
+      "note": "Top app bar with sage green background"
+    },
+    {
+      "id": "wordmark",
+      "kind": "text",
+      "parentId": "app-bar",
+      "box": {
+        "x": 0.03,
+        "y": 0.03,
+        "w": 0.35,
+        "h": 0.045
+      },
+      "note": "Faunova app header title"
+    },
+    {
+      "id": "tab-bar",
+      "kind": "chrome",
+      "container": true,
+      "box": {
+        "x": 0.0,
+        "y": 0.083,
+        "w": 1.0,
+        "h": 0.095
+      },
+      "note": "Segmented feed tab bar"
+    },
+    {
+      "id": "tab-untuk-kamu",
+      "kind": "control",
+      "parentId": "tab-bar",
+      "box": {
+        "x": 0.0,
+        "y": 0.09,
+        "w": 0.51,
+        "h": 0.075
+      },
+      "note": "Active tab pill for Untuk Kamu"
+    },
+    {
+      "id": "tab-mengikuti",
+      "kind": "control",
+      "parentId": "tab-bar",
+      "box": {
+        "x": 0.52,
+        "y": 0.09,
+        "w": 0.48,
+        "h": 0.075
+      },
+      "note": "Inactive tab pill for Mengikuti"
+    },
+    {
+      "id": "card-container",
+      "kind": "chrome",
+      "container": true,
+      "box": {
+        "x": 0.03,
+        "y": 0.19,
+        "w": 0.94,
+        "h": 0.68
+      },
+      "note": "Observation card rounded container in sage muda"
+    },
+    {
+      "id": "taxon-header",
+      "kind": "text",
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.20,
+        "w": 0.72,
+        "h": 0.06
+      },
+      "note": "Taxon classification header text Aves Falconiformes Accipitridae"
+    },
+    {
+      "id": "verification-badge",
+      "kind": "plate",
+      "parentId": "card-container",
+      "bleed": true,
+      "box": {
+        "x": 0.78,
+        "y": 0.19,
+        "w": 0.18,
+        "h": 0.09
+      },
+      "note": "Gold verified seal badge icon"
+    },
+    {
+      "id": "specimen-photo",
+      "kind": "plate",
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.28,
+        "w": 0.88,
+        "h": 0.34
+      },
+      "note": "Photograph of Javan Hawk-Eagle Elang Jawa in forest canopy"
+    },
+    {
+      "id": "species-title",
+      "kind": "text",
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.64,
+        "w": 0.65,
+        "h": 0.04
+      },
+      "note": "Species common name and binomial Elang Jawa (Nisaetus bartelsi)"
+    },
+    {
+      "id": "iucn-badge",
+      "kind": "control",
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.69,
+        "w": 0.48,
+        "h": 0.04
+      },
+      "note": "IUCN conservation status badge Terancam Punah"
+    },
+    {
+      "id": "observer-row",
+      "kind": "text",
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.74,
+        "w": 0.45,
+        "h": 0.04
+      },
+      "note": "Observer username and verified badge"
+    },
+    {
+      "id": "hash-chain-pill",
+      "kind": "control",
+      "parentId": "card-container",
+      "box": {
+        "x": 0.06,
+        "y": 0.79,
+        "w": 0.60,
+        "h": 0.045
+      },
+      "note": "Cryptographic block hash pill #BLK-018 hash 7f8a...3e9b"
+    },
+    {
+      "id": "nav-bar",
+      "kind": "chrome",
+      "box": {
+        "x": 0.0,
+        "y": 0.88,
+        "w": 1.0,
+        "h": 0.12
+      },
+      "note": "Bottom navigation bar with icons"
+    }
+  ]
+}

@@ -247,9 +247,8 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 14;
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      backgroundColor: AppColors.gading,
       appBar: const GlassAppBar(
         centerTitle: true,
         title: Text(
@@ -271,7 +270,7 @@ class _GamePageState extends State<GamePage> {
         offlineMessage: 'Mode luring. Kuis dengan skor tervalidasi server memerlukan internet.',
         onRetry: _loadGameData,
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, topPadding, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
           children: [
             // 1. Streak Card with Day Dots
             _buildStreakTrackerCard(),

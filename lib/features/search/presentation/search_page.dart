@@ -112,10 +112,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 12;
-
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      backgroundColor: AppColors.gading,
       appBar: GlassAppBar(
         centerTitle: true,
         title: TabBar(
@@ -167,7 +165,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
         onRetry: _executeSearch,
         child: Column(
           children: [
-            SizedBox(height: topPadding),
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildSearchInput(),
