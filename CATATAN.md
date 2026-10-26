@@ -2522,6 +2522,37 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 
 - Pengguna menjalankan migrasi `030` di Supabase SQL Editor, kemudian menjalankan checklist uji 2 perangkat.
 
+---
 
+## Sesi Perbaikan Problem 1, 2, 3 (Trash Visibility, Grid Koleksi, Reactive UI) — Selesai ✅
 
+### 1. Selesai Dikerjakan
+
+- **Problem 1: Sampah (Trash) Masih Terlihat Publik**:
+  - Dibuat migrasi `supabase/migrations/031_fix_rls_trash_visibility.sql`:
+    - RLS SELECT pada `posts` dan `captures` diperbarui agar item dengan `trashed_at IS NOT NULL`, `deleted_at IS NOT NULL`, atau `purged_at IS NOT NULL` difilter dari seluruh query publik.
+    - RPC `get_user_posts` dan `get_my_notifications` diperbarui agar menangani postingan dan tangkapan yang sudah di-trash/purge secara graceful (tidak crash, menampilkan "post tidak tersedia").
+  - Di sisi klien (fallback/demo), `PostService.isPostVisibleLocally` ditambahkan dan digunakan oleh `fetchForYouFeed`, `fetchFollowingFeed`, `fetchUserPublicPosts` di `PostService` dan `SocialService` untuk memfilter item yang sudah di-trash.
+- **Problem 2: Grid Koleksi Menampilkan Placeholder (Bukan Foto Asli)**:
+  - `CollectionGridView` diperbarui untuk menggunakan `MediaResolver.resolvePhotoUrl` yang mendukung URL jaringan, path aset, dan file lokal dengan error builder dan loading indicator yang robust.
+- **Problem 3: UI Tidak Refresh Otomatis Setelah Aksi Trash/Restore/Simpan**:
+  - Ditambahkan `onCaptureSavedNotifier` (`ValueNotifier`) di `CaptureService` yang dipicu setiap kali tangkapan baru disimpan.
+  - Ditambahkan `onTrashChangedNotifier` (`ValueNotifier`) di `TrashService` yang dipicu setiap aksi trash, restore, dan purge.
+  - Listener ditambahkan di `ProfilePage`, `FeedPage`, dan `CaptureDetailPage` sehingga menyimpan, membuang ke sampah, memulihkan, dan menghapus permanen langsung me-refresh grid dan linimasa tanpa perlu reload manual.
+- **Test Suite Verifikasi**:
+  - Dibuat `test/problems_1_2_3_verification_test.dart` dengan test komprehensif yang mencakup Problem 1 (visibilitas trash), Problem 2 (resolusi media grid), dan Problem 3 (reaktivitas notifier).
+
+### 2. Hasil Pengujian & Analisis
+
+- `flutter analyze`: **No issues found!** (0 error, 0 warning).
+- `flutter test`: **195+ tests passed (100% lulus)** tanpa regresi.
+
+### 3. Yang Belum Teruji (Membutuhkan Pengujian Nyata)
+
+- Menjalankan migrasi `031_fix_rls_trash_visibility.sql` di Supabase Dashboard SQL Editor.
+- Verifikasi visual di perangkat fisik bahwa item yang di-trash benar-benar hilang dari feed dan profil publik pengguna lain.
+
+### 4. Langkah Selanjutnya
+
+- Pengguna menjalankan migrasi `031` di Supabase SQL Editor. Seluruh perbaikan Problem 1, 2, dan 3 telah tuntas.
 
