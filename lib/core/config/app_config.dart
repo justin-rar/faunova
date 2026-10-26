@@ -34,6 +34,9 @@ class AppConfig {
     return 'Mid-client-7POOnG-_USHPaef3';
   }
 
+  /// Masa retensi item di tempat sampah sebelum di-purge permanen (30 hari)
+  static const int trashRetentionDays = 30;
+
   static bool _isSupabaseInitialized = false;
   static bool get isSupabaseInitialized {
     if (_isSupabaseInitialized) return true;
@@ -47,8 +50,11 @@ class AppConfig {
     }
   }
 
+  static bool? overrideDemoMode;
+
   /// Memeriksa apakah aplikasi berjalan dalam mode demo
-  static bool get isDemoMode => !isSupabaseConfigured;
+  static bool get isDemoMode => overrideDemoMode ?? !isSupabaseConfigured;
+  static set isDemoMode(bool val) => overrideDemoMode = val;
 
   /// Memeriksa apakah kredensial Supabase sudah diisi dengan benar
   static bool get isSupabaseConfigured {

@@ -15,6 +15,8 @@ import '../../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../profile/presentation/public_profile_page.dart';
 import '../../models/post_model.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/trash_service.dart';
 import 'report_post_sheet.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/media_resolver.dart';
@@ -283,43 +285,137 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(width: 2),
-          // Tombol Opsi / Laporkan Postingan (Scope Tingkat 3 & Plan 333)
-          PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert_rounded,
-              size: 20,
-              color: AppColors.teksGelap.withValues(alpha: 0.7),
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            onSelected: (val) {
-              if (val == 'report') {
-                ReportPostSheet.show(
-                  context,
-                  post: post,
-                  onReportSuccess: widget.onReported,
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                value: 'report',
-                child: Row(
-                  children: [
-                    const Icon(Icons.flag_outlined, size: 18, color: AppColors.merahStatus),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Laporkan Postingan',
-                      style: AppTypography.bodyCompact(
-                        fontSize: 13,
-                        color: AppColors.merahStatus,
+          // Tombol Opsi / Laporkan Postingan / Pindahkan ke Sampah
+          Builder(
+            builder: (ctx) {
+              String? myId;
+              try {
+                myId = Supabase.instance.client.auth.currentUser?.id;
+              } catch (_) {}
+
+              final isMyPost = (myId != null && myId == post.authorId) ||
+                  post.authorId == '00000000-0000-0000-0000-000000000001' ||
+                  post.authorUsername == 'arya_wallacea' ||
+                  post.authorName == 'Saya (Kolektor)';
+
+              return PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: 20,
+                  color: AppColors.teksGelap.withValues(alpha: 0.7),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (val) async {
+                  if (val == 'report') {
+                    ReportPostSheet.show(
+                      context,
+                      post: post,
+                      onReportSuccess: widget.onReported,
+                    );
+                  } else if (val == 'trash') {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        backgroundColor: AppColors.gading,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        title: const Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, color: AppColors.merahStatus, size: 24),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Pindahkan ke Sampah?',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.teksGelap),
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: Text(
+                          'Postingan ini akan disembunyikan dari linimasa publik dan dipindahkan ke Sampah selama 30 hari.',
+                          style: AppTypography.bodyDefault(color: AppColors.teksGelap),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx, false),
+                            child: Text('Batal', style: AppTypography.labelProminent(color: AppColors.teksGelap)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(dialogCtx, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.merahStatus,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
+                            child: const Text('Pindahkan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed == true) {
+                      try {
+                        await TrashService.instance.trashPost(post.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Postingan dipindahkan ke Sampah (dapat dipulihkan dalam 30 hari).'),
+                              backgroundColor: AppColors.sageTua,
+                            ),
+                          );
+                          widget.onReported?.call(post.id);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: AppColors.merahStatus,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (isMyPost)
+                    PopupMenuItem<String>(
+                      value: 'trash',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.merahStatus),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Pindahkan ke Sampah',
+                            style: AppTypography.bodyCompact(
+                              fontSize: 13,
+                              color: AppColors.merahStatus,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  PopupMenuItem<String>(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.flag_outlined, size: 18, color: AppColors.merahStatus),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Laporkan Postingan',
+                          style: AppTypography.bodyCompact(
+                            fontSize: 13,
+                            color: AppColors.merahStatus,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

@@ -18,6 +18,8 @@ import '../../camera/models/capture_model.dart';
 import '../../camera/models/chain_verification_result.dart';
 import '../../feed/presentation/widgets/create_post_sheet.dart';
 import '../../../core/utils/media_resolver.dart';
+import '../../../core/services/trash_service.dart';
+import '../../../core/services/post_service.dart';
 import 'widgets/multi_timezone_card.dart';
 
 class CaptureDetailPage extends StatefulWidget {
@@ -131,37 +133,81 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           ),
         ),
       ),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 40),
-        children: [
-          // 1. Foto Satwa & Badge Blok
-          _buildHeroPhotoCard(),
-          const SizedBox(height: 16),
+      body: capture.isPurged
+          ? ListView(
+              padding: EdgeInsets.fromLTRB(16, topPadding, 16, 40),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9CA3AF).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.inventory_2_outlined, size: 36, color: Color(0xFF4B5563)),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Purged (Tombstone)',
+                        style: AppTypography.titleUi(fontSize: 18, color: const Color(0xFF374151)),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Blok #${capture.seq} • ${capture.shortBlockHash}',
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 13, color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Data observasi dan berkas foto satwa ini telah dihapus permanen. Nilai hash kriptografi dan nomor urut tetap dipertahankan untuk menjamin kontinuitas dan keabsahan rantai blok.',
+                        style: AppTypography.bodyDefault(color: const Color(0xFF4B5563)),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildHashChainAuditCard(),
+              ],
+            )
+          : ListView(
+              padding: EdgeInsets.fromLTRB(16, topPadding, 16, 40),
+              children: [
+                // 1. Foto Satwa & Badge Blok
+                _buildHeroPhotoCard(),
+                const SizedBox(height: 16),
 
-          // 2. Header Spesies Satwa
-          _buildSpeciesHeaderCard(),
-          const SizedBox(height: 14),
+                // 2. Header Spesies Satwa
+                _buildSpeciesHeaderCard(),
+                const SizedBox(height: 14),
 
-          // 3. Panel Audit Hash-Chain Kanonis SHA-256 (Plan 5.2)
-          _buildHashChainAuditCard(),
-          const SizedBox(height: 14),
+                // 3. Panel Audit Hash-Chain Kanonis SHA-256 (Plan 5.2)
+                _buildHashChainAuditCard(),
+                const SizedBox(height: 14),
 
-          // 4. Panel Metadata Sensor & Lapangan
-          _buildSensorMetadataCard(),
-          const SizedBox(height: 14),
+                // 4. Panel Metadata Sensor & Lapangan
+                _buildSensorMetadataCard(),
+                const SizedBox(height: 14),
 
-          // 5. Panel Waktu Observasi Lapangan 4 Zona (Plan 40, 136, 318)
-          MultiTimeZoneCard(
-            targetTime: capture.receivedAt,
-            title: 'Waktu Observasi 4 Zona',
-            subtitle: 'Waktu resmi penerimaan server dalam WIB, WITA, WIT, dan London',
-          ),
-          const SizedBox(height: 20),
+                // 5. Panel Waktu Observasi Lapangan 4 Zona (Plan 40, 136, 318)
+                MultiTimeZoneCard(
+                  targetTime: capture.receivedAt,
+                  title: 'Waktu Observasi 4 Zona',
+                  subtitle: 'Waktu resmi penerimaan server dalam WIB, WITA, WIT, dan London',
+                ),
+                const SizedBox(height: 20),
 
-          // 6. Tombol Aksi Lapangan
-          _buildActionButtons(),
-        ],
-      ),
+                // 6. Tombol Aksi Lapangan
+                _buildActionButtons(),
+              ],
+            ),
     );
   }
 
@@ -777,7 +823,88 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
     );
   }
 
+  bool get _isSharedLive =>
+      PostService.instance.demoPosts.any((p) => p.captureId == capture.id && !p.isTrashed);
+
+  Future<void> _handleTrashCapture() async {
+    final isShared = _isSharedLive;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.gading,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              isShared ? Icons.warning_amber_rounded : Icons.delete_outline_rounded,
+              color: isShared ? AppColors.merahStatus : AppColors.sageTua,
+              size: 26,
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Pindahkan ke Sampah?',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                  color: AppColors.teksGelap,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isShared
+              ? 'Koleksi ini telah dibagikan ke linimasa. Memindahkan koleksi ke Sampah akan menyembunyikan postingan terkait dari linimasa publik. Lanjutkan?'
+              : 'Koleksi ini akan dipindahkan ke Sampah selama 30 hari dan dapat dipulihkan sebelum dihapus permanen.',
+          style: AppTypography.bodyDefault(color: AppColors.teksGelap),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Batal', style: AppTypography.labelProminent(color: AppColors.teksGelap)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isShared ? AppColors.merahStatus : AppColors.sageTua,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            child: const Text('Pindahkan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await TrashService.instance.trashCapture(capture.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Koleksi dipindahkan ke Sampah (dapat dipulihkan dalam 30 hari).'),
+              backgroundColor: AppColors.sageTua,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: AppColors.merahStatus,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildActionButtons() {
+    final isShared = _isSharedLive;
+
     return Column(
       children: [
         // Tombol Bagikan ke Linimasa Komunitas
@@ -785,19 +912,25 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
           width: double.infinity,
           height: 48,
           child: ElevatedButton.icon(
-            onPressed: () {
-              CreatePostSheet.show(context, capture: capture);
+            onPressed: () async {
+              final result = await CreatePostSheet.show(context, capture: capture);
+              if (result != null && mounted) {
+                setState(() {});
+              }
             },
-            icon: const Icon(Icons.share_rounded, color: AppColors.teksPutih),
+            icon: Icon(
+              isShared ? Icons.check_circle_outline_rounded : Icons.share_rounded,
+              color: AppColors.teksPutih,
+            ),
             label: Text(
-              'Bagikan ke Linimasa (create_post)',
+              isShared ? 'Sudah Dibagikan (Bagikan Ulang)' : 'Bagikan ke Linimasa (create_post)',
               style: AppTypography.labelProminent(
                 fontSize: 14,
                 color: AppColors.teksPutih,
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.sageTua,
+              backgroundColor: isShared ? AppColors.sage : AppColors.sageTua,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
@@ -823,6 +956,28 @@ class _CaptureDetailPageState extends State<CaptureDetailPage> {
               backgroundColor: AppColors.emas,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Tombol Pindahkan ke Sampah
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: _handleTrashCapture,
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.merahStatus),
+            label: Text(
+              'Pindahkan ke Sampah',
+              style: AppTypography.labelProminent(
+                fontSize: 14,
+                color: AppColors.merahStatus,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.merahStatus, width: 1.2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
           ),
         ),

@@ -21,6 +21,8 @@ class CaptureModel {
   final String blockHash;
   final String photoSha256;
   final DateTime createdAt;
+  final DateTime? trashedAt;
+  final DateTime? purgedAt;
 
   const CaptureModel({
     required this.id,
@@ -39,9 +41,20 @@ class CaptureModel {
     required this.blockHash,
     required this.photoSha256,
     required this.createdAt,
+    this.trashedAt,
+    this.purgedAt,
   });
 
+  bool get isTrashed => trashedAt != null;
+  bool get isPurged => purgedAt != null;
+
   factory CaptureModel.fromJson(Map<String, dynamic> json) {
+    DateTime? parseNullableDate(dynamic val) {
+      if (val == null) return null;
+      if (val is DateTime) return val;
+      return DateTime.tryParse(val.toString());
+    }
+
     return CaptureModel(
       id: json['id']?.toString() ?? json['capture_id']?.toString() ?? '',
       scanId: json['scan_id']?.toString(),
@@ -63,6 +76,8 @@ class CaptureModel {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      trashedAt: parseNullableDate(json['trashed_at']),
+      purgedAt: parseNullableDate(json['purged_at']),
     );
   }
 
@@ -84,7 +99,54 @@ class CaptureModel {
       'block_hash': blockHash,
       'photo_sha256': photoSha256,
       'created_at': createdAt.toIso8601String(),
+      if (trashedAt != null) 'trashed_at': trashedAt!.toIso8601String(),
+      if (purgedAt != null) 'purged_at': purgedAt!.toIso8601String(),
     };
+  }
+
+  CaptureModel copyWith({
+    String? id,
+    String? scanId,
+    String? userId,
+    String? photoObjectPath,
+    String? speciesName,
+    String? category,
+    bool clearCategory = false,
+    String? description,
+    bool clearDescription = false,
+    double? latitude,
+    double? longitude,
+    double? cameraHeading,
+    DateTime? receivedAt,
+    int? seq,
+    String? previousHash,
+    String? blockHash,
+    String? photoSha256,
+    DateTime? createdAt,
+    DateTime? trashedAt,
+    bool clearTrashedAt = false,
+    DateTime? purgedAt,
+  }) {
+    return CaptureModel(
+      id: id ?? this.id,
+      scanId: scanId ?? this.scanId,
+      userId: userId ?? this.userId,
+      photoObjectPath: photoObjectPath ?? this.photoObjectPath,
+      speciesName: speciesName ?? this.speciesName,
+      category: clearCategory ? null : (category ?? this.category),
+      description: clearDescription ? '' : (description ?? this.description),
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      cameraHeading: cameraHeading ?? this.cameraHeading,
+      receivedAt: receivedAt ?? this.receivedAt,
+      seq: seq ?? this.seq,
+      previousHash: previousHash ?? this.previousHash,
+      blockHash: blockHash ?? this.blockHash,
+      photoSha256: photoSha256 ?? this.photoSha256,
+      createdAt: createdAt ?? this.createdAt,
+      trashedAt: clearTrashedAt ? null : (trashedAt ?? this.trashedAt),
+      purgedAt: purgedAt ?? this.purgedAt,
+    );
   }
 
   /// Format potongan hash ramah UI (misal: "a1b2c3d4...9e0f")

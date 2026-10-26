@@ -33,6 +33,8 @@ class PostModel {
   // Metrik sosial
   final int likesCount;
   final bool isLikedByMe;
+  final DateTime? trashedAt;
+  final DateTime? deletedAt;
 
   const PostModel({
     required this.id,
@@ -56,7 +58,12 @@ class PostModel {
     this.authorVerifiedUntil,
     this.likesCount = 0,
     this.isLikedByMe = false,
+    this.trashedAt,
+    this.deletedAt,
   });
+
+  bool get isTrashed => trashedAt != null;
+  bool get isDeleted => deletedAt != null;
 
   bool get isAuthorVerified =>
       authorVerifiedUntil != null && authorVerifiedUntil!.isAfter(DateTime.now());
@@ -102,6 +109,10 @@ class PostModel {
     DateTime? authorVerifiedUntil,
     int? likesCount,
     bool? isLikedByMe,
+    DateTime? trashedAt,
+    bool clearTrashedAt = false,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -125,6 +136,8 @@ class PostModel {
       authorVerifiedUntil: authorVerifiedUntil ?? this.authorVerifiedUntil,
       likesCount: likesCount ?? this.likesCount,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
+      trashedAt: clearTrashedAt ? null : (trashedAt ?? this.trashedAt),
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
@@ -169,6 +182,8 @@ class PostModel {
           ? (json['likes_count'] as num).toInt()
           : int.tryParse(json['likes_count']?.toString() ?? '0') ?? 0,
       isLikedByMe: json['is_liked_by_me'] == true,
+      trashedAt: json['trashed_at'] != null ? parseDate(json['trashed_at']) : null,
+      deletedAt: json['deleted_at'] != null ? parseDate(json['deleted_at']) : null,
     );
   }
 
@@ -181,6 +196,7 @@ class PostModel {
       'display_latitude': displayLatitude,
       'display_longitude': displayLongitude,
       'area_label': areaLabel,
+      'created_at': createdAt.toIso8601String(),
       'post_created_at': createdAt.toIso8601String(),
       'species_name': speciesName,
       'category': category,
@@ -195,6 +211,8 @@ class PostModel {
       'author_verified_until': authorVerifiedUntil?.toIso8601String(),
       'likes_count': likesCount,
       'is_liked_by_me': isLikedByMe,
+      if (trashedAt != null) 'trashed_at': trashedAt!.toIso8601String(),
+      if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
     };
   }
 }

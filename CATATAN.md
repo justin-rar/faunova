@@ -2390,3 +2390,70 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 ### 5. Langkah Selanjutnya
 - Melakukan verifikasi manual langsung dengan 2 akun di 2 perangkat fisik Android sesuai tabel skenario pengujian.
 
+---
+
+## Sesi Fitur Sampah (Soft Delete) & Purge Rantai Blok Kriptografi (Tombstone) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+
+- **Fitur Sampah & Retensi 30 Hari (Plan 5.2, 5.3, 5.7, 5.9, Scope Tingkat 3)**:
+  - Menambahkan kolom `trashed_at` pada tabel `posts` dan `captures`, serta `purged_at` pada tabel `captures`.
+  - Migrasi Supabase `supabase/migrations/029_trash_and_soft_delete.sql` dengan RPC `SECURITY DEFINER`:
+    - `trash_post`, `restore_post`, `trash_capture`, `restore_capture`.
+    - `get_my_trash` (menyembunyikan item kedaluwarsa > 30 hari).
+    - `get_expired_trash` (mengembalikan item trashed > 30 hari untuk keperluan lazy purge).
+    - `purge_trash_item` (verifikasi kepemilikan, idempoten, tombstone DB row, cascade delete post).
+    - `get_my_unread_notifications_count` dan filter notifikasi (`get_my_notifications`).
+  - Pembaruan filter pada seluruh fungsi publik server: `get_for_you_feed`, `get_following_feed`, `get_user_public_posts`, `get_user_profile_metrics`, `search_verified_fauna_accounts`, `toggle_post_like`, dan `create_post`.
+
+- **Aturan Relasi Postingan & Koleksi (Soft Delete Lifecycle)**:
+  - Koleksi dipindahkan ke Sampah $\rightarrow$ postingan terkait otomatis hilang dari linimasa.
+  - Memulihkan postingan dari Sampah yang koleksi induknya masih berada di Sampah diblokir dengan pesan edukatif untuk memulihkan koleksi satwa terlebih dahulu.
+  - Postingan yang di-trash manual oleh pengguna sebelum koleksinya di-trash akan tetap berada di Sampah saat koleksi dipulihkan (tidak otomatis muncul ke linimasa).
+  - Bagikan ulang (*re-share*) via `create_post` memulihkan postingan lama dari Sampah dan **mempertahankan seluruh like lama** (baris postingan di-restore, bukan dibuat baru).
+
+- **Purge Kriptografi & Tombstone Rantai Kanonis (Plan 5.2 Option A)**:
+  - Berkas citra observasi dihapus permanen dari Supabase Storage sebelum mutasi basis data.
+  - Row observasi pada `captures` disunting menjadi tombstone anonim: `species_name = '[Observasi Dipurge]'`, `photo_object_path = 'purged'`, `category = NULL`, `description = NULL`, `purged_at = now()`.
+  - Seluruh 8 parameter pembentuk hash SHA-256 (`seq`, `previous_hash`, `block_hash`, `photo_sha256`, `latitude`, `longitude`, `camera_heading`, `received_at`, `user_id`) dipertahankan 100%.
+  - Fungsi verifikasi rantai `verify_block` dan `verify_user_chain` lulus deterministik tanpa mengubah sebaris pun kode SQL.
+  - Tampilan audit kartu rantai di profil dan detail menampilkan status abu-abu *"Purged (Tombstone)"* dengan `#seq` dan hash ringkas tanpa metadata biologis atau foto.
+
+- **Antarmuka Pengguna (UI/UX) Standar Faunova**:
+  - `TrashPage` (`lib/features/profile/presentation/trash_page.dart`): Tab "Postingan" dan "Koleksi Satwa", badge hitung mundur hari, tombol "Pulihkan", dan tombol "Hapus Permanen" dengan dialog penjelasan tombstone.
+  - Popup menu kartu postingan (`PostCard`): Opsi "Pindahkan ke Sampah" dengan dialog konfirmasi untuk pembuat postingan. Sheet pelaporan (`ReportPostSheet`) dipertahankan utuh tanpa perubahan.
+  - Layar detail koleksi (`CaptureDetailPage`): Dialog peringatan konfirmasi bahwa postingan di linimasa akan turut disembunyikan saat koleksi dipindahkan ke Sampah.
+  - `AppSettingsSheet` & Menu Profil: Menambahkan entri navigasi menuju layar Sampah dengan retensi 30 hari.
+
+- **Layanan Klien (`TrashService` & Invalidation)**:
+  - `TrashService.instance` mengelola lazy purge saat aplikasi dibuka atau layar Sampah dibuka.
+  - Invalidasi cache lokal Hive (`EncryptedStorageService.clearUserCaptures`) secara otomatis saat aksi trash, restore, atau purge terjadi.
+
+### 2. Hasil Pengujian & Analisis
+
+- `flutter analyze`: **No issues found!** (Bersih total, 0 error, 0 warning).
+- `test/trash_flow_test.dart`: **13/13 tests passed (100% lulus)**:
+  1. `trash_post` menyembunyikan postingan dari linimasa.
+  2. `trash_post` idempoten dan tidak mereset timestamp `trashed_at`.
+  3. Menolak memindahkan postingan yang dimoderasi (`deleted_at IS NOT NULL`).
+  4. `restore_post` mengembalikan postingan ke linimasa publik.
+  5. Menolak memulihkan postingan jika koleksi induk masih berada di Sampah.
+  6. `trash_capture` menyembunyikan koleksi dari koleksi pengguna & cache Hive.
+  7. `restore_capture` mengembalikan koleksi ke tab koleksi.
+  8. Post yang di-trash manual sebelum capture di-trash tetap tinggal di Sampah saat capture dipulihkan.
+  9. Bagikan ulang (*re-share*) auto-restore post dan **mempertahankan seluruh like lama**.
+  10. `create_post` menolak observasi yang sedang berada di Sampah atau telah dipurge.
+  11. Purge capture: tombstone row, cascade delete post, dan **integritas hash-chain 100% UTUH**.
+  12. `purgeItem` menolak item yang belum berada di Sampah (`trashed_at IS NULL`).
+  13. `purgeItem` bersifat idempoten.
+
+### 3. Yang Belum Teruji (Membutuhkan Pengujian Nyata)
+
+- Siklus kedaluwarsa 30 hari waktu nyata (pengujian unit menguji kondisi kedaluwarsa secara simulasi deterministik).
+- Penghapusan berkas fisik di Supabase Storage bucket langsung pada lingkungan backend production.
+
+### 4. Langkah Selanjutnya
+
+- Fitur Sampah dan Purge Kriptografi telah tuntas dan teruji penuh tanpa kendala. Sistem siap digunakan atau dilanjutkan ke sesi berikutnya.
+
+

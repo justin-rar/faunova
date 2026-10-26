@@ -10,6 +10,7 @@ import '../../../../core/services/biometric_service.dart';
 import '../../../../core/services/notification_service.dart';
 import 'biometric_setting_sheet.dart';
 import 'notification_setting_sheet.dart';
+import '../trash_page.dart';
 
 class AppSettingsSheet extends StatefulWidget {
   const AppSettingsSheet({super.key});
@@ -184,7 +185,23 @@ class _AppSettingsSheetState extends State<AppSettingsSheet> {
                 ),
                 const SizedBox(height: 18),
 
-                // 3. Seksi Privasi & Perlindungan Data
+                // 3. Seksi Pengelolaan Data & Sampah
+                _buildSectionHeader('Pengelolaan Data & Sampah', Icons.delete_outline_rounded),
+                const SizedBox(height: 8),
+                _buildSettingTile(
+                  icon: Icons.delete_sweep_rounded,
+                  title: 'Sampah (Retensi 30 Hari)',
+                  subtitle: 'Lihat, pulihkan, atau bersihkan postingan dan koleksi satwa yang dipindahkan ke Sampah.',
+                  trailingText: 'Buka',
+                  trailingColor: AppColors.merahStatus,
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await TrashPage.open(context);
+                  },
+                ),
+                const SizedBox(height: 18),
+
+                // 4. Seksi Privasi & Perlindungan Data
                 _buildSectionHeader('Privasi & Keamanan Lapangan (Plan 5.2, 5.7)', Icons.security_rounded),
                 const SizedBox(height: 8),
                 Container(

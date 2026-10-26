@@ -93,6 +93,65 @@ class CollectionGridView extends StatelessWidget {
   }
 
   Widget _buildCaptureCard(BuildContext context, CaptureModel capture) {
+    if (capture.isPurged) {
+      return Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE5E7EB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.inventory_2_outlined, size: 28, color: Color(0xFF6B7280)),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Blok #${capture.seq}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF9CA3AF).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Purged (Tombstone)',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4B5563),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              capture.shortBlockHash,
+              style: const TextStyle(
+                fontSize: 10,
+                fontFamily: 'monospace',
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     Widget imageWidget;
     if (capture.photoObjectPath.isNotEmpty && File(capture.photoObjectPath).existsSync()) {
       imageWidget = Image.file(

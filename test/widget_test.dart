@@ -3258,6 +3258,8 @@ void main() {
       expect(find.text('Grid Snapping 0.01° di Server'), findsOneWidget);
       expect(find.text('Pembersihan Metadata EXIF di Klien'), findsOneWidget);
 
+      await tester.scrollUntilVisible(find.text('Faunova — Jurnal Sosial Satwa'), 200, scrollable: find.byType(Scrollable).first);
+
       expect(find.text('Informasi Aplikasi & Lisensi'), findsOneWidget);
       expect(find.text('Faunova — Jurnal Sosial Satwa'), findsOneWidget);
     });

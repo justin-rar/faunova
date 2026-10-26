@@ -383,13 +383,14 @@ class CaptureService {
     if (AppConfig.isDemoMode || client == null) {
       // 1. Coba baca dari Hive terenkripsi dulu (Plan 5.2, 40, 78)
       final cachedList = EncryptedStorageService.instance.getUserCaptures(currentUserId);
-      if (cachedList.isNotEmpty) {
-        return cachedList;
+      final activeCached = cachedList.where((c) => !c.isTrashed && !c.isPurged).toList();
+      if (activeCached.isNotEmpty) {
+        return activeCached;
       }
       if (_demoCaptures.isEmpty) {
         _initMockDemoCaptures();
       }
-      return List<CaptureModel>.from(_demoCaptures.reversed);
+      return List<CaptureModel>.from(_demoCaptures.where((c) => !c.isTrashed && !c.isPurged).toList().reversed);
     }
 
     try {
@@ -398,6 +399,8 @@ class CaptureService {
           .select('*')
           .eq('user_id', currentUserId)
           .isFilter('deleted_at', null)
+          .isFilter('trashed_at', null)
+          .isFilter('purged_at', null)
           .order('seq', ascending: false);
 
       final List<dynamic> data = response as List<dynamic>;
@@ -411,11 +414,12 @@ class CaptureService {
       debugPrint('CaptureService fetchUserCaptures error: $e. Membaca dari Hive cache lokal terenkripsi.');
       // 2. Offline fallback ke Hive terenkripsi jika koneksi server gagal
       final cachedList = EncryptedStorageService.instance.getUserCaptures(currentUserId);
-      if (cachedList.isNotEmpty) {
-        return cachedList;
+      final activeCached = cachedList.where((c) => !c.isTrashed && !c.isPurged).toList();
+      if (activeCached.isNotEmpty) {
+        return activeCached;
       }
       if (_demoCaptures.isNotEmpty) {
-        return List<CaptureModel>.from(_demoCaptures.reversed);
+        return List<CaptureModel>.from(_demoCaptures.where((c) => !c.isTrashed && !c.isPurged).toList().reversed);
       }
       throw CaptureException('Gagal memuat koleksi satwa: ${e.toString()}');
     }
@@ -649,6 +653,80 @@ class CaptureService {
       isValid: true,
       totalBlocks: _demoCaptures.length,
       message: 'Rantai hash SHA-256 kanonis utuh dan terverifikasi (${_demoCaptures.length} blok).',
+    );
+  }
+
+  /// Memasukkan data mock captures untuk pengujian unit
+  void initMockDemoCapturesWith(List<CaptureModel> list) {
+    _demoCaptures.clear();
+    _demoCaptures.addAll(list);
+  }
+
+  /// Menjalankan verifikasi pada memori _demoCaptures
+  ChainVerificationResult verifyMockChain() => _verifyDemoChain();
+
+  /// Menjalankan verifikasi pada kumpulan blok tertentu (termasuk blok purged / tombstone)
+  ChainVerificationResult verifyMockChainWithPurged(List<CaptureModel> list) {
+    if (list.isEmpty) {
+      return const ChainVerificationResult(
+        isValid: true,
+        totalBlocks: 0,
+        message: 'Koleksi masih kosong. Belum ada blok rantai yang tersimpan.',
+      );
+    }
+
+    const demoUserId = '00000000-0000-0000-0000-000000000001';
+    String expectedPrev = calculateGenesisHash(demoUserId);
+
+    for (int i = 0; i < list.length; i++) {
+      final item = list[i];
+      final expectedSeq = i + 1;
+
+      if (item.seq != expectedSeq) {
+        return ChainVerificationResult(
+          isValid: false,
+          totalBlocks: list.length,
+          brokenSeq: item.seq,
+          message: 'Nomor blok terputus pada urutan #$expectedSeq',
+        );
+      }
+
+      if (item.previousHash != expectedPrev) {
+        return ChainVerificationResult(
+          isValid: false,
+          totalBlocks: list.length,
+          brokenSeq: item.seq,
+          message: 'Previous hash tidak cocok pada blok #${item.seq}',
+        );
+      }
+
+      final computedHash = calculateBlockHash(
+        seq: item.seq,
+        previousHash: item.previousHash,
+        photoSha256: item.photoSha256,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        cameraHeading: item.cameraHeading,
+        receivedAt: item.receivedAt,
+        userId: item.userId,
+      );
+
+      if (computedHash != item.blockHash) {
+        return ChainVerificationResult(
+          isValid: false,
+          totalBlocks: list.length,
+          brokenSeq: item.seq,
+          message: 'Manipulasi data terdeteksi pada blok #${item.seq}',
+        );
+      }
+
+      expectedPrev = item.blockHash;
+    }
+
+    return ChainVerificationResult(
+      isValid: true,
+      totalBlocks: list.length,
+      message: 'Rantai hash SHA-256 kanonis utuh dan terverifikasi (${list.length} blok).',
     );
   }
 }

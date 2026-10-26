@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../../features/feed/models/post_model.dart';
 import 'notification_service.dart';
+import 'trash_service.dart';
 
 class PostException implements Exception {
   final String message;
@@ -70,6 +71,27 @@ class PostService {
   /// Mereset data feed demo untuk keperluan pengujian
   void resetDemoPosts() {
     _demoPosts.clear();
+  }
+
+  void resetMockDemoPosts() => resetDemoPosts();
+
+  void removeDemoPost(String postId) {
+    _demoPosts.removeWhere((p) => p.id == postId);
+  }
+
+  void removeDemoPostsByCaptureId(String captureId) {
+    _demoPosts.removeWhere((p) => p.captureId == captureId);
+  }
+
+  void insertDemoPost(PostModel post) {
+    _demoPosts.insert(0, post);
+  }
+
+  void updateDemoPost(PostModel post) {
+    final idx = _demoPosts.indexWhere((p) => p.id == post.id);
+    if (idx != -1) {
+      _demoPosts[idx] = post;
+    }
   }
 
   /// Inisialisasi data postingan demo untuk luring / testing
@@ -736,6 +758,11 @@ class PostService {
     }
   }
 
+  /// Mengecek apakah tangkapan saat ini sedang dibagikan secara aktif di linimasa
+  bool isCaptureSharedLive(String captureId) {
+    return _demoPosts.any((p) => p.captureId == captureId && !p.isTrashed);
+  }
+
   PostModel _createDemoPost({
     required String captureId,
     required String caption,
@@ -750,11 +777,57 @@ class PostService {
     double? rawLat,
     double? rawLng,
   }) {
+    // 1. Tolak tangkapan yang berada di Sampah atau sudah dipurge (Plan 5.7 & Aturan Keras)
+    final isCapTrashedOrPurged = TrashService.instance.demoTrashedCaptures.any((c) => c.id == captureId);
+    if (isCapTrashedOrPurged) {
+      throw const PostException(
+        'Tangkapan yang berada di Sampah tidak dapat dipublikasikan.',
+        code: 'CAPTURE_IN_TRASH',
+      );
+    }
+
+    // 2. Tolak duplikat jika postingan saat ini sedang aktif di linimasa
+    final alreadyLive = _demoPosts.any((p) => p.captureId == captureId && !p.isTrashed);
+    if (alreadyLive) {
+      throw const PostException(
+        'Tangkapan ini sudah pernah Anda bagikan ke linimasa publik.',
+        code: 'ALREADY_POSTED',
+      );
+    }
+
     final now = DateTime.now();
     final snapped = visibility == 'coarse'
         ? snapToGridLocally(rawLat ?? -6.2088, rawLng ?? 106.8456)
         : {'lat': null, 'lng': null};
 
+    // 3. Re-share via create_post: Jika postingan sebelumnya pernah di-trash, auto-restore dan PERTAHANKAN LIKE lama
+    final trashedIdx = TrashService.instance.demoTrashedPosts.indexWhere((p) => p.captureId == captureId);
+    if (trashedIdx != -1) {
+      final oldTrashed = TrashService.instance.demoTrashedPosts.removeAt(trashedIdx);
+      if (oldTrashed.isDeleted) {
+        throw const PostException(
+          'Postingan ini telah diblokir oleh moderasi komunitas.',
+          code: 'COMMUNITY_MODERATED',
+        );
+      }
+      final restoredPost = oldTrashed.copyWith(
+        caption: caption,
+        locationVisibility: visibility,
+        displayLatitude: snapped['lat'],
+        displayLongitude: snapped['lng'],
+        areaLabel: visibility == 'coarse'
+            ? (areaLabel ?? 'Area Perkiraan Observasi Lapangan')
+            : null,
+        createdAt: now,
+        clearTrashedAt: true,
+      );
+      // Mempertahankan baris/ID yang sama dan riwayat like sebelumnya (likesCount & isLikedByMe)
+      _demoPosts.insert(0, restoredPost);
+      onPostCreatedNotifier.value = restoredPost;
+      return restoredPost;
+    }
+
+    // 4. Postingan baru pertama kali
     final newPost = PostModel(
       id: 'demo-post-${_demoPosts.length + 1}',
       captureId: captureId,

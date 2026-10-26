@@ -28,6 +28,8 @@ import 'widgets/multi_timezone_card.dart';
 import 'widgets/app_settings_sheet.dart';
 import 'widgets/follow_list_sheet.dart';
 import 'saran_kesan_page.dart';
+import 'trash_page.dart';
+import '../../../../core/services/trash_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -104,6 +106,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         _loadMyPosts();
       }
     } catch (_) {}
+
+    // Jalankan lazy purge secara background saat membuka profil (Scope S21 / Plan 5.2)
+    TrashService.instance.runLazyPurge();
   }
 
   void _handlePostCreated() {
@@ -258,6 +263,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       BiometricSettingSheet.show(context);
                     } else if (value == 'setting_notifikasi') {
                       NotificationSettingSheet.show(context);
+                    } else if (value == 'trash') {
+                      TrashPage.open(context).then((_) {
+                        _loadProfile();
+                        _loadCaptures();
+                        _loadMyPosts();
+                      });
                     } else if (value == 'logout') {
                       _showLogoutDialog(context);
                     } else {
@@ -324,6 +335,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           Expanded(
                             child: Text(
                               'Pengaturan Aplikasi',
+                              style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'trash',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.merahStatus),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Sampah (30 Hari)',
                               style: TextStyle(color: AppColors.teksGelap, fontSize: 13),
                             ),
                           ),

@@ -180,6 +180,16 @@ class EncryptedStorageService {
     }
   }
 
+  /// Menghapus cache koleksi satwa pengguna dari memori dan Hive terenkripsi (Invalidate)
+  Future<void> clearUserCaptures(String userId) async {
+    _inMemoryCaptures.remove(userId);
+    try {
+      if (Hive.isBoxOpen(boxCaptures)) {
+        await Hive.box<String>(boxCaptures).delete('captures_$userId');
+      }
+    } catch (_) {}
+  }
+
   // ============================================================================
   // CACHE KURS MATA UANG (Plan 78, 127) - IDR, USD, JPY
   // ============================================================================
