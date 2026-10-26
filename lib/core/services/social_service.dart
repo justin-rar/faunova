@@ -382,7 +382,7 @@ class SocialService {
         PostService.instance.initMockDemoPosts();
       }
       final allPosts = PostService.instance.demoPosts;
-      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId) && !p.isTrashed && !p.isDeleted).toList();
+      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId) && PostService.isPostVisibleLocally(p)).toList();
       return List<PostModel>.from(followingPosts);
     } catch (e) {
       debugPrint('fetchFollowingFeed error: $e');
@@ -390,7 +390,7 @@ class SocialService {
         PostService.instance.initMockDemoPosts();
       }
       final allPosts = PostService.instance.demoPosts;
-      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId)).toList();
+      final followingPosts = allPosts.where((p) => _followingUserIds.contains(p.authorId) && PostService.isPostVisibleLocally(p)).toList();
       return List<PostModel>.from(followingPosts);
     }
   }
@@ -528,7 +528,7 @@ class SocialService {
 
     // 3. Fallback: ambil dari memory PostService demoPosts
     return PostService.instance.demoPosts
-        .where((p) => p.authorId == targetUserId && !p.isTrashed && !p.isDeleted)
+        .where((p) => p.authorId == targetUserId && PostService.isPostVisibleLocally(p))
         .toList();
   }
 

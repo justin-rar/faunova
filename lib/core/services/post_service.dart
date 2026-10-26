@@ -577,6 +577,12 @@ class PostService {
     }
   }
 
+  static bool isPostVisibleLocally(PostModel p) {
+    if (p.isTrashed || p.isDeleted) return false;
+    if (TrashService.instance.demoTrashedCaptures.any((c) => c.id == p.captureId)) return false;
+    return true;
+  }
+
   /// Mengambil daftar postingan linimasa "Untuk Kamu" dari database atau demo cache
   Future<List<PostModel>> fetchForYouFeed({
     int limit = 20,
@@ -588,7 +594,7 @@ class PostService {
       if (_demoPosts.isEmpty) {
         initMockDemoPosts();
       }
-      return List<PostModel>.from(_demoPosts);
+      return List<PostModel>.from(_demoPosts.where(isPostVisibleLocally));
     }
 
     try {
@@ -605,7 +611,7 @@ class PostService {
         if (_demoPosts.isEmpty) {
           initMockDemoPosts();
         }
-        return List<PostModel>.from(_demoPosts.where((p) => !p.isTrashed && !p.isDeleted));
+        return List<PostModel>.from(_demoPosts.where(isPostVisibleLocally));
       }
 
       return data
@@ -617,7 +623,7 @@ class PostService {
       if (_demoPosts.isEmpty) {
         initMockDemoPosts();
       }
-      return List<PostModel>.from(_demoPosts.where((p) => !p.isTrashed && !p.isDeleted));
+      return List<PostModel>.from(_demoPosts.where(isPostVisibleLocally));
     }
   }
 

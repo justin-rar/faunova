@@ -455,8 +455,8 @@ class TrashService {
         try {
           await EncryptedStorageService.instance.clearUserCaptures(effectiveUser);
         } catch (_) {}
-        onTrashChangedNotifier.value++;
       }
+      onTrashChangedNotifier.value++;
       return;
     }
 
