@@ -158,7 +158,11 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     applyLikeState(newLiked, newCount);
 
     try {
-      final result = await PostService.instance.togglePostLike(postId);
+      final result = await PostService.instance.togglePostLike(
+        postId,
+        targetAuthorId: currentPost.authorId,
+        speciesName: currentPost.speciesName,
+      );
       if (result['likes_count'] != null) {
         final serverLiked = result['is_liked'] == true;
         final serverCount = (result['likes_count'] as num).toInt();

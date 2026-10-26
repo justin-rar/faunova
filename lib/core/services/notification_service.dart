@@ -693,23 +693,48 @@ class NotificationService {
       createdAt: DateTime.now(),
     );
 
-    // 2. Simpan ke antrean notifikasi pengguna penerima
+    // 2. Simpan ke antrean notifikasi pengguna penerima dengan deduplikasi
     _userNotificationQueues[recipientUserId] ??= [];
-    _userNotificationQueues[recipientUserId]!.insert(0, item);
+    final queue = _userNotificationQueues[recipientUserId]!;
+    final existingIdx = queue.indexWhere((n) =>
+        n.actorUserId == actorUserId &&
+        n.type == type &&
+        (type != 'like' || n.postId == postId));
+
+    if (existingIdx != -1) {
+      queue.removeAt(existingIdx);
+    }
+    queue.insert(0, item);
 
     // 3. Simpan ke database Supabase jika sesi aktif tersedia
     if (!_isTestEnvironment) {
       try {
         final client = Supabase.instance.client;
         if (client.auth.currentSession != null) {
-          await client.from('notifications').insert({
-            'recipient_id': recipientUserId,
-            'actor_id': actorUserId,
-            'type': type,
-            'post_id': postId,
-            'title': title,
-            'body': body,
-          });
+          var rpcSucceeded = false;
+          try {
+            await client.rpc('dispatch_social_notification_rpc', params: {
+              'p_recipient_id': recipientUserId,
+              'p_type': type,
+              'p_title': title,
+              'p_body': body,
+              'p_post_id': postId,
+            });
+            rpcSucceeded = true;
+          } catch (_) {
+            rpcSucceeded = false;
+          }
+
+          if (!rpcSucceeded) {
+            await client.from('notifications').insert({
+              'recipient_id': recipientUserId,
+              'actor_id': actorUserId,
+              'type': type,
+              'post_id': postId,
+              'title': title,
+              'body': body,
+            });
+          }
         }
       } catch (e) {
         // Graceful fallback jika tabel notifikasi belum termigrasi

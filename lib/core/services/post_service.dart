@@ -601,7 +601,11 @@ class PostService {
   }
 
   /// Toggle suka / batal suka postingan
-  Future<Map<String, dynamic>> togglePostLike(String postId) async {
+  Future<Map<String, dynamic>> togglePostLike(
+    String postId, {
+    String? targetAuthorId,
+    String? speciesName,
+  }) async {
     final client = _getSupabaseClient();
     final userId = _getCurrentUserId();
 
@@ -618,16 +622,19 @@ class PostService {
           likesCount: newCount,
         );
         if (newIsLiked) {
+          final author = (targetAuthorId != null && targetAuthorId.isNotEmpty)
+              ? targetAuthorId
+              : current.authorId;
           // Aturan keras: Like ke postingan diri sendiri tidak membuat notifikasi
-          if (current.authorId != effectiveUserId) {
+          if (author != effectiveUserId) {
             const myName = 'Saya (Kolektor)';
             await NotificationService.instance.dispatchSocialNotification(
-              recipientUserId: current.authorId,
+              recipientUserId: author,
               actorUserId: effectiveUserId,
               actorName: myName,
               type: 'like',
               postId: postId,
-              speciesName: current.speciesName,
+              speciesName: speciesName ?? current.speciesName,
             );
           }
         }
@@ -636,6 +643,17 @@ class PostService {
           'is_liked': newIsLiked,
           'likes_count': newCount,
         };
+      }
+      if (targetAuthorId != null && targetAuthorId.isNotEmpty && targetAuthorId != effectiveUserId) {
+        const myName = 'Saya (Kolektor)';
+        await NotificationService.instance.dispatchSocialNotification(
+          recipientUserId: targetAuthorId,
+          actorUserId: effectiveUserId,
+          actorName: myName,
+          type: 'like',
+          postId: postId,
+          speciesName: speciesName,
+        );
       }
       return {'post_id': postId, 'is_liked': true, 'likes_count': 1};
     }
@@ -658,24 +676,21 @@ class PostService {
       }
 
       if (resultMap['is_liked'] == true) {
-        String recipientId = '';
-        String? species;
-        if (idx != -1) {
+        String recipientId = targetAuthorId ?? '';
+        String? species = speciesName;
+        if (recipientId.isEmpty && idx != -1) {
           recipientId = _demoPosts[idx].authorId;
-          species = _demoPosts[idx].speciesName;
-        } else if (_isUuid(postId)) {
+          species ??= _demoPosts[idx].speciesName;
+        } else if (recipientId.isEmpty && _isUuid(postId)) {
           try {
+            // Kolom pemilik di tabel posts adalah 'user_id' (bukan author_id)
             final postData = await client
                 .from('posts')
-                .select('author_id, captures(species_name)')
+                .select('user_id')
                 .eq('id', postId)
                 .maybeSingle();
             if (postData != null) {
-              recipientId = (postData['author_id'] ?? '').toString();
-              final cap = postData['captures'];
-              if (cap is Map) {
-                species = cap['species_name'] as String?;
-              }
+              recipientId = (postData['user_id'] ?? '').toString();
             }
           } catch (e) {
             debugPrint('Failed to query post author for like notif: $e');

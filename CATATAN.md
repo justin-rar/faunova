@@ -2312,8 +2312,36 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 
 ### 4. Batasan & Langkah Lanjutan
 - **Level A**: Bekerja ketika aplikasi penerima sedang terbuka atau berada di *recent apps* / *background*.
-- **Level B (Opsional)**: Untuk menerima notifikasi banner saat aplikasi penerima dimatikan total (*swiped away / killed process*), diperlukan integrasi Firebase Cloud Messaging (FCM) dan device push token di backend Supabase.
+---
 
+## Sesi Perbaikan Notifikasi Suka (Like Notification Fix) — Selesai ✅
 
+### 1. Masalah yang Ditemukan
+- Pengguna A menyukai postingan milik Pengguna B, namun tidak ada notifikasi yang muncul di akun Pengguna B (baik di Pusat Notifikasi maupun sebagai banner sistem melayang). Notifikasi Follow sudah bekerja dengan baik.
+- **Akar Masalah**:
+  1. Pada `PostService.togglePostLike`, query fallback mengambil data pemilik postingan menggunakan `.from('posts').select('author_id, captures(species_name)')`.
+  2. Kolom pembuat postingan pada tabel Postgres `public.posts` adalah **`user_id`**, bukan `author_id` (PostgREST melempar error code 42703: `column posts.author_id does not exist`).
+  3. Akibat error tersebut, variabel `recipientId` bernilai string kosong `""`.
+  4. Pengecekan `if (recipientId.isNotEmpty && recipientId != effectiveUserId)` mengevaluasi `false`, sehingga pemanggilan `NotificationService.instance.dispatchSocialNotification` **dilewati total**.
+  5. Nol baris dimasukkan ke tabel `notifications`, menyebabkan Supabase Realtime tidak memicu event apa pun ke akun B.
 
+### 2. Solusi yang Diterapkan
+- **Resolusi Pemilik Postingan**:
+  1. Pada `feed_page.dart`: Mengoper `targetAuthorId: currentPost.authorId` dan `speciesName: currentPost.speciesName` langsung ke `PostService.instance.togglePostLike` saat tombol suka ditekan, sehingga tidak memerlukan query tambahan ke server.
+  2. Pada `PostService.togglePostLike`: Memperbaiki fallback query database dari `.select('author_id, ...')` menjadi `.select('user_id')`.
+- **Deduplikasi & Aturan Keras**:
+  1. **Self-like**: Tetap dilarang keras membuat notifikasi (`recipientId != effectiveUserId` dan `actorUserId == recipientUserId`).
+  2. **Unlike**: Menghasilkan `is_liked = false`, sehingga tidak pernah memanggil pengiriman notifikasi.
+  3. **Like -> Unlike -> Like lagi**:
+     - Di sisi klien: `_userNotificationQueues` memperbarui item notifikasi yang ada untuk `postId` yang sama dan memindahkannya ke urutan teratas tanpa menduplikasi baris.
+     - Di sisi server: Menyiapkan migrasi `028_social_notifications_like_dedupe.sql` dengan RPC `dispatch_social_notification_rpc` yang melakukan pembaruan `created_at = now(), is_read = false` pada notifikasi like yang sudah ada. Jika RPC belum diterapkan, sistem tetap aman melakukan fallback ke `insert`.
+- **Ketukan Notifikasi (*Tap Routing*)**:
+  - Banner notifikasi yang diketuk membawa pengguna langsung membuka aplikasi dan memunculkan `SocialNotificationSheet` dengan daftar interaksi terkini.
 
+### 3. Hasil Pengujian & Verifikasi
+- `flutter analyze`: **0 issues found! (No issues found)**.
+- `flutter test`: **180/180 tests passed (100% lulus)**, termasuk pengujian baru `test/like_notification_flow_test.dart`:
+  1. Akun A like postingan B: Baris notifikasi tersimpan untuk Akun B, Akun A tidak menerima notifikasi miliknya sendiri.
+  2. Self-like (suka postingan sendiri): Diblokir total (tidak ada notifikasi).
+  3. Siklus unlike & like kembali: Unlike tidak membuat notif, like kembali terdeduplikasi rapi (tetap 1 baris aktif).
+  4. Skenario follow: Berjalan normal tanpa regresi.
