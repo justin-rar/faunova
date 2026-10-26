@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/media_resolver.dart';
 import '../../../camera/models/capture_model.dart';
 import '../capture_detail_page.dart';
 
@@ -153,12 +154,75 @@ class CollectionGridView extends StatelessWidget {
     }
 
     Widget imageWidget;
-    if (capture.photoObjectPath.isNotEmpty && File(capture.photoObjectPath).existsSync()) {
-      imageWidget = Image.file(
-        File(capture.photoObjectPath),
+    final resolvedUrl = MediaResolver.resolvePhotoUrl(
+      capture.photoObjectPath,
+      speciesName: capture.speciesName,
+      category: capture.category,
+    );
+
+    if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+      imageWidget = Image.network(
+        resolvedUrl,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: AppColors.sage.withValues(alpha: 0.35),
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.sageTua),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('CollectionGridView Image.network gagal memuat foto: $error (URL: $resolvedUrl)');
+          return Container(
+            color: AppColors.surfaceContainerHigh,
+            child: const Center(
+              child: Icon(Icons.pets_rounded, size: 36, color: AppColors.sageTua),
+            ),
+          );
+        },
+      );
+    } else if (resolvedUrl.startsWith('assets/')) {
+      imageWidget = Image.asset(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('CollectionGridView Image.asset gagal memuat: $error (Asset: $resolvedUrl)');
+          return Container(
+            color: AppColors.surfaceContainerHigh,
+            child: const Center(
+              child: Icon(Icons.pets_rounded, size: 36, color: AppColors.sageTua),
+            ),
+          );
+        },
+      );
+    } else if (resolvedUrl.isNotEmpty && File(resolvedUrl).existsSync()) {
+      imageWidget = Image.file(
+        File(resolvedUrl),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('CollectionGridView Image.file gagal memuat: $error (Path: $resolvedUrl)');
+          return Container(
+            color: AppColors.surfaceContainerHigh,
+            child: const Center(
+              child: Icon(Icons.pets_rounded, size: 36, color: AppColors.sageTua),
+            ),
+          );
+        },
       );
     } else {
       imageWidget = Container(
