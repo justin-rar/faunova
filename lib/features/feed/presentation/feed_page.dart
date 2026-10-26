@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/post_service.dart';
 import '../../../core/services/social_service.dart';
+import '../../../core/services/trash_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../models/post_model.dart';
@@ -50,6 +51,7 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
     PostService.instance.onPostCreatedNotifier.addListener(_handleNewPostCreated);
     PostService.instance.onPostReportedNotifier.addListener(_handlePostReportedFromNotifier);
+    TrashService.instance.onTrashChangedNotifier.addListener(_handleTrashChanged);
     _loadFeed();
 
     // Inisialisasi listener notifikasi Realtime untuk pengguna yang login
@@ -173,10 +175,17 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   }
 
 
+  void _handleTrashChanged() {
+    if (mounted) {
+      _loadFeed();
+    }
+  }
+
   @override
   void dispose() {
     PostService.instance.onPostCreatedNotifier.removeListener(_handleNewPostCreated);
     PostService.instance.onPostReportedNotifier.removeListener(_handlePostReportedFromNotifier);
+    TrashService.instance.onTrashChangedNotifier.removeListener(_handleTrashChanged);
     _tabController.dispose();
     super.dispose();
   }

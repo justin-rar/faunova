@@ -65,6 +65,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       }
     });
     PostService.instance.onPostCreatedNotifier.addListener(_handlePostCreated);
+    CaptureService.instance.onCaptureSavedNotifier.addListener(_handleCaptureSaved);
+    TrashService.instance.onTrashChangedNotifier.addListener(_handleTrashChanged);
     _loadCaptures();
     _loadProfile();
     _loadBadges();
@@ -117,6 +119,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     }
   }
 
+  void _handleCaptureSaved() {
+    if (mounted) {
+      _loadCaptures();
+      _loadBadges();
+      _loadProfile();
+    }
+  }
+
+  void _handleTrashChanged() {
+    if (mounted) {
+      _loadCaptures();
+      _loadMyPosts();
+      _loadProfile();
+    }
+  }
+
   Future<void> _loadMyPosts() async {
     final currentUserId = AuthService.instance.currentUserId;
     String resolvedId = currentUserId ?? _myProfile?.id ?? '';
@@ -165,6 +183,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   @override
   void dispose() {
     PostService.instance.onPostCreatedNotifier.removeListener(_handlePostCreated);
+    CaptureService.instance.onCaptureSavedNotifier.removeListener(_handleCaptureSaved);
+    TrashService.instance.onTrashChangedNotifier.removeListener(_handleTrashChanged);
     _tabController.dispose();
     super.dispose();
   }

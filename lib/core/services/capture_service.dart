@@ -29,6 +29,9 @@ class CaptureService {
   static final CaptureService instance = CaptureService._internal();
   CaptureService._internal();
 
+  /// Notifier ketika tangkapan baru berhasil disimpan ke koleksi
+  final ValueNotifier<CaptureModel?> onCaptureSavedNotifier = ValueNotifier<CaptureModel?>(null);
+
   // Cache lokal demo rantai koleksi
   final List<CaptureModel> _demoCaptures = [];
 
@@ -270,6 +273,7 @@ class CaptureService {
         EncryptedStorageService.instance.saveUserCaptures(userId, [model, ...existingCached]);
       } catch (_) {}
 
+      onCaptureSavedNotifier.value = model;
       return model;
     } on PostgrestException catch (e) {
       debugPrint('CaptureService PostgrestException: ${e.message} (${e.code})');
@@ -589,6 +593,7 @@ class CaptureService {
         List<CaptureModel>.from(_demoCaptures.reversed),
       );
     } catch (_) {}
+    onCaptureSavedNotifier.value = capture;
     return capture;
   }
 

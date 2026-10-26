@@ -50,6 +50,9 @@ class TrashService {
   static final TrashService instance = TrashService._internal();
   TrashService._internal();
 
+  /// Notifier ketika ada aktivitas Sampah (trash, restore, purge)
+  final ValueNotifier<int> onTrashChangedNotifier = ValueNotifier<int>(0);
+
   SupabaseClient? _getSupabaseClient() {
     try {
       return Supabase.instance.client;
@@ -210,6 +213,7 @@ class TrashService {
         final trashedPost = post.copyWith(trashedAt: post.trashedAt ?? DateTime.now());
         PostService.instance.removeDemoPost(postId);
         _demoTrashedPosts.add(trashedPost);
+        onTrashChangedNotifier.value++;
       }
       return;
     }
@@ -222,6 +226,7 @@ class TrashService {
 
       // Sinkronisasi memori lokal demoPosts
       PostService.instance.removeDemoPost(postId);
+      onTrashChangedNotifier.value++;
       debugPrint('TrashService trashPost berhasil: $response');
     } on PostgrestException catch (e) {
       debugPrint('TrashService trashPost PostgrestException: ${e.message} (${e.code})');
@@ -268,6 +273,7 @@ class TrashService {
       final restored = post.copyWith(clearTrashedAt: true);
       _demoTrashedPosts.removeAt(idx);
       PostService.instance.insertDemoPost(restored);
+      onTrashChangedNotifier.value++;
       return;
     }
 
@@ -276,6 +282,7 @@ class TrashService {
         'restore_post',
         params: {'p_post_id': postId},
       );
+      onTrashChangedNotifier.value++;
       debugPrint('TrashService restorePost berhasil: $response');
     } on PostgrestException catch (e) {
       debugPrint('TrashService restorePost PostgrestException: ${e.message} (${e.code})');
@@ -308,6 +315,7 @@ class TrashService {
         final updatedCaptures = existingCaptures.where((c) => c.id != captureId).toList();
         await EncryptedStorageService.instance.saveUserCaptures(effectiveUser, updatedCaptures);
         _demoTrashedCaptures.add(trashedCap);
+        onTrashChangedNotifier.value++;
       }
       return;
     }
@@ -323,6 +331,7 @@ class TrashService {
         await EncryptedStorageService.instance.clearUserCaptures(userId);
       } catch (_) {}
 
+      onTrashChangedNotifier.value++;
       debugPrint('TrashService trashCapture berhasil: $response');
     } on PostgrestException catch (e) {
       debugPrint('TrashService trashCapture PostgrestException: ${e.message} (${e.code})');
@@ -358,6 +367,7 @@ class TrashService {
       final existing = EncryptedStorageService.instance.getUserCaptures(effectiveUser);
       final updated = [restored, ...existing.where((c) => c.id != captureId)];
       await EncryptedStorageService.instance.saveUserCaptures(effectiveUser, updated);
+      onTrashChangedNotifier.value++;
       return;
     }
 
@@ -372,6 +382,7 @@ class TrashService {
         await EncryptedStorageService.instance.clearUserCaptures(userId);
       } catch (_) {}
 
+      onTrashChangedNotifier.value++;
       debugPrint('TrashService restoreCapture berhasil: $response');
     } on PostgrestException catch (e) {
       debugPrint('TrashService restoreCapture PostgrestException: ${e.message} (${e.code})');
@@ -444,6 +455,7 @@ class TrashService {
         try {
           await EncryptedStorageService.instance.clearUserCaptures(effectiveUser);
         } catch (_) {}
+        onTrashChangedNotifier.value++;
       }
       return;
     }
@@ -478,6 +490,7 @@ class TrashService {
           EncryptedStorageService.instance.clearUserCaptures(userId);
         } catch (_) {}
       }
+      onTrashChangedNotifier.value++;
     } on PostgrestException catch (e) {
       debugPrint('TrashService purgeItem PostgrestException: ${e.message} (${e.code})');
       throw TrashException(e.message, code: e.code ?? 'PURGE_ITEM_ERROR');
