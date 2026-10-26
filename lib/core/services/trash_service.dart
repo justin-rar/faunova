@@ -471,9 +471,9 @@ class TrashService {
 
       // 3. Bersihkan cache lokal
       if (type == 'post') {
-        PostService.instance.demoPosts.removeWhere((p) => p.id == id);
+        PostService.instance.removeDemoPost(id);
       } else {
-        PostService.instance.demoPosts.removeWhere((p) => p.captureId == id);
+        PostService.instance.removeDemoPostsByCaptureId(id);
         try {
           EncryptedStorageService.instance.clearUserCaptures(userId);
         } catch (_) {}

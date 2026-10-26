@@ -65,8 +65,8 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
   void _handlePostReported(String postId) {
     if (mounted) {
       setState(() {
-        _forYouPosts.removeWhere((p) => p.id == postId);
-        _followingPosts.removeWhere((p) => p.id == postId);
+        _forYouPosts = _forYouPosts.where((p) => p.id != postId).toList();
+        _followingPosts = _followingPosts.where((p) => p.id != postId).toList();
       });
     }
   }
@@ -82,10 +82,8 @@ class _FeedPageState extends State<FeedPage> with SingleTickerProviderStateMixin
     final newPost = PostService.instance.onPostCreatedNotifier.value;
     if (newPost != null && mounted) {
       setState(() {
-        _forYouPosts.removeWhere((p) => p.id == newPost.id);
-        _forYouPosts.insert(0, newPost);
-        _followingPosts.removeWhere((p) => p.id == newPost.id);
-        _followingPosts.insert(0, newPost);
+        _forYouPosts = [newPost, ..._forYouPosts.where((p) => p.id != newPost.id)];
+        _followingPosts = [newPost, ..._followingPosts.where((p) => p.id != newPost.id)];
       });
     }
   }

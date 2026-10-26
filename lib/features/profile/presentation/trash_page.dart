@@ -58,8 +58,8 @@ class _TrashPageState extends State<TrashPage> with SingleTickerProviderStateMix
       final result = await TrashService.instance.fetchMyTrash();
       if (mounted) {
         setState(() {
-          _posts = result['posts'] ?? [];
-          _captures = result['captures'] ?? [];
+          _posts = List<TrashedItemModel>.from(result['posts'] ?? []);
+          _captures = List<TrashedItemModel>.from(result['captures'] ?? []);
           _isLoading = false;
         });
       }
@@ -95,6 +95,12 @@ class _TrashPageState extends State<TrashPage> with SingleTickerProviderStateMix
             ),
           );
         }
+      }
+      if (mounted) {
+        setState(() {
+          _posts = _posts.where((p) => p.id != item.id).toList();
+          _captures = _captures.where((c) => c.id != item.id).toList();
+        });
       }
       _loadTrash();
     } catch (e) {
@@ -171,6 +177,10 @@ class _TrashPageState extends State<TrashPage> with SingleTickerProviderStateMix
           photoObjectPath: item.photoUrl,
         );
         if (mounted) {
+          setState(() {
+            _posts = _posts.where((p) => p.id != item.id).toList();
+            _captures = _captures.where((c) => c.id != item.id).toList();
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Item berhasil dihapus secara permanen.'),

@@ -25,7 +25,7 @@ class PostService {
   static final PostService instance = PostService._internal();
   PostService._internal();
 
-  final List<PostModel> _demoPosts = [];
+  List<PostModel> _demoPosts = [];
   final ValueNotifier<PostModel?> onPostCreatedNotifier = ValueNotifier<PostModel?>(null);
   final Set<String> _reportedPostIds = {};
   final ValueNotifier<String?> onPostReportedNotifier = ValueNotifier<String?>(null);
@@ -76,11 +76,11 @@ class PostService {
   void resetMockDemoPosts() => resetDemoPosts();
 
   void removeDemoPost(String postId) {
-    _demoPosts.removeWhere((p) => p.id == postId);
+    _demoPosts = _demoPosts.where((p) => p.id != postId).toList();
   }
 
   void removeDemoPostsByCaptureId(String captureId) {
-    _demoPosts.removeWhere((p) => p.captureId == captureId);
+    _demoPosts = _demoPosts.where((p) => p.captureId != captureId).toList();
   }
 
   void insertDemoPost(PostModel post) {

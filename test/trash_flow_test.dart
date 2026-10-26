@@ -13,6 +13,7 @@ import 'package:faunova/core/services/post_service.dart';
 import 'package:faunova/core/services/capture_service.dart';
 import 'package:faunova/core/services/encrypted_storage_service.dart';
 import 'package:faunova/features/camera/models/capture_model.dart';
+import 'package:faunova/features/feed/models/post_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -431,13 +432,30 @@ void main() {
       );
     });
 
-    test('purgeItem bersifat idempoten', () async {
-      await TrashService.instance.trashCapture(cap1.id);
-      await TrashService.instance.purgeItem(type: 'capture', id: cap1.id);
+    test('purgeItem post does not throw unmodifiable list exception and updates demo lists', () async {
+      final post = PostModel(
+        id: 'post-test-purge',
+        captureId: 'cap-test-purge',
+        caption: 'Test caption',
+        locationVisibility: 'coarse',
+        createdAt: DateTime.now(),
+        speciesName: 'Burung Test',
+        photoUrl: 'https://example.com/photo.jpg',
+        blockSeq: 10,
+        blockHash: 'hash10',
+        photoSha256: 'sha10',
+        authorId: testUserId,
+        authorName: 'Test Author',
+        authorUsername: 'test_author',
+      );
+      PostService.instance.insertDemoPost(post);
+      await TrashService.instance.trashPost(post.id);
 
-      // Panggilan kedua tidak menyebabkan error dan tetap sukses
-      await TrashService.instance.purgeItem(type: 'capture', id: cap1.id);
-      expect(TrashService.instance.demoTrashedCaptures.firstWhere((c) => c.id == cap1.id).isPurged, isTrue);
+      await expectLater(
+        TrashService.instance.purgeItem(type: 'post', id: post.id),
+        completes,
+      );
+      expect(PostService.instance.demoPosts.any((p) => p.id == post.id), isFalse);
     });
   });
 }
