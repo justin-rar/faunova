@@ -2490,5 +2490,38 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 
 - Aplikasi telah bersih dari estetika AI slop, seluruh layar tertata rapi, dan sistem desain `DESIGN.md` telah aktif penuh. Siap untuk uji coba langsung atau demonstrasi.
 
+---
+
+## Sesi Perbaikan Regresi Pasca-Fitur Hapus (Soft Delete Regressions) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+
+- **Regresi 1: Postingan Akun Asli Tidak Muncul di Linimasa**:
+  - Ditemukan akar masalah pada migrasi `029`: subquery likes pada `get_for_you_feed`, `get_following_feed`, dan `get_user_public_posts` menggunakan `GROUP BY post_id` tanpa alias, memicu error PostgreSQL `42702 (column reference "post_id" is ambiguous)`.
+  - INNER JOIN pada `public.captures` juga berisiko membuang postingan yang dibuat tanpa tangkapan terkait atau sebelum relasi ketat.
+  - Dibuat migrasi baru `supabase/migrations/030_fix_feed_rpc_ambiguous_and_joins.sql` yang:
+    1. Memberi alias `lk.post_id` pada subquery hitung like (`public.likes lk`).
+    2. Mengubah join menjadi `LEFT JOIN public.captures c ON c.id = p.capture_id` dengan filter NULL-safe: `(c.id IS NULL OR (c.deleted_at IS NULL AND c.trashed_at IS NULL AND c.purged_at IS NULL))`.
+    3. Membersihkan overload ganda `get_user_public_posts`.
+- **Regresi 2: Galat "Unsupported operation: Cannot remove from an unmodifiable list"**:
+  - Ditemukan akar masalah di `trash_service.dart`: pembersihan cache lokal di `purgeItem` memanggil `.removeWhere()` pada `PostService.instance.demoPosts` yang merupakan `List.unmodifiable`.
+  - Diperbaiki dengan mengarahkan pembersihan ke `removeDemoPost` dan `removeDemoPostsByCaptureId` di `PostService`.
+  - Mengubah seluruh mutasi list in-place di `feed_page.dart` dan `trash_page.dart` menjadi pembuatan list baru non-mutasi (`.where(...).toList()`).
+
+### 2. Hasil Pengujian & Analisis
+
+- `flutter analyze`: **No issues found!** (0 error, 0 warning).
+- `flutter test`: **195/195 tests passed (100% lulus)** termasuk test regresi unmodifiable list di `test/trash_flow_test.dart`.
+
+### 3. Yang Belum Teruji (Membutuhkan Pengujian Nyata)
+
+- Menjalankan migrasi `030_fix_feed_rpc_ambiguous_and_joins.sql` di Supabase Dashboard SQL Editor untuk mengaktifkan perbaikan RPC di server live.
+- Uji coba interaksi follow & linimasa secara langsung menggunakan 2 HP fisik / akun riil.
+
+### 4. Langkah Selanjutnya
+
+- Pengguna menjalankan migrasi `030` di Supabase SQL Editor, kemudian menjalankan checklist uji 2 perangkat.
+
+
 
 
