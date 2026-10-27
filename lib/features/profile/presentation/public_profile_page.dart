@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../core/services/post_service.dart';
 import '../../../core/services/social_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -38,6 +39,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isTogglingFollow = false;
+  bool _isLiking = false;
 
   @override
   void initState() {
@@ -152,6 +154,81 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
+  Future<void> _toggleLike(PostModel post) async {
+    if (_isLiking) return;
+    _isLiking = true;
+
+    final postId = post.id;
+
+    // Ambil data terbaru dari list, bukan snapshot parameter
+    final idx = _publicPosts.indexWhere((p) => p.id == postId);
+    final currentPost = idx != -1 ? _publicPosts[idx] : post;
+
+    final currentLiked = currentPost.isLikedByMe;
+    final newLiked = !currentLiked;
+    final newCount = newLiked
+        ? currentPost.likesCount + 1
+        : (currentPost.likesCount > 0 ? currentPost.likesCount - 1 : 0);
+
+    // Optimistic update — hanya post ini berubah, tidak ada reload halaman
+    if (idx != -1 && mounted) {
+      setState(() {
+        _publicPosts[idx] = _publicPosts[idx].copyWith(
+          isLikedByMe: newLiked,
+          likesCount: newCount,
+        );
+      });
+    }
+
+    try {
+      final result = await PostService.instance.togglePostLike(
+        postId,
+        targetAuthorId: currentPost.authorId,
+        speciesName: currentPost.speciesName,
+      );
+      if (result['likes_count'] != null && mounted) {
+        final serverLiked = result['is_liked'] == true;
+        final serverCount = (result['likes_count'] as num).toInt();
+        final ri = _publicPosts.indexWhere((p) => p.id == postId);
+        if (ri != -1) {
+          setState(() {
+            _publicPosts[ri] = _publicPosts[ri].copyWith(
+              isLikedByMe: serverLiked,
+              likesCount: serverCount,
+            );
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error toggling like on profile: $e');
+      // Rollback
+      if (mounted) {
+        final ri = _publicPosts.indexWhere((p) => p.id == postId);
+        if (ri != -1) {
+          setState(() {
+            _publicPosts[ri] = _publicPosts[ri].copyWith(
+              isLikedByMe: currentLiked,
+              likesCount: currentPost.likesCount,
+            );
+          });
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.merahStatus,
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              'Gagal menyukai postingan: ${e.toString()}',
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      _isLiking = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const topPadding = 14.0;
@@ -259,16 +336,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           if (_publicPosts.isEmpty)
             _buildEmptyPostsCard(p)
           else
-            ..._publicPosts.map(
-              (post) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: PostCard(
-                  post: post,
-                  onLike: () {
-                    _loadProfileData();
-                  },
-                ),
-              ),
+            ..._publicPosts.asMap().entries.map(
+              (entry) {
+                final post = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: PostCard(
+                    key: ValueKey('profile_post_${post.id}'),
+                    post: post,
+                    onLike: () => _toggleLike(post),
+                  ),
+                );
+              },
             ),
         ],
       ),

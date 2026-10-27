@@ -160,6 +160,122 @@ class AuthService {
     }
   }
 
+  /// Membersihkan sesi pemulihan atau token menggantung sebelumnya demi menjamin state bersih (Requirement 3)
+  Future<void> clearRecoverySession() async {
+    if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
+      developer.log('Mode Demo: Reset recovery session state', name: 'AuthService');
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
+  }
+
+  /// Memverifikasi kode OTP recovery secara mandiri tanpa langsung mengubah kata sandi (Requirement 2)
+  Future<void> verifyRecoveryOtp({
+    required String email,
+    required String otp,
+  }) async {
+    if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
+      developer.log('Mode Demo: Simulasi verifikasi OTP untuk $email', name: 'AuthService');
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (otp.trim().length < 6) {
+        throw const AuthException('Kode OTP minimal 6 digit.');
+      }
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client.auth.verifyOTP(
+        email: email.trim(),
+        token: otp.trim(),
+        type: OtpType.recovery,
+      );
+
+      if (response.session == null && Supabase.instance.client.auth.currentSession == null) {
+        throw const AuthException('Verifikasi gagal. Pastikan kode OTP yang dimasukkan benar.');
+      }
+    } on AuthException catch (e) {
+      developer.log('AuthException saat verifyRecoveryOtp: ${e.message}', name: 'AuthService', error: e);
+      rethrow;
+    } catch (e, stack) {
+      developer.log('Error tak terduga saat verifyRecoveryOtp', name: 'AuthService', error: e, stackTrace: stack);
+      rethrow;
+    }
+  }
+
+  /// Memverifikasi kode OTP recovery dan langsung memperbarui kata sandi baru (Plan S2)
+  Future<void> verifyOtpAndResetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
+      developer.log('Mode Demo: Simulasi verifikasi OTP dan reset password untuk $email', name: 'AuthService');
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (otp.trim().length < 6) {
+        throw const AuthException('Kode OTP minimal 6 karakter.');
+      }
+      if (newPassword.length < 6) {
+        throw const AuthException('Kata sandi baru minimal 6 karakter.');
+      }
+      return;
+    }
+
+    try {
+      // 1. Verifikasi kode OTP pemulihan
+      final response = await Supabase.instance.client.auth.verifyOTP(
+        email: email.trim(),
+        token: otp.trim(),
+        type: OtpType.recovery,
+      );
+
+      if (response.session == null && Supabase.instance.client.auth.currentSession == null) {
+        throw const AuthException('Verifikasi gagal. Pastikan kode OTP yang dimasukkan benar.');
+      }
+
+      // 2. Perbarui kata sandi pengguna
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      // 3. Keluar dari sesi sementara agar login berikutnya bersih
+      await Supabase.instance.client.auth.signOut();
+    } on AuthException catch (e) {
+      developer.log('AuthException saat verifyOtpAndResetPassword: ${e.message}', name: 'AuthService', error: e);
+      rethrow;
+    } catch (e, stack) {
+      developer.log('Error tak terduga saat verifyOtpAndResetPassword', name: 'AuthService', error: e, stackTrace: stack);
+      rethrow;
+    }
+  }
+
+  /// Memperbarui kata sandi langsung jika pengguna sudah memiliki sesi pemulihan aktif (misal dari tautan email / deep link)
+  Future<void> updatePasswordOnly({required String newPassword}) async {
+    if (!AppConfig.isSupabaseConfigured || !AppConfig.isSupabaseInitialized) {
+      developer.log('Mode Demo: Simulasi pembaruan kata sandi langsung', name: 'AuthService');
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (newPassword.length < 6) {
+        throw const AuthException('Kata sandi baru minimal 6 karakter.');
+      }
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      await Supabase.instance.client.auth.signOut();
+    } on AuthException catch (e) {
+      developer.log('AuthException saat updatePasswordOnly: ${e.message}', name: 'AuthService', error: e);
+      rethrow;
+    } catch (e, stack) {
+      developer.log('Error tak terduga saat updatePasswordOnly', name: 'AuthService', error: e, stackTrace: stack);
+      rethrow;
+    }
+  }
+
   /// Keluar dari akun (logout) dan menghapus sesi tersimpan serta cache privat (Plan 75, 563)
   Future<void> signOut() async {
     try {

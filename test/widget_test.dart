@@ -614,7 +614,7 @@ void main() {
       expect(find.text('Simpan ke Koleksi Kanonis (Sesi S7)'), findsNothing);
     });
 
-    testWidgets('CameraPage: HUD Kompas, Status GPS, dan Pemilih Target Uji', (tester) async {
+    testWidgets('CameraPage: Lensa Kamera Fisik Langsung, HUD Kompas, dan Status GPS', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
@@ -624,20 +624,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Kamera Identifikasi AI'), findsOneWidget);
-      expect(find.text('Mode Bidikan Kamera (Sesi S5)'), findsOneWidget);
-      expect(find.text('Kupu-kupu (Satwa)'), findsOneWidget);
-      expect(find.text('Komodo (Satwa)'), findsOneWidget);
-      expect(find.text('Cangkir Kopi (Non-Satwa)'), findsOneWidget);
+      // Mode bidikan sampel dan kontrak validasi telah dihapus
+      expect(find.text('Mode Bidikan Kamera (Sesi S5)'), findsNothing);
+      expect(find.text('Kontrak Validasi Lapangan (Plan 5.3)'), findsNothing);
 
-      // Pilih chip Kupu-kupu
-      await tester.tap(find.text('Kupu-kupu (Satwa)'));
-      await tester.pumpAndSettle();
-      expect(find.text('Sampel Uji: Kupu-kupu (Satwa)'), findsOneWidget);
-
-      // Pilih chip Non-Satwa Kopi
-      await tester.tap(find.text('Cangkir Kopi (Non-Satwa)'));
-      await tester.pumpAndSettle();
-      expect(find.text('Sampel Uji: Kopi (Non-Satwa)'), findsOneWidget);
+      // Verifikasi HUD dan Tombol Rana
+      expect(find.textContaining('HEADING'), findsOneWidget);
+      expect(find.text('GPS SIAP'), findsOneWidget);
+      expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
     });
   });
 
@@ -3143,36 +3137,25 @@ void main() {
       expect(find.text('SEMESTER 5'), findsOneWidget);
 
       // 3 Anggota Tim Pengembang
-      expect(find.text('Justin'), findsOneWidget);
-      expect(find.text('Lead Mobile & UI/UX Specialist'), findsOneWidget);
-
-      expect(find.text('Arya Wicaksana'), findsOneWidget);
+      expect(find.text('Daniel Roby Maldini'), findsOneWidget);
       expect(find.text('Backend, Database & Security Engineer'), findsOneWidget);
 
-      final budiFinder = find.text('Budi Satria');
-      await tester.scrollUntilVisible(budiFinder, 200, scrollable: find.byType(Scrollable).first);
-      expect(budiFinder, findsOneWidget);
+      final kanzaFinder = find.text('Kanza Widi Bagaskara');
+      await tester.scrollUntilVisible(kanzaFinder, 200, scrollable: find.byType(Scrollable).first);
+      expect(kanzaFinder, findsOneWidget);
       expect(find.text('Feature Integration & Sensor Specialist'), findsOneWidget);
 
-      // Seksi Kesan dan Saran
-      final kesanHeader = find.text('Kesan Selama Perkuliahan PAM');
-      await tester.scrollUntilVisible(kesanHeader, 200, scrollable: find.byType(Scrollable).first);
-      expect(kesanHeader, findsOneWidget);
+      final justinFinder = find.text('Justin');
+      await tester.scrollUntilVisible(justinFinder, 200, scrollable: find.byType(Scrollable).first);
+      expect(justinFinder, findsOneWidget);
+      expect(find.text('Lead Mobile & UI/UX Specialist'), findsOneWidget);
 
-      final pesanHeader = find.text('Pesan & Saran Mata Kuliah');
-      await tester.scrollUntilVisible(pesanHeader, 200, scrollable: find.byType(Scrollable).first);
-      expect(pesanHeader, findsOneWidget);
-
-      final masukanHeader = find.text('Beri Masukan / Saran Tambahan');
-      await tester.scrollUntilVisible(masukanHeader, 200, scrollable: find.byType(Scrollable).first);
-      expect(masukanHeader, findsOneWidget);
+      // Verifikasi seksi masukan tambahan telah dihapus
+      expect(find.text('Beri Masukan / Saran Tambahan'), findsNothing);
+      expect(find.byType(TextFormField), findsNothing);
     });
 
-    testWidgets('SaranKesanPage: Validasi formulir masukan dan penyimpanan masukan ke riwayat', (tester) async {
-      await tester.runAsync(() async {
-        await EncryptedStorageService.instance.init(isTestEnv: true);
-      });
-
+    testWidgets('SaranKesanPage: Memuat pesan statis dan kesan 3 anggota pengembang secara konsisten', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() {
@@ -3188,40 +3171,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final submitButton = find.byKey(const Key('feedback_submit_button'));
-      await tester.scrollUntilVisible(submitButton, 200, scrollable: find.byType(Scrollable).first);
-      expect(submitButton, findsOneWidget);
-
-      final formTitle = find.text('Formulir Catatan & Saran Tambahan');
-      expect(formTitle, findsOneWidget);
-
-      final nameField = find.byKey(const Key('feedback_name_field'));
-      final feedbackField = find.byKey(const Key('feedback_text_field'));
-      expect(nameField, findsOneWidget);
-      expect(feedbackField, findsOneWidget);
-
-      await tester.enterText(nameField, 'Dosen Pengampu PAM');
-      await tester.pump();
-      await tester.enterText(feedbackField, 'Aplikasi Faunova sangat komprehensif, fitur lengkap, dan UI elegan!');
-      await tester.pump();
-
-      FocusManager.instance.primaryFocus?.unfocus();
-      await tester.pump();
-
-      await tester.runAsync(() async {
-        await tester.tap(submitButton);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
-
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.textContaining('berhasil dicatat secara lokal'), findsOneWidget);
-
-      final savedItem = find.text('Dosen Pengampu PAM');
-      await tester.scrollUntilVisible(savedItem, 200, scrollable: find.byType(Scrollable).first);
-      expect(savedItem, findsOneWidget);
-      expect(find.textContaining('Aplikasi Faunova sangat komprehensif'), findsOneWidget);
+      expect(find.text('Profil Tim Pengembang Faunova'), findsOneWidget);
+      expect(find.textContaining('Keren dan hebat sekali'), findsOneWidget);
+      expect(find.textContaining('Sudah habis 10 cangkir kopi'), findsOneWidget);
+      expect(find.textContaining('Yang penting selesai dah programnya'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
     });
 
     testWidgets('AppSettingsSheet: Menampilkan pengaturan biometrik, notifikasi, privasi lapangan, dan info aplikasi', (tester) async {

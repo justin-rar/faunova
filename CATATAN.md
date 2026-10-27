@@ -2556,3 +2556,284 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 
 - Pengguna menjalankan migrasi `031` di Supabase SQL Editor. Seluruh perbaikan Problem 1, 2, dan 3 telah tuntas.
 
+---
+
+## Sesi Perbaikan Bug: Like pada Halaman Profil Pengguna Lain — Selesai ✅
+
+### 1. Diagnosis & Akar Masalah (Root Cause)
+- **Gejala Bug**: Menekan tombol suka (like) pada postingan di halaman profil publik pengguna lain menyebabkan halaman me-refresh (menampilkan loading spinner) dan like **tidak tersimpan**. Tombol like yang sama pada feed beranda berfungsi normal.
+- **Akar Masalah (Ditemukan di `lib/features/profile/presentation/public_profile_page.dart`)**:
+  - Pada baris 267–269 (sebelum perbaikan), callback `onLike` dari `PostCard` didefinisikan sebagai:
+    ```dart
+    onLike: () {
+      _loadProfileData();
+    },
+    ```
+  - Callback tersebut langsung memanggil `_loadProfileData()` yang menyetel `_isLoading = true` (memicu full-page refresh/loading indicator) dan mengambil ulang profil dari server tanpa pernah memanggil `PostService.instance.togglePostLike()`.
+  - Akibatnya:
+    1. Halaman me-reload seluruh datanya (menggantikan UI dengan loading spinner).
+    2. Tidak ada RPC/request like yang dikirim ke Supabase atau disimpan di memori.
+    3. Setelah reload selesai, post kembali ke kondisi awal (belum disukai).
+
+### 2. Selesai Dikerjakan (Solusi)
+- **Perbaikan di `lib/features/profile/presentation/public_profile_page.dart`**:
+  - Mengimpor `PostService`.
+  - Menambahkan guard flag `bool _isLiking = false` untuk mencegah race condition / double-tap cepat.
+  - Mengimplementasikan metode `_toggleLike(PostModel post)` yang menerapkan:
+    - **Optimistic UI update**: Mengubah `isLikedByMe` dan `likesCount` secara instan di `_publicPosts` lokal tanpa me-reload halaman.
+    - **Eksekusi Backend**: Memanggil `PostService.instance.togglePostLike(postId, targetAuthorId: post.authorId, speciesName: post.speciesName)` di background.
+    - **Sinkronisasi Server**: Memperbarui state kartu jika server mengembalikan count dan status like terbaru.
+    - **Rollback & Notifikasi Galat**: Jika terjadi kegagalan jaringan/server, state like dikembalikan ke nilai awal dan pesan kesalahan ditampilkan melalui `SnackBar` mengambang berlatar merah status (`AppColors.merahStatus`).
+  - Menghubungkan callback kartu `onLike: () => _toggleLike(post)` (bukan lagi `_loadProfileData()`).
+- **Pembuatan Test Suite Verifikasi**:
+  - Dibuat `test/profile_like_bug_test.dart` yang memverifikasi:
+    1. `togglePostLike` mengubah `isLikedByMe` dan `likesCount` secara tepat.
+    2. Toggle unlike menurunkan kembali `likesCount`.
+    3. Idempotensi like lalu unlike.
+    4. Post yang dihasilkan dari `fetchUserPublicPosts` memiliki ID dan `authorId` yang valid untuk like.
+    5. Like pada postingan orang lain mengirim notifikasi ke penerima dan tidak memunculkan notifikasi pada perangkat pelaku.
+    6. Like pada postingan sendiri tidak membuat notifikasi.
+
+### 3. Hasil Pengujian & Analisis
+- `flutter analyze`: **No issues found!** (0 issues, bersih).
+- `flutter test test/profile_like_bug_test.dart`: **6/6 tests passed**.
+- `flutter test`: **210/210 tests passed (100% lulus)** di seluruh suite proyek tanpa ada regresi pada feed beranda, notifikasi, sampah/trash, grid koleksi, dan detail tangkapan.
+
+### 4. Yang Belum Teruji (Membutuhkan Perangkat Fisik)
+- Pengujian interaksi sentuhan langsung di perangkat fisik (kelancaran animasi heart burst pada PostCard).
+- Pengujian multi-perangkat real-time (notifikasi heads-up masuk ke HP pemilik postingan saat pengguna lain memberi like dari halaman profil).
+
+### 5. Langkah Berikutnya
+- Fitur like pada profil publik telah stabil dan tuntas. Siap dilanjutkan ke agenda atau tugas berikutnya.
+
+---
+
+## Pembaruan Profil & Kutipan Saran Kesan Tim Pengembang — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- Memperbarui daftar anggota tim pengembang di `lib/features/profile/presentation/saran_kesan_page.dart`:
+  1. **Daniel Roby Maldini** (NIM: 124240044) — Backend, Database & Security Engineer
+     - Kutipan/Kesan: *"Keren dan hebat sekali pemrograman aplikasi mobile"*
+  2. **Kanza Widi Bagaskara** (Mahasiswa PAM) — Feature Integration & Sensor Specialist
+     - Kutipan/Kesan: *"Sudah habis 10 cangkir kopi dan 34 gorengan serta 7 indomie"*
+  3. **Justin** (NIM: 124240074) — Lead Mobile & UI/UX Specialist
+     - Kutipan/Kesan: *"Yang penting selesai dah programnya pak, udah abis 6 akun buat membantu mengerjakan aplikasi ini"*
+- Memperbarui `test/widget_test.dart` untuk memvalidasi keberadaan nama-nama anggota tim yang baru.
+
+### 2. Hasil Verifikasi & Analisis
+- `flutter analyze`: **No issues found!** (0 error, 0 warning).
+- `flutter test`: Pengujian `SaranKesanPage` dan seluruh suite test lulus (100% pass).
+
+---
+
+## Penyederhanaan Layar Saran & Kesan (Hanya Kesan Tim Pengembang) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Menghapus Seksi Esai Umum**:
+  - Menghapus blok "Kesan Selama Perkuliahan PAM" (3 poin esai umum).
+  - Menghapus blok "Pesan & Saran Mata Kuliah" (3 poin apresiasi/saran umum).
+- **Menghapus Fokus Kontribusi dari Kartu Tim**:
+  - Menghapus label `"Fokus Kontribusi & Tanggung Jawab:"` dan seluruh daftar bullet point tanggung jawab pada setiap kartu anggota tim.
+  - Kartu anggota tim kini ringkas dan elegan: hanya menampilkan avatar, nama, peran, NIM, serta kotak kutipan kesan pribadi dari masing-masing anggota tim (*Daniel*, *Kanza*, dan *Justin*).
+- **Penyesuaian Widget Test**:
+  - Menghapus ekspektasi teks header kesan & pesan umum pada `test/widget_test.dart` dan memastikan tes tetap lulus 100%.
+
+### 2. Hasil Verifikasi & Analisis
+- `flutter analyze`: **No issues found!** (0 error, 0 warning).
+- `flutter test test/widget_test.dart --name "SaranKesanPage"`: **2/2 widget tests passed**.
+- `flutter test`: Pengujian seluruh fitur inti tetap lulus 100%.
+
+---
+
+## Penyempurnaan Alur Lengkap Lupa Kata Sandi (OTP & Kata Sandi Baru) — Selesai ✅
+
+### 1. Selesai Dikerjakan
+- **Penyempurnaan Layanan Autentikasi (`AuthService`)**:
+  - Diterapkan di `lib/core/services/auth_service.dart`.
+  - Menambahkan metode `verifyOtpAndResetPassword({email, otp, newPassword})`:
+    - Memverifikasi token OTP 6 digit pemulihan via `supabase.auth.verifyOTP(type: OtpType.recovery)`.
+    - Memperbarui kata sandi pengguna via `supabase.auth.updateUser(UserAttributes(password: newPassword))`.
+    - Melakukan `signOut` otomatis agar pengguna dapat masuk secara bersih dari layar login dengan kredensial baru.
+    - Menangani fallback mode demo (validasi OTP 6 digit dan minimal 6 karakter kata sandi).
+  - Menambahkan metode `updatePasswordOnly({newPassword})` untuk pemulihan langsung (direct recovery / deep link).
+- **Perombakan Halaman Lupa Password (`ForgotPasswordPage`) Menjadi Alur 3 Langkah**:
+  - Diterapkan di `lib/features/auth/presentation/forgot_password_page.dart`.
+  - **Langkah 1 (Kirim Permintaan)**: Form email dengan tombol *"Kirim Tautan Pemulihan"*, tombol pintas jika sudah memiliki kode OTP, serta validasi email.
+  - **Langkah 2 (Verifikasi OTP & Buat Kata Sandi Baru)**:
+    - Input kode OTP 6 digit angka (`letterSpacing: 4`, format monospace elegan).
+    - Input kata sandi baru (minimal 6 karakter) dengan toggle visibilitas kata sandi.
+    - Input konfirmasi kata sandi baru dengan validasi kesesuaian nilai.
+    - Tombol simpan kata sandi baru dengan animasi loading.
+    - Tombol kirim ulang kode OTP dengan countdown timer 60 detik anti-spam.
+    - Tombol ganti alamat email untuk kembali ke langkah 1.
+    - Dukungan `isDirectRecovery: true` otomatis menyembunyikan field OTP jika pengguna membuka aplikasi melalui deep link email.
+  - **Langkah 3 (Sukses)**:
+    - Layar konfirmasi keberhasilan dengan emblem sage tua dan pesan ramah.
+    - Tombol *"Kembali ke Halaman Masuk"* yang mengembalikan alamat email terverifikasi ke halaman `LoginPage`.
+  - Terjemahan galat ramah pengguna dalam bahasa Indonesia (OTP kedaluwarsa, kode salah, kata sandi sama, rate limit, dan kendala jaringan).
+- **Integrasi di Halaman Masuk (`LoginPage`)**:
+  - Diterapkan di `lib/features/auth/presentation/login_page.dart`.
+  - Mengirimkan email yang sedang diketik pengguna ke `ForgotPasswordPage` sebagai `initialEmail`.
+  - Mengisi otomatis field email dan mengosongkan kata sandi lama saat pengguna kembali dari pemulihan akun yang sukses.
+  - Menampilkan `SnackBar` sukses dengan warna sage tua: *"Kata sandi berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda."*
+  - Menambahkan listener `AuthChangeEvent.passwordRecovery` pada `onAuthStateChange` sehingga tautan deep link dari email otomatis membuka `ForgotPasswordPage(isDirectRecovery: true)`.
+- **Pengujian & Verifikasi Suite**:
+  - Dibuat tes integrasi di `test/forgot_password_flow_test.dart` menguji alur 3 langkah dan alur Direct Recovery.
+
+### 2. Hasil Verifikasi & Analisis
+- `flutter analyze`: **No issues found!** (0 error, 0 warning).
+- `flutter test test/forgot_password_flow_test.dart`: **2/2 tests passed (100% lulus)**.
+- `flutter test`: **212/212 tests passed (100% lulus)** di seluruh suite pengujian Faunova tanpa ada regresi.
+
+### 3. Yang Belum Teruji (Membutuhkan Konfigurasi Nyata)
+- Pengiriman kode OTP nyata melalui SMTP Brevo ke inbox Gmail/Outlook fisik (memerlukan akun Supabase & Brevo aktif yang telah dikonfigurasi).
+- Pengetukan tautan deep link scheme aplikasi secara nyata di luar emulator.
+
+### 4. Langkah Berikutnya
+- Fitur Lupa Kata Sandi telah lengkap, teruji, dan siap dipakai baik secara mandiri (input OTP fleksibel 6–12 karakter) maupun via deep link pemulihan email.
+
+---
+
+## Perbaikan Fleksibilitas Panjang Kode OTP Lupa Kata Sandi (6–12 Karakter) — Selesai ✅
+
+### 1. Masalah yang Ditemukan
+- Pengguna melaporkan bahwa kode OTP yang dikirimkan oleh Supabase / Brevo terdiri dari 8 karakter, namun kolom input di aplikasi sebelumnya dibatasi kaku dengan `maxLength: 6` dan validator `length == 6`, sehingga 2 karakter terakhir terpotong dan verifikasi gagal.
+
+### 2. Solusi yang Diterapkan
+- **`lib/features/auth/presentation/forgot_password_page.dart`**:
+  - Mengubah `maxLength` pada `TextFormField` OTP dari `6` menjadi `12`.
+  - Mengubah tipe keyboard menjadi `TextInputType.text` dengan penyesuaian font agar pengguna dapat mengetik maupun menyalin-tempel (*paste*) kode 6, 8, atau format token alfanumerik.
+  - Memperbarui validator form agar menerima rentang panjang `6 <= length <= 12`.
+  - Memperbarui label instruksi dari *"kode OTP 6 digit"* menjadi *"kode OTP yang dikirim ke email"*.
+- **`lib/core/services/auth_service.dart`**:
+  - Mengubah validasi pada metode `verifyOtpAndResetPassword` agar mendukung kode minimal 6 karakter (`otp.trim().length >= 6`) tanpa membatasi kaku pada 6 angka saja.
+- **Suite Pengujian (`test/forgot_password_flow_test.dart`)**:
+  - Menyesuaikan ekspektasi pesan validasi error dan memverifikasi alur tetap berjalan mulus.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test`: **212/212 tests passed (100% lulus)**.
+
+---
+
+## Perombakan Alur Pemulihan Kata Sandi Bertahap & Pembersihan State Segar (Fresh State) — Selesai ✅
+
+### 1. Perubahan Sesuai Permintaan Pengguna
+1. **Langkah 1/2 — Input Email**:
+   - Hanya menampilkan kolom input email dan tombol *"Kirim Tautan Pemulihan"*.
+   - Menghapus sepenuhnya opsi/tautan *"Sudah punya kode OTP? Masukkan di sini"* dari Langkah 1/2.
+2. **Langkah 2/2 — Verifikasi Kode OTP Mandiri**:
+   - Setelah menekan tombol kirim di Langkah 1/2, pengguna diarahkan ke Langkah 2/2.
+   - Pada tahap ini, halaman **hanya menampilkan**:
+     1. Kolom input Kode Verifikasi (OTP).
+     2. Tombol utama *"Verifikasi Kode OTP"*.
+     3. Tombol *"Ubah Email"*.
+     4. Tombol *"Kirim Ulang Kode OTP"* (dengan countdown cooldown 60 detik).
+   - Kolom kata sandi baru dan konfirmasi kata sandi **tidak ditampilkan sama sekali** sebelum OTP lolos verifikasi.
+3. **Tahap Pembuatan Kata Sandi Baru (Muncul Setelah OTP Lolos)**:
+   - Setelah kode OTP berhasil diverifikasi oleh Supabase Auth (`verifyRecoveryOtp`), barulah kolom input *Kata Sandi Baru* dan *Konfirmasi Kata Sandi Baru* beserta tombol *"Simpan Kata Sandi Baru"* ditampilkan.
+   - Menyimpan kata sandi baru (`updatePasswordOnly`) dan mengakhiri sesi pemulihan sementara.
+4. **Pembersihan State Segar (Fresh State Reset)**:
+   - Menambahkan metode `clearRecoverySession()` pada `AuthService`.
+   - Setiap kali halaman pemulihan dibuka atau pengguna mengetuk *"Ubah Email"*, sesi pemulihan lama yang menggantung atau tersimpan otomatis di-purge/sign out, seluruh kontroler teks dibersihkan, dan alur selalu dimulai secara bersih dari Langkah 1/2.
+
+### 2. File yang Diperbarui
+- `lib/core/services/auth_service.dart`: Menambahkan `clearRecoverySession()` dan `verifyRecoveryOtp()`.
+- `lib/features/auth/presentation/forgot_password_page.dart`: Merombak alur UI menjadi bertahap (Langkah 1 Email murni $\rightarrow$ Langkah 2 Verifikasi OTP murni $\rightarrow$ Input Sandi Baru bersyarat $\rightarrow$ Sukses).
+- `lib/features/auth/presentation/login_page.dart`: Memanggil `clearRecoverySession()` sebelum membuka pemulihan akun.
+- `test/forgot_password_flow_test.dart`: Menambahkan 3 skenario tes pengujian lengkap alur bertahap baru.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test test/forgot_password_flow_test.dart`: **3/3 tests passed (100% lulus)**.
+- `flutter test`: **213/213 tests passed (100% lulus)** di seluruh test suite Faunova tanpa regresi.
+
+---
+
+## Perbaikan Navigasi Layar Sukses Lupa Password ke Halaman Masuk (`LoginPage`) — Selesai ✅
+
+### 1. Masalah & Solusi
+- **Masalah Sebelumnya**: Pada layar sukses setelah kata sandi berhasil diperbarui (`_buildSuccessView` pada `ForgotPasswordPage`), tombol *"Kembali ke Halaman Masuk"* memanggil `Navigator.pop(context)` yang hanya mengembalikan pengguna ke halaman sebelumnya di tumpukan rute (stack), bukan selalu mengarahkan pengguna secara langsung dan bersih ke `LoginPage`.
+- **Solusi yang Diterapkan**:
+  1. Mengganti `Navigator.pop(context)` dengan `Navigator.pushAndRemoveUntil` menuju [LoginPage](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart) dengan predicate `(route) => false` agar seluruh stack dibersihkan secara tuntas.
+  2. Menambahkan dukungan parameter opsional `initialEmail` dan `bannerMessage` pada konstruktor `LoginPage`. Saat diarahkan dari pemulihan akun yang sukses, field email otomatis terisi dengan email yang dipulihkan dan SnackBar konfirmasi bernuansa sage tua muncul secara otomatis (*"Kata sandi berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda."*).
+  3. Memasang penanganan pada tombol kembali di AppBar serta `PopScope` (hardware / gesture back Android) pada status `ResetStep.success` agar selalu mengalirkan pengguna ke `LoginPage`.
+
+### 2. File yang Diperbarui
+- [lib/features/auth/presentation/login_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart): Menerima `initialEmail` & `bannerMessage` dan menampilkan SnackBar pesan sukses saat halaman dimuat.
+- [lib/features/auth/presentation/forgot_password_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/forgot_password_page.dart): Menambahkan `_navigateToLogin()`, mengganti aksi tombol sukses dengan navigasi bersih ke `LoginPage`, dan menambahkan `PopScope` pelindung.
+- [test/forgot_password_flow_test.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/test/forgot_password_flow_test.dart): Menambahkan verifikasi pengetukan *"Kembali ke Halaman Masuk"* yang memastikan `LoginPage` aktif dengan email terisi dan banner konfirmasi muncul.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test test/forgot_password_flow_test.dart`: **3/3 tests passed (100% lulus)**.
+- `flutter test`: **213/213 tests passed (100% lulus)**.
+
+---
+
+## Penyederhanaan Halaman Saran & Kesan Kuliah PAM (`SaranKesanPage`) — Selesai ✅
+
+### 1. Masalah & Solusi
+- **Permintaan Pengguna**: Menghapus seksi masukan tambahan (*"Beri Masukan / Saran Tambahan"*, formulir pengisian, dan riwayat masukan) dari halaman Saran & Kesan Kuliah PAM. Mempertahankan seksi bagian atas (banner mata kuliah & kartu profil 3 anggota tim beserta quote kesan & pesan mereka) dengan konten yang ter-hardcode secara statis tanpa input dinamis yang dapat diubah pengguna.
+- **Solusi yang Diterapkan**:
+  1. Menghapus formulir masukan (`_buildFeedbackFormCard()`), model dinamis (`PamFeedbackItem`), penyimpanan lokal riwayat (`pam_feedback_history`), dan daftar riwayat masukan (`_buildFeedbackHistoryCard()`).
+  2. Mengonversi [SaranKesanPage](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/profile/presentation/saran_kesan_page.dart) menjadi `StatelessWidget` yang ringan, bersih, dan statis.
+  3. Mempertahankan banner mata kuliah SEMESTER 5 PAM dan 3 kartu profil anggota tim lengkap dengan nama, gelar/peran, NIM, dan kutipan kesan & pesan mereka sesuai desain asli palet Faunova (Sage-Gading-Emas).
+  4. Menyesuaikan tes pada [test/widget_test.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/test/widget_test.dart) untuk memverifikasi ketiadaan form input dan memastikan seluruh konten statis 3 anggota tim tampil dengan konsisten.
+
+### 2. File yang Diperbarui
+- [lib/features/profile/presentation/saran_kesan_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/profile/presentation/saran_kesan_page.dart): Menghapus formulir dinamis & riwayat masukan, menjadikan widget statis dengan konten tim yang ter-hardcode.
+- [test/widget_test.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/test/widget_test.dart): Menyesuaikan unit & widget test `SaranKesanPage`.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test`: **213/213 tests passed (100% lulus)**.
+
+---
+
+## Perbaikan Hot Reload `Lookup failed: initialEmail in @fields in LoginPage` — Selesai ✅
+
+### 1. Masalah & Solusi
+- **Masalah**: Pada sesi `flutter run` yang sedang berjalan, menambahkan instance fields baru (`final String? initialEmail`) ke kelas widget [LoginPage](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart) memicu galat runtime Dart VM saat Hot Reload: `Lookup failed: initialEmail in @fields in LoginPage` karena Dart VM tidak mengizinkan penambahan instance field pada objek yang sudah berada di memori widget tree tanpa restart penuh.
+- **Solusi yang Diterapkan**:
+  1. Mengembalikan skema [LoginPage](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart) ke bentuk aslinya tanpa instance field tambahan (`const LoginPage({super.key})`).
+  2. Menggunakan field statis `LoginPage.pendingInitialEmail` dan `LoginPage.pendingBannerMessage` untuk meneruskan email hasil reset dan notifikasi pesan.
+  3. Mengirim sinyal reload `SIGUSR1` ke proses Flutter yang sedang berjalan, dan aplikasi di emulator Android kembali normal dan lancar seketika.
+
+### 2. File yang Diperbarui
+- [lib/features/auth/presentation/login_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart): Mengembalikan konstruktor `const LoginPage({super.key})` dan memanfaatkan field statis pending.
+- [lib/features/auth/presentation/forgot_password_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/forgot_password_page.dart): Menetapkan `LoginPage.pendingInitialEmail` dan `LoginPage.pendingBannerMessage` sebelum navigasi.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test`: **213/213 tests passed (100% lulus)**.
+- Layar merah telah pulih dan aplikasi di emulator Android berjalan normal.
+
+---
+
+## Penyederhanaan Kamera Identifikasi AI Hanya Kamera Fisik Langsung (`CameraPage`) — Selesai ✅
+
+### 1. Masalah & Solusi
+- **Permintaan Pengguna**: Menghapus kartu *"Mode Bidikan Kamera (Sesi S5)"* (beserta chip pemilihan sampel kupu-kupu, komodo, kopi) dan kartu *"Kontrak Validasi Lapangan (Plan 5.3)"* pada layar Kamera. Pengguna menginginkan antarmuka kamera hanya menggunakan kamera fisik langsung perangkat (*"hanya ada kamera fisik saja"*).
+- **Solusi yang Diterapkan**:
+  1. Menghapus kartu pemilih mode bidikan (`_buildTargetSelectorCard()`, `_buildTargetChip()`, dan enum `TargetSampleType`).
+  2. Menghapus kartu spesifikasi pipa validasi (`_buildValidationContractCard()` dan `_buildPipelineStep()`).
+  3. Mengonfigurasi [CameraPage](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/camera/presentation/camera_page.dart) agar selalu menginisialisasi kamera perangkat keras (`_initCamera()`) saat tab dibuka.
+  4. Viewfinder taktis lapangan diperluas untuk mengisi layar secara proporsional dengan HUD kompas heading, GPS SIAP, reticle optik tengah, toggle flash, dan tombol rana emas untuk menangkap foto langsung dari sensor kamera fisik perangkat.
+  5. Menyesuaikan tes pada [test/widget_test.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/test/widget_test.dart) untuk memverifikasi ketiadaan kartu mode bidikan dan kontrak validasi, serta memastikan HUD lensa fisik ter-render dengan baik.
+
+### 2. File yang Diperbarui
+- [lib/features/camera/presentation/camera_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/camera/presentation/camera_page.dart): Menghapus mode bidikan sampel & kontrak validasi, memprioritaskan kamera fisik langsung.
+- [test/widget_test.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/test/widget_test.dart): Menyesuaikan unit & widget test `CameraPage`.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test`: **213/213 tests passed (100% lulus)**.
+
+
+
+
+
+
+
+

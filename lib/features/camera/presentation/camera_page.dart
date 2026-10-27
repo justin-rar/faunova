@@ -1,7 +1,5 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../../core/data/sample_images.dart';
 import '../../../core/services/compass_heading_service.dart';
 import '../../../core/services/image_processing_service.dart';
 import '../../../core/services/permission_service.dart';
@@ -11,13 +9,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/glass_app_bar.dart';
 import 'scan_result_page.dart';
-
-enum TargetSampleType {
-  hardwareCamera,
-  butterflyAnimal,
-  komodoAnimal,
-  coffeeNonAnimal,
-}
 
 class CameraPage extends StatefulWidget {
   final bool isActive;
@@ -38,7 +29,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   bool _isCameraInitialized = false;
   bool _isProcessingScan = false;
   String _processingStageMessage = 'Menyiapkan pemindaian...';
-  TargetSampleType _selectedTarget = TargetSampleType.butterflyAnimal;
 
   // Flash mode state
   FlashMode _currentFlashMode = FlashMode.off;
@@ -56,10 +46,10 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void didUpdateWidget(CameraPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isActive && !oldWidget.isActive) {
-      // Masuk ke tab kamera -> aktifkan sensor
+      // Masuk ke tab kamera -> aktifkan sensor dan kamera
       _initSensorsAndCamera();
     } else if (!widget.isActive && oldWidget.isActive) {
-      // Keluar dari tab kamera -> matikan kamera agar tidak membebani emulator/HP
+      // Keluar dari tab kamera -> matikan kamera agar hemat baterai & resource
       _disposeCamera();
     }
   }
@@ -95,8 +85,8 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     }
     if (state == AppLifecycleState.inactive) {
       _disposeCamera();
-    } else if (state == AppLifecycleState.resumed && _selectedTarget == TargetSampleType.hardwareCamera) {
-      _initCamera();
+    } else if (state == AppLifecycleState.resumed) {
+      _initSensorsAndCamera();
     }
   }
 
@@ -123,10 +113,8 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     SensorLocationService.instance.startCompassListener();
     _checkGpsStatus();
 
-    // 2. Hardware Camera (hanya jika target adalah kamera fisik)
-    if (_selectedTarget == TargetSampleType.hardwareCamera) {
-      await _initCamera();
-    }
+    // 2. Hardware Camera Fisik Langsung
+    await _initCamera();
   }
 
   Future<void> _checkGpsStatus() async {
@@ -205,7 +193,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint('Failed to set flash mode $nextMode: $e');
-      // Jika FlashMode.torch gagal (misal kamera depan atau tidak didukung hardware), coba fallback ke always
       if (nextMode == FlashMode.torch) {
         try {
           await _cameraController!.setFlashMode(FlashMode.always);
@@ -228,31 +215,21 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     });
 
     try {
-      Uint8List rawBytes;
-      String? localPath;
-
-      // 1. Ambil byte gambar (dari hardware kamera atau target uji terpilih)
-      if (_selectedTarget == TargetSampleType.hardwareCamera) {
-        if (!_isCameraInitialized || _cameraController == null) {
-          setState(() {
-            _isProcessingScan = false;
-          });
-          _showErrorDialog(
-            'Lensa kamera fisik belum aktif di perangkat/emulator ini.\n\n'
-            'Silakan pilih salah satu chip mode bidikan di atas:\n'
-            '• "Kupu-kupu (Satwa)" untuk uji identifikasi satwa AI\n'
-            '• "Cangkir Kopi (Non-Satwa)" untuk uji penolakan non-satwa AI\n\n'
-            'Jika di HP fisik, pastikan izin kamera diizinkan di Pengaturan HP.',
-          );
-          return;
-        }
-        final photo = await _cameraController!.takePicture();
-        localPath = photo.path;
-        rawBytes = await photo.readAsBytes();
-      } else {
-        // Mode target uji yang valid
-        rawBytes = _getSampleTargetBytes(_selectedTarget);
+      if (!_isCameraInitialized || _cameraController == null) {
+        setState(() {
+          _isProcessingScan = false;
+        });
+        _showErrorDialog(
+          'Lensa kamera fisik belum aktif di perangkat ini.\n\n'
+          'Pastikan izin kamera diizinkan di Pengaturan HP Anda dan lensa tidak sedang digunakan aplikasi lain.',
+        );
+        return;
       }
+
+      // 1. Ambil foto langsung dari kamera fisik perangkat
+      final photo = await _cameraController!.takePicture();
+      final localPath = photo.path;
+      final rawBytes = await photo.readAsBytes();
 
       // 2. Baca GPS & Heading
       setState(() {
@@ -262,7 +239,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       final locationResult = await SensorLocationService.instance.readCurrentLocation();
       final currentSensorHeading = SensorLocationService.instance.currentHeading ?? _cameraHeading;
 
-      // 3. Kompresi & buang EXIF di klien (Plan 5.2)
+      // 3. Kompresi & buang EXIF di klien
       setState(() {
         _processingStageMessage = 'Kompresi & pembersihan metadata EXIF...';
       });
@@ -377,27 +354,30 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               setState(() {
                 _currentStatus = AppViewStatus.content;
               });
+              _initSensorsAndCamera();
             },
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
-              children: [
-                _buildTargetSelectorCard(),
-                const SizedBox(height: 12),
-
-                // Tactical Field Viewfinder HUD
-                Container(
-                  height: 420,
+            child: SizedBox.expand(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: const Color(0xFF1B261A),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: AppColors.sage.withValues(alpha: 0.5), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(22),
                     child: Stack(
                       children: [
-                        // 1. Kamera Langsung atau Preview Viewfinder
+                        // 1. Kamera Fisik Langsung atau Pesan Status
                         _buildCameraPreviewOrFallback(),
 
                         // 2. Garis Grid Rule of Thirds
@@ -473,52 +453,51 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                           ),
                         ),
 
-                        // 4. Optical Crosshair Reticle Tengah (tampil saat lensa aktif atau saat memilih target sampel)
-                        if (_isCameraInitialized || _selectedTarget != TargetSampleType.hardwareCamera)
-                          Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: AppColors.emas.withValues(alpha: 0.7),
-                                      width: 1.5,
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
+                        // 4. Optical Crosshair Reticle Tengah
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 160,
+                                height: 160,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: AppColors.emas.withValues(alpha: 0.7),
+                                    width: 1.5,
                                   ),
-                                  child: const Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.filter_center_focus_rounded,
-                                        size: 48,
-                                        color: AppColors.emas,
-                                      ),
-                                    ],
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: const Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.filter_center_focus_rounded,
+                                      size: 52,
+                                      color: AppColors.emas,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Text(
+                                  _isCameraInitialized ? 'Lensa Lapangan Aktif' : 'Arahkan kamera ke satwa liar',
+                                  style: const TextStyle(
+                                    color: AppColors.teksPutih,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Text(
-                                    _getTargetSubtitle(),
-                                    style: const TextStyle(
-                                      color: AppColors.teksPutih,
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
+                        ),
 
                         // 5. Tombol Flash di Sisi Kanan Atas
                         if (_isCameraInitialized)
@@ -551,15 +530,15 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
                         // 6. Tombol Rana (Shutter Action Bar)
                         Positioned(
-                          bottom: 20,
+                          bottom: 24,
                           left: 0,
                           right: 0,
                           child: Center(
                             child: GestureDetector(
                               onTap: _onShutterPressed,
                               child: Container(
-                                width: 72,
-                                height: 72,
+                                width: 74,
+                                height: 74,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: AppColors.emas,
@@ -567,15 +546,15 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(alpha: 0.4),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 5),
                                     ),
                                   ],
                                 ),
                                 child: const Icon(
                                   Icons.camera_alt_rounded,
                                   color: AppColors.teksGelap,
-                                  size: 32,
+                                  size: 34,
                                 ),
                               ),
                             ),
@@ -585,12 +564,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 14),
-
-                // Pipeline Specifications Card
-                _buildValidationContractCard(),
-              ],
+              ),
             ),
           ),
 
@@ -639,274 +613,58 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   }
 
   Widget _buildCameraPreviewOrFallback() {
-    if (_selectedTarget == TargetSampleType.hardwareCamera) {
-      if (_isCameraInitialized && _cameraController != null) {
-        return SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: _cameraController!.value.previewSize?.height ?? 1,
-              height: _cameraController!.value.previewSize?.width ?? 1,
-              child: CameraPreview(_cameraController!),
+    if (_isCameraInitialized && _cameraController != null) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _cameraController!.value.previewSize?.height ?? 1,
+            height: _cameraController!.value.previewSize?.width ?? 1,
+            child: CameraPreview(_cameraController!),
+          ),
+        ),
+      );
+    }
+
+    // Kamera fisik belum aktif / di emulator tanpa modul kamera
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: const Color(0xFF1B261A),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.camera_alt_outlined,
+              size: 52,
+              color: AppColors.sage.withValues(alpha: 0.5),
             ),
-          ),
-        );
-      }
-
-      // Kamera fisik belum aktif / di emulator
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color(0xFF1B261A),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.no_photography_outlined,
-                size: 52,
-                color: AppColors.sage.withValues(alpha: 0.5),
+            const SizedBox(height: 12),
+            const Text(
+              'Lensa Fisik Belum Aktif',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.teksPutih,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Lensa Fisik Belum Aktif',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.teksPutih,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Arahkan kamera HP ke satwa untuk menangkap citra langsung di lapangan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.teksPutih.withValues(alpha: 0.75),
+                fontSize: 12,
+                height: 1.4,
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Di Emulator, silakan pilih chip sampel di atas:\n"Kupu-kupu (Satwa)" atau "Cangkir Kopi (Non-Satwa)"',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.teksPutih.withValues(alpha: 0.75),
-                  fontSize: 11,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
-    }
-
-    // Tampilan sampel optik nyata
-    if (_selectedTarget == TargetSampleType.coffeeNonAnimal) {
-      return SizedBox.expand(
-        child: Image.memory(
-          SampleImages.chessboardBytes,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else {
-      return SizedBox.expand(
-        child: Image.memory(
-          SampleImages.butterflyBytes,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-  }
-
-  String _getTargetSubtitle() {
-    switch (_selectedTarget) {
-      case TargetSampleType.hardwareCamera:
-        return _isCameraInitialized
-            ? 'Lensa Lapangan Aktif'
-            : 'Arahkan kamera ke satwa liar';
-      case TargetSampleType.butterflyAnimal:
-        return 'Sampel Uji: Kupu-kupu (Satwa)';
-      case TargetSampleType.komodoAnimal:
-        return 'Sampel Uji: Komodo (Satwa)';
-      case TargetSampleType.coffeeNonAnimal:
-        return 'Sampel Uji: Kopi (Non-Satwa)';
-    }
-  }
-
-  Widget _buildTargetSelectorCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.tune_rounded, size: 16, color: AppColors.teksGelap),
-              const SizedBox(width: 8),
-              const Text(
-                'Mode Bidikan Kamera (Sesi S5)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-              const Spacer(),
-              if (_isCameraInitialized)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.sageTua,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'LENSA AKTIF',
-                    style: TextStyle(fontSize: 9, color: AppColors.teksPutih, fontWeight: FontWeight.bold),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildTargetChip('Kamera Fisik', TargetSampleType.hardwareCamera),
-              _buildTargetChip('Kupu-kupu (Satwa)', TargetSampleType.butterflyAnimal),
-              _buildTargetChip('Komodo (Satwa)', TargetSampleType.komodoAnimal),
-              _buildTargetChip('Cangkir Kopi (Non-Satwa)', TargetSampleType.coffeeNonAnimal),
-            ],
-          ),
-        ],
       ),
     );
-  }
-
-  Widget _buildTargetChip(String label, TargetSampleType type) {
-    final isSelected = _selectedTarget == type;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _selectedTarget = type;
-        });
-        if (type == TargetSampleType.hardwareCamera && !_isCameraInitialized) {
-          _initCamera();
-        } else if (type != TargetSampleType.hardwareCamera && _isCameraInitialized) {
-          _disposeCamera();
-        }
-      },
-      selectedColor: AppColors.sageTua,
-      backgroundColor: AppColors.gading,
-      labelStyle: TextStyle(
-        fontSize: 11,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        color: isSelected ? AppColors.teksPutih : AppColors.teksGelap,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      visualDensity: VisualDensity.compact,
-    );
-  }
-
-  Widget _buildValidationContractCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.sageMuda,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.sage.withValues(alpha: 0.35), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.verified_user_outlined, size: 18, color: AppColors.sageTua),
-              SizedBox(width: 8),
-              Text(
-                'Kontrak Validasi Lapangan (Plan 5.3)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13.5,
-                  color: AppColors.teksGelap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _buildPipelineStep(
-            number: '1',
-            title: 'Hanya Kamera Langsung (Tanpa Galeri)',
-            description: 'Mencegah manipulasi foto unduhan untuk menjaga orisinalitas koleksi.',
-          ),
-          const SizedBox(height: 8),
-          _buildPipelineStep(
-            number: '2',
-            title: 'Kompresi & Penghapusan EXIF di Klien',
-            description: 'Menghemat bandwidth dan membuang metadata gambar sebelum ke server.',
-          ),
-          const SizedBox(height: 8),
-          _buildPipelineStep(
-            number: '3',
-            title: 'Validasi ai-gateway (DeepSeek AI Vision)',
-            description: 'Objek bukan hewan (isAnimal: false) ditolak otomatis di sisi server.',
-          ),
-          const SizedBox(height: 8),
-          _buildPipelineStep(
-            number: '4',
-            title: 'Pencatatan Rantai Hash Kanonis',
-            description: 'SHA-256 kanonis dihitung dan disimpan di Postgres dengan advisory lock.',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPipelineStep({
-    required String number,
-    required String title,
-    required String description,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          radius: 11,
-          backgroundColor: AppColors.sageTua,
-          child: Text(
-            number,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.teksPutih),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.teksGelap),
-              ),
-              Text(
-                description,
-                style: TextStyle(fontSize: 11.5, color: AppColors.teksGelap.withValues(alpha: 0.8)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Uint8List _getSampleTargetBytes(TargetSampleType sample) {
-    switch (sample) {
-      case TargetSampleType.coffeeNonAnimal:
-        return SampleImages.chessboardBytes;
-      case TargetSampleType.komodoAnimal:
-      case TargetSampleType.butterflyAnimal:
-      default:
-        return SampleImages.butterflyBytes;
-    }
   }
 }
 

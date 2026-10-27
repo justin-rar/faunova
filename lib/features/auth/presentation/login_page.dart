@@ -4,6 +4,7 @@
 // Diselaraskan dengan Sistem Desain Stitch & AGENTS.md
 // ==============================================================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/app_config.dart';
@@ -16,6 +17,10 @@ import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  /// Digunakan oleh alur reset kata sandi agar tidak mengubah skema instance fields saat hot reload
+  static String? pendingInitialEmail;
+  static String? pendingBannerMessage;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -33,11 +38,55 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLockedOut = false;
   String? _savedEmail;
   String? _errorMessage;
+  StreamSubscription<AuthState>? _recoverySub;
 
   @override
   void initState() {
     super.initState();
+    final email = LoginPage.pendingInitialEmail;
+    if (email != null && email.isNotEmpty) {
+      _emailController.text = email;
+      LoginPage.pendingInitialEmail = null;
+    }
     _checkBiometricStatus();
+    _listenToPasswordRecovery();
+
+    final banner = LoginPage.pendingBannerMessage;
+    if (banner != null && banner.isNotEmpty) {
+      LoginPage.pendingBannerMessage = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              banner,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            backgroundColor: AppColors.sageTua,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      });
+    }
+  }
+
+  void _listenToPasswordRecovery() {
+    if (AppConfig.isSupabaseConfigured && AppConfig.isSupabaseInitialized) {
+      _recoverySub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        if (data.event == AuthChangeEvent.passwordRecovery && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ForgotPasswordPage(
+                initialEmail: data.session?.user.email,
+                isDirectRecovery: true,
+              ),
+            ),
+          );
+        }
+      });
+    }
   }
 
   Future<void> _checkBiometricStatus() async {
@@ -100,6 +149,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _recoverySub?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -344,13 +394,31 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             _buildFieldLabel('Kata Sandi'),
                             GestureDetector(
-                              onTap: () {
-                                Navigator.push(
+                              onTap: () async {
+                                final currentEmail = _emailController.text.trim();
+                                await AuthService.instance.clearRecoverySession();
+                                if (!context.mounted) return;
+                                final resetEmail = await Navigator.push<String?>(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const ForgotPasswordPage(),
+                                    builder: (_) => ForgotPasswordPage(
+                                      initialEmail: currentEmail.isNotEmpty ? currentEmail : null,
+                                    ),
                                   ),
                                 );
+                                if (!context.mounted) return;
+
+                                if (resetEmail != null) {
+                                  _emailController.text = resetEmail;
+                                  _passwordController.clear();
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Kata sandi berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda.'),
+                                      backgroundColor: AppColors.sageTua,
+                                    ),
+                                  );
+                                }
                               },
                               child: Text(
                                 'Lupa kata sandi?',
