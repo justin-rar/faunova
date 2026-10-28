@@ -1,3 +1,5 @@
+import '../../feed/models/post_model.dart';
+
 class PublicProfileModel {
   final String id;
   final String username;
@@ -53,9 +55,16 @@ class PublicProfileModel {
         ? verifiedUntilParsed.isAfter(DateTime.now())
         : rawVerified;
 
+    final String username = json['username'] as String? ?? 'kolektor';
+    final String id = json['id'] as String? ?? '';
+    final String? rawAvatar = json['avatar_path'] as String? ?? json['avatar_url'] as String?;
+    final String? effectiveAvatar = (rawAvatar != null && rawAvatar.trim().isNotEmpty)
+        ? rawAvatar
+        : PostModel.getKnownDummyAvatar(username, id);
+
     return PublicProfileModel(
-      id: json['id'] as String? ?? '',
-      username: json['username'] as String? ?? 'kolektor',
+      id: id,
+      username: username,
       displayName: (json['display_name'] as String?)?.trim().isNotEmpty == true
           ? (json['display_name'] as String).trim()
           : (json['full_name'] as String?)?.trim().isNotEmpty == true
@@ -63,7 +72,7 @@ class PublicProfileModel {
               : (json['nickname'] as String?)?.trim().isNotEmpty == true
                   ? (json['nickname'] as String).trim()
                   : (json['username'] as String?) ?? 'Penjelajah Satwa',
-      avatarPath: json['avatar_path'] as String? ?? json['avatar_url'] as String?,
+      avatarPath: effectiveAvatar,
       bio: json['bio'] as String? ?? '',
       isVerified: effectiveVerified,
       verifiedUntil: verifiedUntilParsed,

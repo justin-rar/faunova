@@ -2830,6 +2830,28 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 - `flutter analyze`: **0 issues / Bersih**.
 - `flutter test`: **213/213 tests passed (100% lulus)**.
 
+---
+
+## Penghapusan Tombol Masuk Cepat Mode Demo (Presentasi) pada Layar Login — Selesai ✅
+
+### 1. Masalah & Solusi
+- **Permintaan Pengguna**: Menghapus tombol *"Masuk Cepat Mode Demo (Presentasi)"* yang berada di bawah link registrasi akun pada layar login.
+- **Solusi yang Diterapkan**:
+  - Menghapus komponen `TextButton.icon` untuk demo quick login serta jarak `SizedBox` terkait di [LoginPage](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart).
+  - Tampilan layar masuk kini bersih dan fokus pada alur autentikasi email & kata sandi resmi serta navigasi pendaftaran.
+
+### 2. File yang Diperbarui
+- [lib/features/auth/presentation/login_page.dart](file:///Users/mymac/COOLYEAH/Semester%205/Teori%20Pemrograman%20Aplikasi%20Mobile/baruPAmobile/faunova/lib/features/auth/presentation/login_page.dart): Menghapus tombol Masuk Cepat Mode Demo.
+
+### 3. Hasil Verifikasi
+- `flutter analyze`: **0 issues / Bersih**.
+- `flutter test`: **Semua pengujian lulus (100% pass)**.
+
+### 4. Belum Teruji / Membutuhkan Perangkat Fisik
+- Pengujian autentikasi sensor biometrik (sidik jari/Face ID) pada HP fisik.
+
+### 5. Langkah Berikutnya
+- Pengguna dapat melakukan hot reload (`r`) atau hot restart (`R`) pada terminal `flutter run` untuk melihat tampilan layar login terbaru.
 
 
 
@@ -2837,3 +2859,78 @@ Mewujudkan pengiriman notifikasi sistem nyata (floating heads-up banner di statu
 
 
 
+
+
+
+---
+
+## Perbaikan Foto Post Dummy & Penambahan Avatar Profil — Selesai ✅
+
+### 1. Masalah yang Ditemukan
+**Foto post tidak sesuai spesies:**
+- Post Komodo → foto macan tutul; Orangutan → foto burung; Cenderawasih → foto bayan macaw; Penyu Hijau → foto penyelam scuba; Jalak Bali → foto bayan hijau.
+- Semua akun dummy menggunakan avatar inisial (teks) tanpa foto profil.
+
+### 2. Perbaikan yang Diterapkan
+| Post | Sebelum (salah) | Sesudah (benar) |
+|---|---|---|
+| Jalak Bali | photo-1552728089 (bayan hijau) | photo-1521566652839 (burung putih tropis) |
+| Komodo | photo-1544979590 (macan tutul) | photo-1551753725 (Komodo dragon) |
+| Orangutan | photo-1535083783855 (burung) | photo-1540573133985 (primata) |
+| Cenderawasih | photo-1452570053594 (bayan macaw) | photo-1612534847738 (burung eksotis) |
+| Penyu Hijau | photo-1544551763 (penyelam) | photo-1537996194471 (penyu laut) |
+
+Avatar profil foto nyata ditambahkan ke semua 8 akun dummy.
+
+### 3. File yang Diperbarui
+- lib/core/services/post_service.dart: 5 photoUrl + authorAvatar 16 post
+- lib/core/services/search_service.dart: 6 samplePhotoPath di katalog
+- lib/core/services/social_service.dart: avatarPath 8 profil dummy
+
+### 4. Hasil Verifikasi
+- flutter analyze: 0 issues / Bersih.
+- flutter test: 117/117 passed (100% lulus).
+
+### 5. Langkah Berikutnya
+- Tekan R pada terminal flutter run untuk hot restart melihat perubahan di emulator.
+
+---
+
+## Perbaikan Foto & Avatar Dummy Akun di Mode Supabase Live (`gustinmr7@gmail.com`) — Selesai ✅
+
+### 1. Masalah yang Terjadi
+Saat masuk menggunakan akun nyata Supabase (`gustinmr7@gmail.com`), linimasa beranda dan daftar pencarian mengambil data langsung dari PostgreSQL Supabase melalui RPC `get_for_you_feed` dan `search_accounts`.
+- Database remote Supabase menyimpan data seed awal dari migrasi `014_fix_feed_and_seed_demo_community.sql` di mana:
+  - `public.captures` berisi URL foto lama yang salah (Komodo = macan tutul, Orangutan = burung, Jalak Bali = nuri hijau, Cenderawasih = macaw, Penyu Hijau = penyelam).
+  - `public.profiles` memiliki kolom `avatar_path = NULL` untuk seluruh akun dummy (`wayan_bali`, `siti_sumatera`, `budi_satria`, `borneo_wildlife`, `dewi_papua`, `faiz_ocean`).
+- Akibatnya, perubahan pada file Dart lokal sebelumnya hanya berdampak pada mode mock offline, sedangkan saat pengguna login dengan akun nyata, emulator tetap menampilkan data dari remote database.
+
+### 2. Solusi yang Diterapkan
+1. **Penyelesaian Otomatis Sisi Klien (Langsung Aktif di Emulator)**:
+   - Di `lib/features/feed/models/post_model.dart`:
+     - Menambahkan fungsi helper `PostModel.resolvePostPhoto()` yang secara otomatis mendeteksi dan menggantikan URL foto salah dari seed lama menjadi foto satwa asli (Komodo dragon, Orangutan di kanopi pohon, Jalak Bali putih, burung surga kuning eksotis, dan Penyu Hijau berenang di laut).
+     - Menambahkan fungsi helper `PostModel.getKnownDummyAvatar()` yang memberikan avatar foto potret manusia realistis untuk seluruh akun dummy jika avatar dari server bernilai null.
+   - Di `lib/features/profile/models/public_profile_model.dart`:
+     - `PublicProfileModel.fromJson` kini secara otomatis menggunakan `PostModel.getKnownDummyAvatar()` saat server mengembalikan `avatar_path == null` untuk akun dummy. Tab "Cari" (Search) langsung menampilkan foto profil pengguna realistis, bukan inisial huruf ('D', 'S', 'B', 'F').
+   - Di `lib/core/services/search_service.dart` & `social_service.dart`:
+     - Memperbarui daftar demo akun lokal dengan avatar foto potret manusia asli beresolusi tinggi (HTTP 200).
+2. **Migrasi Database Supabase (Permanen di Server)**:
+   - Dibuat migrasi baru `supabase/migrations/032_update_dummy_posts_and_avatars.sql` untuk memperbarui tabel `public.profiles` (`avatar_path`) dan `public.captures` (`photo_object_path`) secara permanen di database PostgreSQL.
+
+### 3. File yang Diubah
+- `lib/features/feed/models/post_model.dart`
+- `lib/features/profile/models/public_profile_model.dart`
+- `lib/core/services/search_service.dart`
+- `lib/core/services/social_service.dart`
+- `lib/core/services/post_service.dart`
+- `supabase/migrations/032_update_dummy_posts_and_avatars.sql` (Baru)
+- `test/dummy_photo_avatar_resolution_test.dart` (Baru)
+
+### 4. Hasil Verifikasi
+- `flutter analyze`: **No issues found!** (0 error, 0 warning)
+- `flutter test test/dummy_photo_avatar_resolution_test.dart`: 3/3 tests passed.
+- `flutter test`: Seluruh test suite (213+ tests) **100% lulus**.
+
+### 5. Langkah Berikutnya
+1. Tekan **`R`** (Shift + R untuk hot restart) pada terminal `flutter run` untuk langsung melihat perubahan di emulator.
+2. (Opsional / Rekomendasi) Jalankan script migrasi `supabase/migrations/032_update_dummy_posts_and_avatars.sql` di Supabase Dashboard SQL Editor agar data di remote database Supabase diperbarui permanen.

@@ -141,6 +141,58 @@ class PostModel {
     );
   }
 
+  /// Avatar fallback realistis untuk akun-akun dummy/komunitas resmi
+  static String? getKnownDummyAvatar(String? username, [String? id]) {
+    final u = (username ?? '').toLowerCase().trim();
+    final i = (id ?? '').toLowerCase().trim();
+    if (u.contains('wayan') || i.contains('wayan') || i == 'aa111111-1111-1111-1111-111111111111') {
+      return 'https://images.unsplash.com/photo-1544168190-79c17527004f?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('siti') || i.contains('siti') || i == 'bb222222-2222-2222-2222-222222222222') {
+      return 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('budi') || i.contains('budi') || i == 'cc333333-3333-3333-3333-333333333333') {
+      return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('borneo') || u.contains('dedi') || i.contains('borneo') || i == 'dd444444-4444-4444-4444-444444444444') {
+      return 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('dewi') || i.contains('dewi') || i == 'ee555555-5555-5555-5555-555555555555') {
+      return 'https://images.unsplash.com/photo-1534751516642-a1af1ef26a56?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('faiz') || i.contains('faiz') || i == 'ff666666-6666-6666-6666-666666666666') {
+      return 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('bksda') || i.contains('bksda')) {
+      return 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&auto=format&fit=crop&q=80';
+    }
+    if (u.contains('anindya') || i.contains('anindya')) {
+      return 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80';
+    }
+    return null;
+  }
+
+  /// Memperbaiki foto satwa jika di database masih merujuk ke aset seed lama yang keliru
+  static String resolvePostPhoto(String rawUrl, String speciesName) {
+    final s = speciesName.toLowerCase();
+    if (rawUrl.contains('photo-1544979590') || (s.contains('komodo') && rawUrl.contains('photo-1544979590-37e9b47eb705'))) {
+      return 'https://images.unsplash.com/photo-1562578057-3ca1f7815237?w=900&auto=format&fit=crop&q=80';
+    }
+    if (rawUrl.contains('photo-1535083783855') || (s.contains('orangutan') && rawUrl.contains('photo-1535083783855-76ae62b2914e'))) {
+      return 'https://images.unsplash.com/photo-1552656504-5fd2ed591222?w=900&auto=format&fit=crop&q=80';
+    }
+    if (rawUrl.contains('photo-1552728089') || (s.contains('jalak') && rawUrl.contains('photo-1552728089-57bdde30beb3'))) {
+      return 'https://images.unsplash.com/photo-1521566652839-697aa473761a?w=900&auto=format&fit=crop&q=80';
+    }
+    if (rawUrl.contains('photo-1452570053594') || (s.contains('cenderawasih') && rawUrl.contains('photo-1452570053594-1b985d6ea890'))) {
+      return 'https://images.unsplash.com/photo-1618098750285-9402745c67e7?w=900&auto=format&fit=crop&q=80';
+    }
+    if (rawUrl.contains('photo-1544551763') || (s.contains('penyu') && rawUrl.contains('photo-1544551763-46a013bb70d5'))) {
+      return 'https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=900&auto=format&fit=crop&q=80';
+    }
+    return rawUrl;
+  }
+
   factory PostModel.fromJson(Map<String, dynamic> json) {
     double? parseCoord(dynamic val) {
       if (val == null) return null;
@@ -154,6 +206,17 @@ class PostModel {
       return DateTime.now();
     }
 
+    final species = json['species_name']?.toString() ?? 'Satwa Terverifikasi';
+    final rawPhoto = json['photo_object_path']?.toString() ?? json['photo_url']?.toString() ?? '';
+    final photo = resolvePostPhoto(rawPhoto, species);
+
+    final authorUsername = json['author_username']?.toString() ?? 'penjelajah';
+    final authorId = json['author_id']?.toString() ?? json['user_id']?.toString() ?? '';
+    final rawAvatar = json['author_avatar']?.toString() ?? json['avatar_url']?.toString() ?? json['avatar_path']?.toString();
+    final authorAvatar = (rawAvatar != null && rawAvatar.trim().isNotEmpty)
+        ? rawAvatar
+        : getKnownDummyAvatar(authorUsername, authorId);
+
     return PostModel(
       id: json['post_id']?.toString() ?? json['id']?.toString() ?? '',
       captureId: json['capture_id']?.toString() ?? '',
@@ -163,18 +226,18 @@ class PostModel {
       displayLongitude: parseCoord(json['display_longitude']),
       areaLabel: json['area_label']?.toString(),
       createdAt: parseDate(json['post_created_at'] ?? json['created_at']),
-      speciesName: json['species_name']?.toString() ?? 'Satwa Terverifikasi',
+      speciesName: species,
       category: json['category']?.toString(),
-      photoUrl: json['photo_object_path']?.toString() ?? '',
+      photoUrl: photo,
       blockSeq: json['block_seq'] is num
           ? (json['block_seq'] as num).toInt()
           : int.tryParse(json['block_seq']?.toString() ?? '1') ?? 1,
       blockHash: json['block_hash']?.toString() ?? '',
       photoSha256: json['photo_sha256']?.toString() ?? '',
-      authorId: json['author_id']?.toString() ?? json['user_id']?.toString() ?? '',
+      authorId: authorId,
       authorName: json['author_name']?.toString() ?? 'Penjelajah Fauna',
-      authorUsername: json['author_username']?.toString() ?? 'penjelajah',
-      authorAvatar: json['author_avatar']?.toString() ?? json['avatar_url']?.toString(),
+      authorUsername: authorUsername,
+      authorAvatar: authorAvatar,
       authorVerifiedUntil: json['author_verified_until'] != null
           ? parseDate(json['author_verified_until'])
           : null,

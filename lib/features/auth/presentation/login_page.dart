@@ -502,22 +502,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-
-                  // Tombol Masuk Cepat Mode Demo (S24: Persiapan Demo & Presentasi Kilat)
-                  TextButton.icon(
-                    onPressed: () {
-                      AuthService.instance.enterDemoMode();
-                    },
-                    icon: const Icon(Icons.bolt_rounded, size: 18, color: AppColors.emasTua),
-                    label: Text(
-                      'Masuk Cepat Mode Demo (Presentasi)',
-                      style: AppTypography.labelProminent(
-                        fontSize: 12.5,
-                        color: AppColors.emasTua,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
