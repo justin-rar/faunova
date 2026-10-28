@@ -2934,3 +2934,75 @@ Saat masuk menggunakan akun nyata Supabase (`gustinmr7@gmail.com`), linimasa ber
 ### 5. Langkah Berikutnya
 1. Tekan **`R`** (Shift + R untuk hot restart) pada terminal `flutter run` untuk langsung melihat perubahan di emulator.
 2. (Opsional / Rekomendasi) Jalankan script migrasi `supabase/migrations/032_update_dummy_posts_and_avatars.sql` di Supabase Dashboard SQL Editor agar data di remote database Supabase diperbarui permanen.
+
+---
+
+## Sesi Aktivasi Kredensial Login Akun Dummy Komunitas — Selesai ✅
+
+### 1. Masalah yang Terjadi
+Saat mencoba login manual menggunakan kredensial akun dummy (misal `budi_satria@faunova.id` dan password `Password123!`), Supabase Auth mengembalikan error:
+> *"Email atau kata sandi tidak sesuai. Silakan periksa kembali."* (`Invalid login credentials`).
+
+### 2. Akar Penyebab & Investigasi
+1. Akun dummy dibuat melalui migrasi awal SQL mentah (`014_fix_feed_and_seed_demo_community.sql`) langsung ke `auth.users`, bukan melalui form registrasi Supabase API.
+2. Akibatnya, beberapa field internal wajib Supabase GoTrue Auth masih bernilai `NULL`:
+   - `instance_id` bernilai `NULL` (harus `'00000000-0000-0000-0000-000000000000'`).
+   - Tabel `auth.identities` tidak memiliki baris identitas provider `'email'` untuk user tersebut.
+   - Kolom `confirmed_at` di Supabase Postgres merupakan *generated column* yang tidak boleh di-update secara manual (menghasilkan error `428C9` jika dimasukkan dalam klausa `UPDATE`).
+
+### 3. Solusi yang Diterapkan
+1. Menjalankan query SQL terpadu di Supabase SQL Editor:
+   - Mengisi `instance_id = '00000000-0000-0000-0000-000000000000'`.
+   - Mengisi `encrypted_password = extensions.crypt('Password123!', extensions.gen_salt('bf'))`.
+   - Mengisi `raw_app_meta_data = '{"provider":"email","providers":["email"]}'::jsonb`.
+   - Menghubungkan relasi identitas ke `auth.identities` lengkap dengan payload `identity_data` (`sub`, `email`, `email_verified: true`).
+2. Menghapus field `confirmed_at` dari klausa `UPDATE` karena ditangani secara otomatis oleh Postgres melalui `email_confirmed_at`.
+
+### 4. Hasil Verifikasi
+- Pengujian langsung HTTP endpoint `/auth/v1/token?grant_type=password` dengan akun `budi_satria@faunova.id`:
+  - Status HTTP: **200 OK**
+  - Mengembalikan valid JWT `access_token` dan `refresh_token`.
+- Pengujian login manual di HP fisik: **Berhasil masuk 100%**.
+
+### 5. Build File APK Release
+- Perintah: `flutter build apk --release`
+- Output: `build/app/outputs/flutter-apk/app-release.apk` (71.0 MB, universal APK siap instal di semua tipe perangkat Android).
+
+---
+
+## Sesi Perbaikan Error NoSuchMethodError SharedPreferences di APK Release (Samsung M31 / Android) — Selesai ✅
+
+### 1. Masalah yang Terjadi
+Pada HP fisik teman (Samsung Galaxy M31) yang menginstal APK release, saat membuka halaman pendaftaran / inisialisasi penyimpanan sesi Supabase muncul error:
+> `PlatformException(PlatformException, java.lang.NoSuchMethodError: no non-static method "Lio/flutter/plugins/sharedpreferences/SharedPreferencesApiRegistrar;.getAll(Ljava/lang/String;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", ...)`
+
+### 2. Akar Penyebab & Investigasi
+1. Pada APK release (`--release`), Android mengaktifkan kompresi dan obfuscation bytecode melalui **R8**.
+2. Package dependensi transitif `shared_preferences_android` versi `2.5.1` (yang digunakan oleh `supabase_flutter`) beralih menggunakan JNI Kotlin Coroutines, namun di versi tersebut belum memiliki consumer rules ProGuard/R8 lengkap.
+3. R8 memangkas atau mengacak method `getAll(...)` beserta parameter `kotlin.coroutines.Continuation`, sehingga ketika runtime Flutter memanggil plugin melalui JNI, Android melempar exception `NoSuchMethodError`.
+
+### 3. Solusi yang Diterapkan
+1. **Upgrade Package**: Menjalankan `flutter pub upgrade shared_preferences_android` dari versi `2.5.1` ke **`2.5.4`** (Flutter official patch yang telah menyertakan consumer R8 rules otomatis).
+2. **ProGuard Rules Tambahan**: Membuat file [`proguard-rules.pro`](file:///Users/mymac/COOLYEAH/Semester 5/Teori Pemrograman Aplikasi Mobile/baruPAmobile/faunova/android/app/proguard-rules.pro) dan mendaftarkannya di [`build.gradle.kts`](file:///Users/mymac/COOLYEAH/Semester 5/Teori Pemrograman Aplikasi Mobile/baruPAmobile/faunova/android/app/build.gradle.kts) pada build type `release`:
+   ```pro
+   -keep class io.flutter.plugins.sharedpreferences.** { *; }
+   -keep class kotlin.coroutines.Continuation { *; }
+   -keep class kotlin.Unit { *; }
+   -keep class kotlin.Result { *; }
+   ```
+
+### 4. Hasil Verifikasi
+- `flutter analyze`: **No issues found!**
+- `flutter test`: **216 tests passed!**
+
+### 5. Langkah Berikutnya
+1. Bersihkan cache build dan buat kembali file APK:
+   ```bash
+   flutter clean
+   flutter pub get
+   flutter build apk --release
+   ```
+2. Bagikan file APK baru di `build/app/outputs/flutter-apk/app-release.apk` ke HP Samsung M31 teman untuk dites kembali.
+
+
+
