@@ -12,7 +12,6 @@ import '../../../core/widgets/glass_app_bar.dart';
 class TeamMemberInfo {
   final String name;
   final String nim;
-  final String roleTitle;
   final String iconBadge;
   final List<String> responsibilities;
   final String quote;
@@ -20,7 +19,6 @@ class TeamMemberInfo {
   const TeamMemberInfo({
     required this.name,
     required this.nim,
-    required this.roleTitle,
     required this.iconBadge,
     required this.responsibilities,
     required this.quote,
@@ -34,7 +32,6 @@ class SaranKesanPage extends StatelessWidget {
     TeamMemberInfo(
       name: 'Daniel Roby Maldini',
       nim: 'NIM: 124240044',
-      roleTitle: 'Backend, Database & Security Engineer',
       iconBadge: '🛡️',
       responsibilities: [
         'Perancangan Skema Inti PostgreSQL Supabase (Migrations 001 - 031)',
@@ -44,12 +41,11 @@ class SaranKesanPage extends StatelessWidget {
         'RPC Idempoten Midtrans Settlement & Prioritas Pencarian Centang Biru',
       ],
       quote:
-          '"Keren dan hebat sekali pemrograman aplikasi mobile"',
+          '"Akhirnya bisa tidur normal 8 jam sehari lagi"',
     ),
     TeamMemberInfo(
       name: 'Kanza Widi Bagaskara',
-      nim: 'Mahasiswa PAM',
-      roleTitle: 'Feature Integration & Sensor Specialist',
+      nim: 'NIM: 124240059',
       iconBadge: '⚡',
       responsibilities: [
         'Integrasi Gemini AI Vision & Chat Gateway (Scan & Multi-Turn Chat)',
@@ -64,7 +60,6 @@ class SaranKesanPage extends StatelessWidget {
     TeamMemberInfo(
       name: 'Justin',
       nim: 'NIM: 124240074',
-      roleTitle: 'Lead Mobile & UI/UX Specialist',
       iconBadge: '📱',
       responsibilities: [
         'Arsitektur Fondasi Flutter & Palet Warna Sage-Gading-Emas (AGENTS.md)',
@@ -273,18 +268,12 @@ class SaranKesanPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      m.roleTitle,
+                      m.nim,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: AppColors.emasTua,
-                      ),
-                    ),
-                    Text(
-                      m.nim,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.teksGelap.withValues(alpha: 0.6),
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ],

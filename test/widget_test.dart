@@ -3138,17 +3138,20 @@ void main() {
 
       // 3 Anggota Tim Pengembang
       expect(find.text('Daniel Roby Maldini'), findsOneWidget);
-      expect(find.text('Backend, Database & Security Engineer'), findsOneWidget);
+      expect(find.text('NIM: 124240044'), findsOneWidget);
+      expect(find.text('Backend, Database & Security Engineer'), findsNothing);
 
       final kanzaFinder = find.text('Kanza Widi Bagaskara');
       await tester.scrollUntilVisible(kanzaFinder, 200, scrollable: find.byType(Scrollable).first);
       expect(kanzaFinder, findsOneWidget);
-      expect(find.text('Feature Integration & Sensor Specialist'), findsOneWidget);
+      expect(find.text('NIM: 124240059'), findsOneWidget);
+      expect(find.text('Feature Integration & Sensor Specialist'), findsNothing);
 
       final justinFinder = find.text('Justin');
       await tester.scrollUntilVisible(justinFinder, 200, scrollable: find.byType(Scrollable).first);
       expect(justinFinder, findsOneWidget);
-      expect(find.text('Lead Mobile & UI/UX Specialist'), findsOneWidget);
+      expect(find.text('NIM: 124240074'), findsOneWidget);
+      expect(find.text('Lead Mobile & UI/UX Specialist'), findsNothing);
 
       // Verifikasi seksi masukan tambahan telah dihapus
       expect(find.text('Beri Masukan / Saran Tambahan'), findsNothing);
@@ -3172,7 +3175,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Profil Tim Pengembang Faunova'), findsOneWidget);
-      expect(find.textContaining('Keren dan hebat sekali'), findsOneWidget);
+      expect(find.textContaining('Akhirnya bisa tidur normal 8 jam'), findsOneWidget);
       expect(find.textContaining('Sudah habis 10 cangkir kopi'), findsOneWidget);
       expect(find.textContaining('Yang penting selesai dah programnya'), findsOneWidget);
       expect(find.byType(TextFormField), findsNothing);
