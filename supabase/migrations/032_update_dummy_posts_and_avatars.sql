@@ -78,13 +78,16 @@ BEGIN
     WHERE id = c_turtle OR (species_name ILIKE '%penyu%' AND photo_object_path LIKE '%photo-1544551763%');
 
     -- 3. SET KREDENSIAL KATA SANDI UNTUK SELURUH AKUN DUMMY DI AUTH.USERS
-    -- Memberikan password default agar dapat login langsung via layar login aplikasi:
     -- Password: Password123!
     UPDATE auth.users
     SET 
         encrypted_password = extensions.crypt('Password123!', extensions.gen_salt('bf')),
         email_confirmed_at = COALESCE(email_confirmed_at, now()),
         raw_app_meta_data = jsonb_build_object('provider', 'email', 'providers', array['email']),
+        raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb),
+        aud = 'authenticated',
+        role = 'authenticated',
+        is_sso_user = false,
         updated_at = now()
     WHERE id IN (u_wayan, u_siti, u_budi, u_borneo, u_dewi, u_faiz)
        OR email IN (
@@ -95,6 +98,19 @@ BEGIN
            'dewi_papua@faunova.id',
            'faiz_ocean@faunova.id'
        );
+
+    -- 4. DAFTARKAN IDENTITAS KE AUTH.IDENTITIES (WAJIB AGAR GOTRUE DAPAT AUTENTIKASI LOGIN EMAIL)
+    DELETE FROM auth.identities
+    WHERE user_id IN (u_wayan, u_siti, u_budi, u_borneo, u_dewi, u_faiz);
+
+    INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+    VALUES
+        (u_wayan,  u_wayan,  u_wayan::text,  jsonb_build_object('sub', u_wayan::text,  'email', 'dr_wayan@faunova.id'),     'email', now(), now(), now()),
+        (u_siti,   u_siti,   u_siti::text,   jsonb_build_object('sub', u_siti::text,   'email', 'siti_sarah@faunova.id'),   'email', now(), now(), now()),
+        (u_budi,   u_budi,   u_budi::text,   jsonb_build_object('sub', u_budi::text,   'email', 'budi_satria@faunova.id'),  'email', now(), now(), now()),
+        (u_borneo, u_borneo, u_borneo::text, jsonb_build_object('sub', u_borneo::text, 'email', 'dedi_borneo@faunova.id'), 'email', now(), now(), now()),
+        (u_dewi,   u_dewi,   u_dewi::text,   jsonb_build_object('sub', u_dewi::text,   'email', 'dewi_papua@faunova.id'),   'email', now(), now(), now()),
+        (u_faiz,   u_faiz,   u_faiz::text,   jsonb_build_object('sub', u_faiz::text,   'email', 'faiz_ocean@faunova.id'),   'email', now(), now(), now());
 
 END $$;
 
